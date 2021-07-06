@@ -52,6 +52,9 @@ T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
 }
 
 }
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 TJBox_ValueType JBox_GetType(TJBox_Value iValue)
 {
@@ -100,12 +103,192 @@ TJBox_ObjectRef JBox_GetMotherboardObjectRef(const TJBox_ObjectName iMOMPath)
   return re::mock::Motherboard::instance().getObjectRef(iMOMPath);
 }
 
+TJBox_Bool JBox_IsReferencingSameProperty(TJBox_PropertyRef iProperty1, TJBox_PropertyRef iProperty2)
+{
+  return iProperty1.fObject == iProperty2.fObject &&
+         strncmp(iProperty1.fKey, iProperty2.fKey, kJBox_MaxPropertyNameLen + 1) == 0;
+}
+
 TJBox_Value JBox_LoadMOMProperty(TJBox_PropertyRef iProperty)
 {
   return re::mock::Motherboard::instance().loadProperty(iProperty);
+}
+
+TJBox_Value JBox_LoadMOMPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag)
+{
+  throw re::mock::Error("Not implemented yet");
 }
 
 void JBox_StoreMOMProperty(TJBox_PropertyRef iProperty, TJBox_Value iValue)
 {
   return re::mock::Motherboard::instance().storeProperty(iProperty, iValue);
 }
+
+
+void JBox_GetDSPBufferData(TJBox_Value iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame,
+                           TJBox_AudioSample oAudio[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_SetDSPBufferData(
+  TJBox_Value iValue,
+  TJBox_AudioFramePos iStartFrame,
+  TJBox_AudioFramePos iEndFrame,
+  const TJBox_AudioSample iAudio[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_Assert(const char iFile[], TJBox_Int32 iLine, const char iFailedExpression[], const char iMessage[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_Trace(
+  const char iFile[],
+  TJBox_Int32 iLine,
+  const char iMessage[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_TraceValues(
+  const char iFile[],
+  TJBox_Int32 iLine,
+  const char iTemplate[],
+  const TJBox_Value iValues[],
+  TJBox_Int32 iValueCount)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_Tag JBox_GetPropertyTag(TJBox_PropertyRef iProperty)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_PropertyRef JBox_FindPropertyByTag(
+  TJBox_ObjectRef iObject,
+  TJBox_Tag iTag)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_StoreMOMPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_UInt32 JBox_GetStringLength(TJBox_Value iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_GetSubstring(
+  TJBox_Value iValue,
+  TJBox_SizeT iStart,
+  TJBox_SizeT iEnd,
+  char oString[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+
+const void *JBox_GetNativeObjectRO(TJBox_Value iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void *JBox_GetNativeObjectRW(TJBox_Value iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_SampleInfo JBox_GetSampleInfo(TJBox_Value iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_SampleMetaData JBox_GetSampleMetaData(TJBox_Value iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_GetSampleData(
+  TJBox_Value iValue,
+  TJBox_AudioFramePos iStartFrame,
+  TJBox_AudioFramePos iEndFrame,
+  TJBox_AudioSample oAudio[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_BLOBInfo JBox_GetBLOBInfo(TJBox_Value iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_GetBLOBData(
+  TJBox_Value iValue,
+  TJBox_SizeT iStart,
+  TJBox_SizeT iEnd,
+  TJBox_UInt8 oData[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_DSPBufferInfo JBox_GetDSPBufferInfo(TJBox_Value iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_SetRTStringData(TJBox_PropertyRef iProperty, TJBox_SizeT iSize, const TJBox_UInt8 iData[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_OutputNoteEvent(TJBox_NoteEvent iNoteEvent)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_NoteEvent JBox_AsNoteEvent(const TJBox_PropertyDiff &iPropertyDiff)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_Float64 JBox_LoadMOMPropertyAsNumber(
+  TJBox_ObjectRef iObject,
+  TJBox_Tag iTag)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_StoreMOMPropertyAsNumber(
+  TJBox_ObjectRef iObject,
+  TJBox_Tag iTag,
+  TJBox_Float64 iValue)
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+TJBox_Int32 JBox_GetOptimalFFTAlignment()
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_FFTRealForward(TJBox_Int32 iFFTSize, TJBox_Float32 ioData[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+void JBox_FFTRealInverse(TJBox_Int32 iFFTSize, TJBox_Float32 ioData[])
+{
+  throw re::mock::Error("Not implemented yet");
+}
+
+
+#ifdef __cplusplus
+}
+#endif

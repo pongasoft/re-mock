@@ -67,8 +67,8 @@ struct JboxObject
   TJBox_Value loadValue(jbox::PropertyName const &iPropertyName) const;
   void storeValue(jbox::PropertyName const &iPropertyName, TJBox_Value const &iValue);
 
-  const TJBox_ObjectRef fObjectRef;
   const jbox::ObjectPath fObjectPath;
+  const TJBox_ObjectRef fObjectRef;
 
   friend class re::mock::Motherboard;
 
