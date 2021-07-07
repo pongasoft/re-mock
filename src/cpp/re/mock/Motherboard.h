@@ -44,18 +44,17 @@ namespace impl {
 
 struct JboxProperty
 {
-  JboxProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, TJBox_ValueType iValueType);
-  JboxProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue);
+  JboxProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
 
   inline TJBox_Value loadValue() const { return fValue; };
   void storeValue(TJBox_Value const &iValue);
 
   const jbox::PropertyPath fPropertyPath;
   const PropertyOwner fOwner;
-  const TJBox_ValueType fValueType;
+  const TJBox_Tag fTag;
 
 protected:
-  TJBox_Value fValue{JBox_MakeNil()};
+  TJBox_Value fValue;
 };
 
 struct JboxObject
@@ -73,8 +72,7 @@ struct JboxObject
   friend class re::mock::Motherboard;
 
 protected:
-  void addProperty(jbox::PropertyName iPropertyName, PropertyOwner iOwner, TJBox_ValueType iValueType);
-  void addProperty(jbox::PropertyName iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue);
+  void addProperty(jbox::PropertyName iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iPropertyTag);
 
 protected:
   std::map<jbox::PropertyName, std::unique_ptr<JboxProperty>> fProperties{};
@@ -100,6 +98,11 @@ struct jbox_bool_property {
   bool default_value{};
   TJBox_Value getDefaultValue() const { return JBox_MakeBoolean(default_value); }
 };
+
+struct jbox_audio_input{};
+struct jbox_audio_output{};
+struct jbox_cv_input{};
+struct jbox_cv_output{};
 
 struct {
   template<typename T = TJBox_Float64>
@@ -128,6 +131,10 @@ struct {
     return createProperty(iProperty);
   }
 
+  inline std::unique_ptr<jbox_audio_input> audio_input() { return std::make_unique<jbox_audio_input>(); }
+  inline std::unique_ptr<jbox_audio_output> audio_output() { return std::make_unique<jbox_audio_output>(); }
+  inline std::unique_ptr<jbox_cv_input> cv_input() { return std::make_unique<jbox_cv_input>(); }
+  inline std::unique_ptr<jbox_cv_output> cv_output() { return std::make_unique<jbox_cv_output>(); }
 
 private:
   template<typename P>
@@ -140,23 +147,23 @@ private:
   }
 } jbox;
 
+struct MotherboardDef
+{
+  std::map<jbox::PropertyName, std::unique_ptr<jbox_audio_input>> audio_inputs{};
+  std::map<jbox::PropertyName, std::unique_ptr<jbox_audio_output>> audio_outputs{};
+  std::map<jbox::PropertyName, std::unique_ptr<jbox_cv_input>> cv_inputs{};
+  std::map<jbox::PropertyName, std::unique_ptr<jbox_cv_output>> cv_outputs{};
+
+  std::map<jbox::PropertyPath, std::unique_ptr<jbox_property>> document_owner_properties{};
+  std::map<jbox::PropertyPath, std::unique_ptr<jbox_property>> rt_owner_properties{};
+};
+
 class Motherboard
 {
 public:
-  struct Config
-  {
-    friend class Motherboard;
-
-    std::map<std::string, std::string> audio_inputs{};
-    std::map<std::string, std::unique_ptr<jbox_property>> document_owner_properties{};
-
-  private:
-    Config(Motherboard &iMom) : fMom{iMom} {}
-    Motherboard &fMom;
-  };
 
 public: // used by regular code
-  static std::unique_ptr<Motherboard> init(std::function<void (Config &)> iConfigFunction);
+  static std::unique_ptr<Motherboard> init(std::function<void (MotherboardDef &)> iConfigFunction);
 
   ~Motherboard();
 
@@ -177,8 +184,8 @@ protected:
   impl::JboxObject *addObject(jbox::ObjectPath const &iObjectPath);
   impl::JboxObject *getObject(jbox::ObjectPath const &iObjectPath) const;
 
-  void addAudioInput(std::string const &iSocketName, std::string iSocketDesc);
-  void addProperty(std::string const &iPropertyPath, PropertyOwner iOwner, jbox_property const &iProperty);
+  void addAudioInput(jbox::PropertyName const &iSocketName);
+  void addProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, jbox_property const &iProperty);
 
 protected:
   std::map<TJBox_ObjectRef, std::unique_ptr<impl::JboxObject>> fJboxObjects{};

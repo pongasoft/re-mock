@@ -92,21 +92,24 @@ void Motherboard::storeProperty(TJBox_PropertyRef iProperty, TJBox_Value const &
 //------------------------------------------------------------------------
 // Motherboard::init
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::init(std::function<void(Config &)> iConfigFunction)
+std::unique_ptr<Motherboard> Motherboard::init(std::function<void(MotherboardDef &)> iConfigFunction)
 {
   loguru::set_fatal_handler(loguru_fatal_handler);
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
   sThreadLocalInstance = res.get();
 
-  Config config{*res.get()};
+  MotherboardDef config{};
   iConfigFunction(config);
 
   for(auto &&input: config.audio_inputs)
-    res->addAudioInput(input.first, input.second);
+    res->addAudioInput(input.first);
 
   for(auto &&prop: config.document_owner_properties)
     res->addProperty(prop.first, PropertyOwner::kDocOwner, *prop.second);
+
+  for(auto &&prop: config.rt_owner_properties)
+    res->addProperty(prop.first, PropertyOwner::kRTOwner, *prop.second);
 
   return res;
 }
@@ -114,19 +117,19 @@ std::unique_ptr<Motherboard> Motherboard::init(std::function<void(Config &)> iCo
 //------------------------------------------------------------------------
 // Motherboard::addProperty
 //------------------------------------------------------------------------
-void Motherboard::addProperty(std::string const &iPropertyPath, PropertyOwner iOwner, jbox_property const &iProperty)
+void Motherboard::addProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, jbox_property const &iProperty)
 {
   auto propertyRef = jbox::get_property_ref(iPropertyPath.c_str());
-  fJboxObjects[propertyRef.fObject]->addProperty(propertyRef.fKey, iOwner, iProperty.default_value);
+  fJboxObjects[propertyRef.fObject]->addProperty(propertyRef.fKey, iOwner, iProperty.default_value, iProperty.property_tag);
 }
 
 //------------------------------------------------------------------------
 // Motherboard::addAudioInput
 //------------------------------------------------------------------------
-void Motherboard::addAudioInput(std::string const &iSocketName, std::string iSocketDesc)
+void Motherboard::addAudioInput(jbox::PropertyName const &iSocketName)
 {
-  auto o = addObject(jbox::ObjectPath::printf("/audio_inputs/%s", iSocketName.c_str()));
-  o->addProperty("connected", PropertyOwner::kRTOwner, JBox_MakeBoolean(false));
+  auto o = addObject(jbox::ObjectPath::printf("/audio_inputs/%s", iSocketName));
+  o->addProperty("connected", PropertyOwner::kRTOwner, JBox_MakeBoolean(false), kJBox_AudioInputConnected);
 }
 
 //------------------------------------------------------------------------
@@ -190,40 +193,24 @@ void impl::JboxObject::storeValue(jbox::PropertyName const &iPropertyName, TJBox
 //------------------------------------------------------------------------
 // JboxObject::addProperty
 //------------------------------------------------------------------------
-void impl::JboxObject::addProperty(jbox::PropertyName iPropertyName, PropertyOwner iOwner, TJBox_ValueType iValueType)
-{
-  CHECK_F(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", *iPropertyName, *fObjectPath);
-  fProperties[iPropertyName] =
-    std::make_unique<JboxProperty>(jbox::PropertyPath::printf("%s/%s", fObjectPath, iPropertyName), iOwner, iValueType);
-}
-
-//------------------------------------------------------------------------
-// JboxObject::addProperty
-//------------------------------------------------------------------------
 void impl::JboxObject::addProperty(jbox::PropertyName iPropertyName,
                                    PropertyOwner iOwner,
-                                   TJBox_Value const &iInitialValue)
+                                   TJBox_Value const &iInitialValue,
+                                   TJBox_Tag iPropertyTag)
 {
   CHECK_F(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", *iPropertyName, *fObjectPath);
   fProperties[iPropertyName] =
-    std::make_unique<JboxProperty>(jbox::PropertyPath::printf("%s/%s", fObjectPath, iPropertyName), iOwner, iInitialValue);
+    std::make_unique<JboxProperty>(jbox::PropertyPath::printf("%s/%s", fObjectPath, iPropertyName), iOwner, iInitialValue, iPropertyTag);
 }
 
 
 //------------------------------------------------------------------------
 // JboxProperty::JboxProperty
 //------------------------------------------------------------------------
-impl::JboxProperty::JboxProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, TJBox_ValueType iValueType) :
-  fOwner(iOwner), fValueType(iValueType), fValue{JBox_MakeNil()}
-{}
-
-//------------------------------------------------------------------------
-// JboxProperty::JboxProperty
-//------------------------------------------------------------------------
-impl::JboxProperty::JboxProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue) :
+impl::JboxProperty::JboxProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag) :
   fPropertyPath{iPropertyPath},
   fOwner{iOwner},
-  fValueType{static_cast<TJBox_ValueType>(iInitialValue.fSecret[0])},
+  fTag{iTag},
   fValue{iInitialValue}
 {}
 
@@ -232,7 +219,7 @@ impl::JboxProperty::JboxProperty(jbox::PropertyPath const &iPropertyPath, Proper
 //------------------------------------------------------------------------
 void impl::JboxProperty::storeValue(TJBox_Value const &iValue)
 {
-  CHECK_F(iValue.fSecret[0] == fValueType, "invalid property type for [%s]", *fPropertyPath);
+  CHECK_F(iValue.fSecret[0] == fValue.fSecret[0], "invalid property type for [%s]", *fPropertyPath);
   fValue = iValue;
 }
 
