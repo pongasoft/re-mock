@@ -26,12 +26,29 @@
 #include <functional>
 #include <map>
 #include <string>
-#include <jbox.h>
 #include <stdexcept>
 
 namespace re::mock {
 
+namespace fmt {
+
+/*
+ * Copied from https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf */
+template<typename ... Args>
+std::string printf(const std::string& format, Args ... args )
+{
+  int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
+  if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
+  auto size = static_cast<size_t>( size_s );
+  auto buf = std::make_unique<char[]>( size );
+  std::snprintf( buf.get(), size, format.c_str(), args ... );
+  return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+}
+
+}
+
 enum class PropertyOwner {
+  kHostOwner,
   kRTOwner,
   kRTCOwner,
   kDocOwner,
@@ -44,12 +61,12 @@ namespace impl {
 
 struct JboxProperty
 {
-  JboxProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
+  JboxProperty(std::string const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
 
   inline TJBox_Value loadValue() const { return fValue; };
   void storeValue(TJBox_Value const &iValue);
 
-  const jbox::PropertyPath fPropertyPath;
+  const std::string fPropertyPath;
   const PropertyOwner fOwner;
   const TJBox_Tag fTag;
 
@@ -57,25 +74,30 @@ protected:
   TJBox_Value fValue;
 };
 
+//struct JboxDspBufferProperty : public JboxProperty
+//{
+//
+//};
+
 struct JboxObject
 {
-  explicit JboxObject(jbox::ObjectPath const &iObjectPath);
+  explicit JboxObject(std::string const &iObjectPath);
 
   ~JboxObject() = default;
 
-  TJBox_Value loadValue(jbox::PropertyName const &iPropertyName) const;
-  void storeValue(jbox::PropertyName const &iPropertyName, TJBox_Value const &iValue);
+  TJBox_Value loadValue(std::string const &iPropertyName) const;
+  void storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
 
-  const jbox::ObjectPath fObjectPath;
+  const std::string fObjectPath;
   const TJBox_ObjectRef fObjectRef;
 
   friend class re::mock::Motherboard;
 
 protected:
-  void addProperty(jbox::PropertyName iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iPropertyTag);
+  void addProperty(std::string iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iPropertyTag);
 
 protected:
-  std::map<jbox::PropertyName, std::unique_ptr<JboxProperty>> fProperties{};
+  std::map<std::string, std::unique_ptr<JboxProperty>> fProperties{};
 };
 
 }
@@ -149,13 +171,13 @@ private:
 
 struct MotherboardDef
 {
-  std::map<jbox::PropertyName, std::unique_ptr<jbox_audio_input>> audio_inputs{};
-  std::map<jbox::PropertyName, std::unique_ptr<jbox_audio_output>> audio_outputs{};
-  std::map<jbox::PropertyName, std::unique_ptr<jbox_cv_input>> cv_inputs{};
-  std::map<jbox::PropertyName, std::unique_ptr<jbox_cv_output>> cv_outputs{};
+  std::map<std::string, std::unique_ptr<jbox_audio_input>> audio_inputs{};
+  std::map<std::string, std::unique_ptr<jbox_audio_output>> audio_outputs{};
+  std::map<std::string, std::unique_ptr<jbox_cv_input>> cv_inputs{};
+  std::map<std::string, std::unique_ptr<jbox_cv_output>> cv_outputs{};
 
-  std::map<jbox::PropertyPath, std::unique_ptr<jbox_property>> document_owner_properties{};
-  std::map<jbox::PropertyPath, std::unique_ptr<jbox_property>> rt_owner_properties{};
+  std::map<std::string, std::unique_ptr<jbox_property>> document_owner_properties{};
+  std::map<std::string, std::unique_ptr<jbox_property>> rt_owner_properties{};
 };
 
 class Motherboard
@@ -167,11 +189,11 @@ public: // used by regular code
 
   ~Motherboard();
 
-  void connectSocket(jbox::ObjectPath const &iSocketPath);
+  void connectSocket(std::string const &iSocketPath);
 
 public: // used by Jukebox.cpp (need to be public)
   static Motherboard &instance();
-  TJBox_ObjectRef getObjectRef(jbox::ObjectPath const &iObjectPath) const;
+  TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
   TJBox_Value loadProperty(TJBox_PropertyRef iProperty);
   void storeProperty(TJBox_PropertyRef iProperty, TJBox_Value const &iValue);
 
@@ -181,15 +203,21 @@ public: // used by Jukebox.cpp (need to be public)
 protected:
   Motherboard();
 
-  impl::JboxObject *addObject(jbox::ObjectPath const &iObjectPath);
-  impl::JboxObject *getObject(jbox::ObjectPath const &iObjectPath) const;
+  impl::JboxObject *addObject(std::string const &iObjectPath);
+  impl::JboxObject *getObject(std::string const &iObjectPath) const;
 
-  void addAudioInput(jbox::PropertyName const &iSocketName);
-  void addProperty(jbox::PropertyPath const &iPropertyPath, PropertyOwner iOwner, jbox_property const &iProperty);
+  void addAudioInput(std::string const &iSocketName);
+  void addAudioOutput(std::string const &iSocketName);
+  void addCVInput(std::string const &iSocketName);
+  void addCVOutput(std::string const &iSocketName);
+  void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, jbox_property const &iProperty);
+
+  TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
 
 protected:
   std::map<TJBox_ObjectRef, std::unique_ptr<impl::JboxObject>> fJboxObjects{};
-  std::map<jbox::ObjectPath, TJBox_ObjectRef> fJboxObjectRefs{};
+  std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
+  TJBox_ObjectRef fCustomPropertiesRef{};
 };
 
 // Error handling
