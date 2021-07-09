@@ -39,7 +39,7 @@ endif()
 
 set(target "re-common")
 
-add_library(${target} STATIC ${re-common_BUILD_SOURCES} ${re-common_BUILD_HEADERS} ${re-common_NATIVE_BUILD_SOURCES} ${re-common_EXPERIMENTAL_BUILD_HEADERS} ${re-common_EXPERIMENTAL_BUILD_SOURCES} "${re-common_MOCK_BUILD_SOURCES}")
+add_library(${target} STATIC "${RE_COMMON_CPP_SRC_DIR}/jbox.cpp" ${re-common_BUILD_HEADERS} ${re-common_NATIVE_BUILD_SOURCES} ${re-common_EXPERIMENTAL_BUILD_HEADERS} ${re-common_EXPERIMENTAL_BUILD_SOURCES} "${re-common_MOCK_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" ${re-common_INCLUDE_DIRECTORIES}) # exporting SDK API to plugin
 

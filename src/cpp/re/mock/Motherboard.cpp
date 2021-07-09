@@ -27,7 +27,7 @@ static thread_local Motherboard *sThreadLocalInstance{};
 // Handle loguru fatal error by throwing an exception (testable)
 void loguru_fatal_handler(const loguru::Message& message)
 {
-  LOG_F(ERROR, "Fatal Error at %s:%d", message.filename, message.line);
+  LOG_F(ERROR, "Fatal Error at %s:%d | %s", message.filename, message.line, message.message);
   throw Error(message.message);
 }
 
@@ -103,33 +103,39 @@ void Motherboard::storeProperty(TJBox_PropertyRef iProperty, TJBox_Value const &
 //------------------------------------------------------------------------
 // Motherboard::init
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::init(std::function<void(MotherboardDef &)> iConfigFunction)
+std::unique_ptr<Motherboard> Motherboard::init(std::function<void(MotherboardDef &, RealtimeController &)> iConfigFunction)
 {
   loguru::set_fatal_handler(loguru_fatal_handler);
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
   sThreadLocalInstance = res.get();
 
-  MotherboardDef config{};
-  iConfigFunction(config);
+  MotherboardDef motherboardDef{};
+  RealtimeController realtimeController{};
+  iConfigFunction(motherboardDef, realtimeController);
 
-  for(auto &&input: config.audio_inputs)
+  for(auto &&input: motherboardDef.audio_inputs)
     res->addAudioInput(input.first);
 
-  for(auto &&output: config.audio_outputs)
+  for(auto &&output: motherboardDef.audio_outputs)
     res->addAudioOutput(output.first);
 
-  for(auto &&input: config.cv_inputs)
+  for(auto &&input: motherboardDef.cv_inputs)
     res->addCVInput(input.first);
 
-  for(auto &&output: config.cv_outputs)
+  for(auto &&output: motherboardDef.cv_outputs)
     res->addCVOutput(output.first);
 
-  for(auto &&prop: config.document_owner_properties)
+  for(auto &&prop: motherboardDef.document_owner.properties)
     res->addProperty(res->fCustomPropertiesRef, prop.first, PropertyOwner::kDocOwner, *prop.second);
 
-  for(auto &&prop: config.rt_owner_properties)
+  for(auto &&prop: motherboardDef.rt_owner.properties)
     res->addProperty(res->fCustomPropertiesRef, prop.first, PropertyOwner::kRTOwner, *prop.second);
+
+  for(auto &&propertyPath: realtimeController.rt_input_setup.notify)
+  {
+    res->registerNotifiableProperty(propertyPath);
+  }
 
   return res;
 }
@@ -143,11 +149,23 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject, std::string const &
 }
 
 //------------------------------------------------------------------------
+// Motherboard::registerNotifiableProperty
+//------------------------------------------------------------------------
+void Motherboard::registerNotifiableProperty(std::string const &iPropertyPath)
+{
+  if(iPropertyPath.find_last_of('*') != std::string::npos)
+    throw Error(fmt::printf("wildcard properties not implemented yet: [%s]", iPropertyPath));
+
+  auto ref = getPropertyRef(iPropertyPath);
+  fCurrentFramePropertyDiffs.emplace_back(fJboxObjects[ref.fObject]->watchPropertyForChange(ref.fKey));
+}
+
+//------------------------------------------------------------------------
 // Motherboard::addAudioInput
 //------------------------------------------------------------------------
 void Motherboard::addAudioInput(std::string const &iSocketName)
 {
-  auto o = addObject(fmt::printf("/audio_inputs/%s", iSocketName.c_str()));
+  auto o = addObject(fmt::printf("/audio_inputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_AudioInputConnected);
   // buffer / PropertyOwner::kHostOwner / kJBox_AudioInputBuffer
 }
@@ -157,7 +175,7 @@ void Motherboard::addAudioInput(std::string const &iSocketName)
 //------------------------------------------------------------------------
 void Motherboard::addAudioOutput(std::string const &iSocketName)
 {
-  auto o = addObject(fmt::printf("/audio_outputs/%s", iSocketName.c_str()));
+  auto o = addObject(fmt::printf("/audio_outputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_AudioOutputConnected);
   o->addProperty("dsp_latency", PropertyOwner::kRTCOwner, JBox_MakeNumber(0), kJBox_AudioOutputDSPLatency);
   // buffer / PropertyOwner::kHostOwner / kJBox_AudioOutputBuffer
@@ -168,7 +186,7 @@ void Motherboard::addAudioOutput(std::string const &iSocketName)
 //------------------------------------------------------------------------
 void Motherboard::addCVInput(std::string const &iSocketName)
 {
-  auto o = addObject(fmt::printf("/cv_inputs/%s", iSocketName.c_str()));
+  auto o = addObject(fmt::printf("/cv_inputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_CVInputConnected);
   o->addProperty("value", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_CVInputValue);
 }
@@ -178,29 +196,19 @@ void Motherboard::addCVInput(std::string const &iSocketName)
 //------------------------------------------------------------------------
 void Motherboard::addCVOutput(std::string const &iSocketName)
 {
-  auto o = addObject(fmt::printf("/cv_outputs/%s", iSocketName.c_str()));
+  auto o = addObject(fmt::printf("/cv_outputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_CVOutputConnected);
   o->addProperty("dsp_latency", PropertyOwner::kRTCOwner, JBox_MakeNumber(0), kJBox_CVOutputDSPLatency);
   o->addProperty("value", PropertyOwner::kRTOwner, JBox_MakeNumber(0), kJBox_CVOutputValue);
 }
 
-
-//------------------------------------------------------------------------
-// Motherboard::connectSocket
-//------------------------------------------------------------------------
-void Motherboard::connectSocket(std::string const &iSocketPath)
-{
-  getObject(iSocketPath)->storeValue("connected", JBox_MakeBoolean(true));
-}
-
 //------------------------------------------------------------------------
 // Motherboard::getObject
 //------------------------------------------------------------------------
-impl::JboxObject *Motherboard::getObject(std::string const &iObjectPath) const
+impl::JboxObject *Motherboard::getObject(TJBox_ObjectRef iObjectRef) const
 {
-  auto const objectRef = getObjectRef(iObjectPath);
-  CHECK_F(fJboxObjects.find(objectRef) != fJboxObjects.end(), "missing object [%s]", iObjectPath.c_str());
-  return fJboxObjects.at(objectRef).get();
+  CHECK_F(fJboxObjects.find(iObjectRef) != fJboxObjects.end(), "missing object [%d]", iObjectRef);
+  return fJboxObjects.at(iObjectRef).get();
 }
 
 //------------------------------------------------------------------------
@@ -214,6 +222,23 @@ impl::JboxObject *Motherboard::addObject(std::string const &iObjectPath)
   auto res = s.get();
   fJboxObjects[s->fObjectRef] = std::move(s);
   return res;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::nextFrame
+//------------------------------------------------------------------------
+void Motherboard::nextFrame(std::function<void(TJBox_PropertyDiff const *, TJBox_UInt32)> iNextFrameCallback)
+{
+  iNextFrameCallback(fCurrentFramePropertyDiffs.data(), fCurrentFramePropertyDiffs.size());
+  fCurrentFramePropertyDiffs.clear();
+}
+
+//------------------------------------------------------------------------
+// Motherboard::connectSocket
+//------------------------------------------------------------------------
+void Motherboard::connectSocket(std::string const &iSocketPath)
+{
+  getObject(iSocketPath)->storeValue("connected", JBox_MakeBoolean(true));
 }
 
 static std::atomic<TJBox_ObjectRef> sObjectRefCounter{1};
@@ -236,10 +261,10 @@ TJBox_Value impl::JboxObject::loadValue(std::string const &iPropertyName) const
 //------------------------------------------------------------------------
 // JboxObject::storeValue
 //------------------------------------------------------------------------
-void impl::JboxObject::storeValue(std::string const &iPropertyName, TJBox_Value const &iValue)
+std::optional<TJBox_PropertyDiff> impl::JboxObject::storeValue(std::string const &iPropertyName, TJBox_Value const &iValue)
 {
   CHECK_F(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
-  fProperties[iPropertyName]->storeValue(iValue);
+  return fProperties[iPropertyName]->storeValue(iValue);
 }
 
 //------------------------------------------------------------------------
@@ -252,14 +277,28 @@ void impl::JboxObject::addProperty(std::string iPropertyName,
 {
   CHECK_F(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
   fProperties[iPropertyName] =
-    std::make_unique<JboxProperty>(fmt::printf("%s/%s", fObjectPath.c_str(), iPropertyName.c_str()), iOwner, iInitialValue, iPropertyTag);
+    std::make_unique<JboxProperty>(JBox_MakePropertyRef(fObjectRef, iPropertyName.c_str()),
+                                   fmt::printf("%s/%s", fObjectPath, iPropertyName),
+                                   iOwner,
+                                   iInitialValue,
+                                   iPropertyTag);
+}
+
+//------------------------------------------------------------------------
+// JboxObject::watchPropertyForChange
+//------------------------------------------------------------------------
+TJBox_PropertyDiff impl::JboxObject::watchPropertyForChange(std::string const &iPropertyName)
+{
+  CHECK_F(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
+  return fProperties[iPropertyName]->watchForChange();
 }
 
 
 //------------------------------------------------------------------------
 // JboxProperty::JboxProperty
 //------------------------------------------------------------------------
-impl::JboxProperty::JboxProperty(std::string const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag) :
+impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::string const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag) :
+  fPropertyRef{iPropertyRef},
   fPropertyPath{iPropertyPath},
   fOwner{iOwner},
   fTag{iTag},
@@ -269,10 +308,41 @@ impl::JboxProperty::JboxProperty(std::string const &iPropertyPath, PropertyOwner
 //------------------------------------------------------------------------
 // JboxProperty::storeValue
 //------------------------------------------------------------------------
-void impl::JboxProperty::storeValue(TJBox_Value const &iValue)
+std::optional<TJBox_PropertyDiff> impl::JboxProperty::storeValue(TJBox_Value const &iValue)
 {
   CHECK_F(iValue.fSecret[0] == fValue.fSecret[0], "invalid property type for [%s]", fPropertyPath.c_str());
-  fValue = iValue;
+
+  if(fWatched)
+  {
+    auto previousValue = fValue;
+    fValue = iValue;
+    return TJBox_PropertyDiff{
+      .fPreviousValue = previousValue,
+      .fCurrentValue = fValue,
+      .fPropertyRef = fPropertyRef,
+      .fPropertyTag = fTag
+    };
+  }
+  else
+  {
+    fValue = iValue;
+    return std::nullopt;
+  }
+
+}
+
+//------------------------------------------------------------------------
+// JboxProperty::watchForChange
+//------------------------------------------------------------------------
+TJBox_PropertyDiff impl::JboxProperty::watchForChange()
+{
+  fWatched = true;
+  return TJBox_PropertyDiff{
+    .fPreviousValue = fValue,
+    .fCurrentValue = fValue,
+    .fPropertyRef = fPropertyRef,
+    .fPropertyTag = fTag
+  };
 }
 
 }

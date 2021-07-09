@@ -95,6 +95,7 @@ TJBox_PropertyRef JBox_MakePropertyRef(TJBox_ObjectRef iObject, const TJBox_Prop
   res.fObject = iObject;
   // implementation note: for some reason I don't understand, std::begin(iKey) and std::end(iKey) do not work
   std::copy(iKey, iKey + kJBox_MaxPropertyNameLen + 1, std::begin(res.fKey));
+  res.fKey[kJBox_MaxPropertyNameLen] = '\0'; // ensures that the string is properly terminated!
   return res;
 }
 

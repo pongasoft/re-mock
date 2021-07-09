@@ -27,10 +27,21 @@
 #include <map>
 #include <string>
 #include <stdexcept>
+#include <vector>
+#include <set>
 
 namespace re::mock {
 
 namespace fmt {
+
+namespace impl {
+
+template<typename T>
+constexpr auto printf_arg(T const &t) { return t; }
+
+// Handles std::string without having to call c_str all the time
+template<>
+constexpr auto printf_arg<std::string>(std::string const &s) { return s.c_str(); }
 
 /*
  * Copied from https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf */
@@ -43,6 +54,13 @@ std::string printf(const std::string& format, Args ... args )
   auto buf = std::make_unique<char[]>( size );
   std::snprintf( buf.get(), size, format.c_str(), args ... );
   return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+}
+}
+
+template<typename ... Args>
+std::string printf(const std::string& format, Args ... args )
+{
+  return impl::printf(format, impl::printf_arg(args)...);
 }
 
 }
@@ -61,17 +79,21 @@ namespace impl {
 
 struct JboxProperty
 {
-  JboxProperty(std::string const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
+  JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::string const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
 
   inline TJBox_Value loadValue() const { return fValue; };
-  void storeValue(TJBox_Value const &iValue);
+  std::optional<TJBox_PropertyDiff> storeValue(TJBox_Value const &iValue);
 
+  TJBox_PropertyDiff watchForChange();
+
+  const TJBox_PropertyRef fPropertyRef;
   const std::string fPropertyPath;
   const PropertyOwner fOwner;
   const TJBox_Tag fTag;
 
 protected:
   TJBox_Value fValue;
+  bool fWatched{};
 };
 
 //struct JboxDspBufferProperty : public JboxProperty
@@ -86,7 +108,8 @@ struct JboxObject
   ~JboxObject() = default;
 
   TJBox_Value loadValue(std::string const &iPropertyName) const;
-  void storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
+  std::optional<TJBox_PropertyDiff> storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
+  TJBox_PropertyDiff watchPropertyForChange(std::string const &iPropertyName);
 
   const std::string fObjectPath;
   const TJBox_ObjectRef fObjectRef;
@@ -176,8 +199,13 @@ struct MotherboardDef
   std::map<std::string, std::unique_ptr<jbox_cv_input>> cv_inputs{};
   std::map<std::string, std::unique_ptr<jbox_cv_output>> cv_outputs{};
 
-  std::map<std::string, std::unique_ptr<jbox_property>> document_owner_properties{};
-  std::map<std::string, std::unique_ptr<jbox_property>> rt_owner_properties{};
+  struct { std::map<std::string, std::unique_ptr<jbox_property>> properties{}; } document_owner;
+  struct { std::map<std::string, std::unique_ptr<jbox_property>> properties{}; } rt_owner;
+};
+
+struct RealtimeController
+{
+  struct { std::set<std::string> notify{}; } rt_input_setup;
 };
 
 class Motherboard
@@ -185,11 +213,28 @@ class Motherboard
 public:
 
 public: // used by regular code
-  static std::unique_ptr<Motherboard> init(std::function<void (MotherboardDef &)> iConfigFunction);
+  static std::unique_ptr<Motherboard> init(std::function<void (MotherboardDef &, RealtimeController &)> iConfigFunction);
 
   ~Motherboard();
 
+  void nextFrame(std::function<void(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> iNextFrameCallback);
+
   void connectSocket(std::string const &iSocketPath);
+
+  inline bool getBool(std::string const &iPropertyPath) const {
+    auto propRef = getPropertyRef(iPropertyPath);
+    return JBox_GetBoolean(getObject(propRef.fObject)->loadValue(propRef.fKey));
+  }
+
+  template<typename T = TJBox_Float64>
+  T getNum(std::string const &iPropertyPath) const {
+    auto propRef = getPropertyRef(iPropertyPath);
+    return static_cast<T>(JBox_GetNumber(getObject(propRef.fObject)->loadValue(propRef.fKey)));
+  }
+
+  inline TJBox_Float64 getCVSocketValue(std::string const &iSocketPath) const {
+    return getNum(fmt::printf("%s/value", iSocketPath.c_str()));
+  }
 
 public: // used by Jukebox.cpp (need to be public)
   static Motherboard &instance();
@@ -204,13 +249,15 @@ protected:
   Motherboard();
 
   impl::JboxObject *addObject(std::string const &iObjectPath);
-  impl::JboxObject *getObject(std::string const &iObjectPath) const;
+  inline impl::JboxObject *getObject(std::string const &iObjectPath) const { return getObject(getObjectRef(iObjectPath)); }
+  impl::JboxObject *getObject(TJBox_ObjectRef iObjectRef) const;
 
   void addAudioInput(std::string const &iSocketName);
   void addAudioOutput(std::string const &iSocketName);
   void addCVInput(std::string const &iSocketName);
   void addCVOutput(std::string const &iSocketName);
   void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, jbox_property const &iProperty);
+  void registerNotifiableProperty(std::string const &iPropertyPath);
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
 
@@ -218,10 +265,12 @@ protected:
   std::map<TJBox_ObjectRef, std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
+  std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
 };
 
 // Error handling
 struct Error : public std::logic_error {
+  Error(std::string s) : std::logic_error(s.c_str()) {}
   Error(char const *s) : std::logic_error(s) {}
 };
 
