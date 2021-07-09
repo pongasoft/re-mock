@@ -104,6 +104,16 @@ TJBox_ObjectRef JBox_GetMotherboardObjectRef(const TJBox_ObjectName iMOMPath)
   return re::mock::Motherboard::instance().getObjectRef(iMOMPath);
 }
 
+TJBox_Tag JBox_GetPropertyTag(TJBox_PropertyRef iProperty)
+{
+  return re::mock::Motherboard::instance().getPropertyTag(iProperty);
+}
+
+TJBox_PropertyRef JBox_FindPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag)
+{
+  return re::mock::Motherboard::instance().getPropertyRef(iObject, iTag);
+}
+
 TJBox_Bool JBox_IsReferencingSameProperty(TJBox_PropertyRef iProperty1, TJBox_PropertyRef iProperty2)
 {
   return iProperty1.fObject == iProperty2.fObject &&
@@ -176,18 +186,6 @@ void JBox_TraceValues(
   TJBox_Int32 iValueCount)
 {
   throw re::mock::Error("JBox_TraceValues: Not implemented yet");
-}
-
-TJBox_Tag JBox_GetPropertyTag(TJBox_PropertyRef iProperty)
-{
-  throw re::mock::Error("JBox_GetPropertyTag: Not implemented yet");
-}
-
-TJBox_PropertyRef JBox_FindPropertyByTag(
-  TJBox_ObjectRef iObject,
-  TJBox_Tag iTag)
-{
-  throw re::mock::Error("JBox_FindPropertyByTag: Not implemented yet");
 }
 
 TJBox_UInt32 JBox_GetStringLength(TJBox_Value iValue)

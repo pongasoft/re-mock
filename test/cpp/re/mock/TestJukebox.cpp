@@ -50,6 +50,9 @@ TEST(Jukebox, Basic)
   ASSERT_FLOAT_EQ(0.92, JBox_GetNumber(JBox_LoadMOMPropertyByTag(customProperties, 100)));
   JBox_StoreMOMPropertyAsNumber(customProperties, 100, 0.78);
   ASSERT_FLOAT_EQ(0.78, JBox_LoadMOMPropertyAsNumber(customProperties, 100));
+  ASSERT_EQ(100, JBox_GetPropertyTag(JBox_MakePropertyRef(customProperties, "prop_float")));
+  ASSERT_EQ(customProperties, JBox_FindPropertyByTag(customProperties, 100).fObject);
+  ASSERT_STREQ("prop_float", JBox_FindPropertyByTag(customProperties, 100).fKey);
 
   ASSERT_FLOAT_EQ(0.8, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float_2"))));
 
@@ -67,6 +70,9 @@ TEST(Jukebox, Basic)
   ASSERT_THROW(JBox_StoreMOMProperty(JBox_MakePropertyRef(customProperties, "invalid"), JBox_MakeNumber(0.87)), Error);
   ASSERT_THROW(JBox_StoreMOMPropertyByTag(customProperties, 200, JBox_MakeNumber(0.87)), Error);
   ASSERT_THROW(JBox_StoreMOMPropertyAsNumber(customProperties, 200, 0.87), Error);
+
+  ASSERT_THROW(JBox_GetPropertyTag(JBox_MakePropertyRef(customProperties, "invalid")), Error);
+  ASSERT_THROW(JBox_FindPropertyByTag(customProperties, 200), Error);
 }
 
 }

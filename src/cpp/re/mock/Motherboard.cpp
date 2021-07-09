@@ -70,6 +70,22 @@ TJBox_ObjectRef Motherboard::getObjectRef(std::string const &iObjectPath) const
 }
 
 //------------------------------------------------------------------------
+// Motherboard::getPropertyTag
+//------------------------------------------------------------------------
+TJBox_Tag Motherboard::getPropertyTag(TJBox_PropertyRef iPropertyRef) const
+{
+  return getObject(iPropertyRef.fObject)->getProperty(iPropertyRef.fKey)->fTag;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getPropertyRef
+//------------------------------------------------------------------------
+TJBox_PropertyRef Motherboard::getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag iTag) const
+{
+  return getObject(iObject)->getProperty(iTag)->fPropertyRef;
+}
+
+//------------------------------------------------------------------------
 // Motherboard::getPropertyRef
 //------------------------------------------------------------------------
 TJBox_PropertyRef Motherboard::getPropertyRef(std::string const &iPropertyPath) const

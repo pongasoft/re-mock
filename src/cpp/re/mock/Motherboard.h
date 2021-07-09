@@ -257,6 +257,8 @@ public: // used by regular code
 public: // used by Jukebox.cpp (need to be public)
   static Motherboard &instance();
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
+  TJBox_Tag getPropertyTag(TJBox_PropertyRef iPropertyRef) const;
+  TJBox_PropertyRef getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
   TJBox_Value loadProperty(TJBox_PropertyRef const &iProperty) const;
   TJBox_Value loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
   void storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue);
