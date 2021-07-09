@@ -91,6 +91,14 @@ TJBox_Value Motherboard::loadProperty(TJBox_PropertyRef const &iProperty) const
 }
 
 //------------------------------------------------------------------------
+// Motherboard::loadProperty
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) const
+{
+  return getObject(iObject)->loadValue(iTag);
+}
+
+//------------------------------------------------------------------------
 // Motherboard::storeProperty
 //------------------------------------------------------------------------
 void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue)
@@ -98,6 +106,16 @@ void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value 
   auto jboxObject = fJboxObjects.find(iProperty.fObject);
   CHECK_F(jboxObject != fJboxObjects.end(), "Could not store property [%s]: Parent not found [%i] (did you configure it?)", iProperty.fKey, iProperty.fObject);
   auto diff = jboxObject->second->storeValue(iProperty.fKey, iValue);
+  if(diff)
+    fCurrentFramePropertyDiffs.emplace_back(*diff);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::storeProperty
+//------------------------------------------------------------------------
+void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue)
+{
+  auto diff = getObject(iObject)->storeValue(iTag, iValue);
   if(diff)
     fCurrentFramePropertyDiffs.emplace_back(*diff);
 }
@@ -252,21 +270,57 @@ impl::JboxObject::JboxObject(std::string const &iObjectPath) :
   fObjectPath{iObjectPath}, fObjectRef{sObjectRefCounter++} {}
 
 //------------------------------------------------------------------------
+// JboxObject::getProperty
+//------------------------------------------------------------------------
+impl::JboxProperty *impl::JboxObject::getProperty(std::string const &iPropertyName) const
+{
+  CHECK_F(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
+  return fProperties.at(iPropertyName).get();
+}
+
+//------------------------------------------------------------------------
+// JboxObject::getProperty
+//------------------------------------------------------------------------
+impl::JboxProperty *impl::JboxObject::getProperty(TJBox_Tag iPropertyTag) const
+{
+  auto iter = std::find_if(fProperties.begin(),
+                           fProperties.end(),
+                           [iPropertyTag](auto const &p) { return p.second->fTag == iPropertyTag; } );
+  CHECK_F(iter != fProperties.end(), "missing property tag [%d] for object [%s]", iPropertyTag, fObjectPath.c_str());
+  return iter->second.get();
+}
+
+//------------------------------------------------------------------------
 // JboxObject::loadValue
 //------------------------------------------------------------------------
 TJBox_Value impl::JboxObject::loadValue(std::string const &iPropertyName) const
 {
-  CHECK_F(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
-  return fProperties.at(iPropertyName)->loadValue();
+  return getProperty(iPropertyName)->loadValue();
 }
+
+//------------------------------------------------------------------------
+// JboxObject::loadValue
+//------------------------------------------------------------------------
+TJBox_Value impl::JboxObject::loadValue(TJBox_Tag iPropertyTag) const
+{
+  return getProperty(iPropertyTag)->loadValue();
+}
+
 
 //------------------------------------------------------------------------
 // JboxObject::storeValue
 //------------------------------------------------------------------------
 std::optional<TJBox_PropertyDiff> impl::JboxObject::storeValue(std::string const &iPropertyName, TJBox_Value const &iValue)
 {
-  CHECK_F(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
-  return fProperties[iPropertyName]->storeValue(iValue);
+  return getProperty(iPropertyName)->storeValue(iValue);
+}
+
+//------------------------------------------------------------------------
+// JboxObject::storeValue
+//------------------------------------------------------------------------
+std::optional<TJBox_PropertyDiff> impl::JboxObject::storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue)
+{
+  return getProperty(iPropertyTag)->storeValue(iValue);
 }
 
 //------------------------------------------------------------------------
@@ -294,7 +348,6 @@ TJBox_PropertyDiff impl::JboxObject::watchPropertyForChange(std::string const &i
   CHECK_F(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
   return fProperties[iPropertyName]->watchForChange();
 }
-
 
 //------------------------------------------------------------------------
 // JboxProperty::JboxProperty

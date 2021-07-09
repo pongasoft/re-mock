@@ -117,7 +117,12 @@ TJBox_Value JBox_LoadMOMProperty(TJBox_PropertyRef iProperty)
 
 TJBox_Value JBox_LoadMOMPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag)
 {
-  throw re::mock::Error("JBox_LoadMOMPropertyByTag: Not implemented yet");
+  return re::mock::Motherboard::instance().loadProperty(iObject, iTag);
+}
+
+TJBox_Float64 JBox_LoadMOMPropertyAsNumber(TJBox_ObjectRef iObject, TJBox_Tag iTag)
+{
+  return JBox_GetNumber(JBox_LoadMOMPropertyByTag(iObject, iTag));
 }
 
 void JBox_StoreMOMProperty(TJBox_PropertyRef iProperty, TJBox_Value iValue)
@@ -125,6 +130,15 @@ void JBox_StoreMOMProperty(TJBox_PropertyRef iProperty, TJBox_Value iValue)
   return re::mock::Motherboard::instance().storeProperty(iProperty, iValue);
 }
 
+void JBox_StoreMOMPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value iValue)
+{
+  return re::mock::Motherboard::instance().storeProperty(iObject, iTag, iValue);
+}
+
+void JBox_StoreMOMPropertyAsNumber(TJBox_ObjectRef iObject, TJBox_Tag iTag,TJBox_Float64 iValue)
+{
+  JBox_StoreMOMPropertyByTag(iObject, iTag, JBox_MakeNumber(iValue));
+}
 
 void JBox_GetDSPBufferData(TJBox_Value iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame,
                            TJBox_AudioSample oAudio[])
@@ -174,11 +188,6 @@ TJBox_PropertyRef JBox_FindPropertyByTag(
   TJBox_Tag iTag)
 {
   throw re::mock::Error("JBox_FindPropertyByTag: Not implemented yet");
-}
-
-void JBox_StoreMOMPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value iValue)
-{
-  throw re::mock::Error("JBox_StoreMOMPropertyByTag: Not implemented yet");
 }
 
 TJBox_UInt32 JBox_GetStringLength(TJBox_Value iValue)
@@ -257,21 +266,6 @@ void JBox_OutputNoteEvent(TJBox_NoteEvent iNoteEvent)
 TJBox_NoteEvent JBox_AsNoteEvent(const TJBox_PropertyDiff &iPropertyDiff)
 {
   throw re::mock::Error("JBox_AsNoteEvent: Not implemented yet");
-}
-
-TJBox_Float64 JBox_LoadMOMPropertyAsNumber(
-  TJBox_ObjectRef iObject,
-  TJBox_Tag iTag)
-{
-  throw re::mock::Error("JBox_LoadMOMPropertyAsNumber: Not implemented yet");
-}
-
-void JBox_StoreMOMPropertyAsNumber(
-  TJBox_ObjectRef iObject,
-  TJBox_Tag iTag,
-  TJBox_Float64 iValue)
-{
-  throw re::mock::Error("JBox_StoreMOMPropertyAsNumber: Not implemented yet");
 }
 
 TJBox_Int32 JBox_GetOptimalFFTAlignment()

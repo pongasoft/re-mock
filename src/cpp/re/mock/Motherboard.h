@@ -108,7 +108,9 @@ struct JboxObject
   ~JboxObject() = default;
 
   TJBox_Value loadValue(std::string const &iPropertyName) const;
+  TJBox_Value loadValue(TJBox_Tag iPropertyTag) const;
   std::optional<TJBox_PropertyDiff> storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
+  std::optional<TJBox_PropertyDiff> storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue);
   TJBox_PropertyDiff watchPropertyForChange(std::string const &iPropertyName);
 
   const std::string fObjectPath;
@@ -118,6 +120,8 @@ struct JboxObject
 
 protected:
   void addProperty(std::string iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iPropertyTag);
+  JboxProperty *getProperty(std::string const &iPropertyName) const;
+  JboxProperty *getProperty(TJBox_Tag iPropertyTag) const;
 
 protected:
   std::map<std::string, std::unique_ptr<JboxProperty>> fProperties{};
@@ -254,7 +258,9 @@ public: // used by Jukebox.cpp (need to be public)
   static Motherboard &instance();
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
   TJBox_Value loadProperty(TJBox_PropertyRef const &iProperty) const;
+  TJBox_Value loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
   void storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue);
+  void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue);
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
