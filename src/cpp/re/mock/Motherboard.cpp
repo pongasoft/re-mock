@@ -83,7 +83,7 @@ TJBox_PropertyRef Motherboard::getPropertyRef(std::string const &iPropertyPath) 
 //------------------------------------------------------------------------
 // Motherboard::loadProperty
 //------------------------------------------------------------------------
-TJBox_Value Motherboard::loadProperty(TJBox_PropertyRef iProperty)
+TJBox_Value Motherboard::loadProperty(TJBox_PropertyRef const &iProperty) const
 {
   auto jboxObject = fJboxObjects.find(iProperty.fObject);
   CHECK_F(jboxObject != fJboxObjects.end(), "Could not load property [%s]: Parent not found [%i] (did you configure it?)", iProperty.fKey, iProperty.fObject);
@@ -93,11 +93,13 @@ TJBox_Value Motherboard::loadProperty(TJBox_PropertyRef iProperty)
 //------------------------------------------------------------------------
 // Motherboard::storeProperty
 //------------------------------------------------------------------------
-void Motherboard::storeProperty(TJBox_PropertyRef iProperty, TJBox_Value const &iValue)
+void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue)
 {
   auto jboxObject = fJboxObjects.find(iProperty.fObject);
   CHECK_F(jboxObject != fJboxObjects.end(), "Could not store property [%s]: Parent not found [%i] (did you configure it?)", iProperty.fKey, iProperty.fObject);
-  jboxObject->second->storeValue(iProperty.fKey, iValue);
+  auto diff = jboxObject->second->storeValue(iProperty.fKey, iValue);
+  if(diff)
+    fCurrentFramePropertyDiffs.emplace_back(*diff);
 }
 
 //------------------------------------------------------------------------

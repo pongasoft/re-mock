@@ -210,8 +210,6 @@ struct RealtimeController
 
 class Motherboard
 {
-public:
-
 public: // used by regular code
   static std::unique_ptr<Motherboard> init(std::function<void (MotherboardDef &, RealtimeController &)> iConfigFunction);
 
@@ -221,26 +219,42 @@ public: // used by regular code
 
   void connectSocket(std::string const &iSocketPath);
 
+  inline TJBox_Value getValue(std::string const &iPropertyPath) const {
+    return loadProperty(getPropertyRef(iPropertyPath));
+  }
+  inline void setValue(std::string const &iPropertyPath, TJBox_Value const &iValue) {
+    storeProperty(getPropertyRef(iPropertyPath), iValue);
+  }
+
   inline bool getBool(std::string const &iPropertyPath) const {
-    auto propRef = getPropertyRef(iPropertyPath);
-    return JBox_GetBoolean(getObject(propRef.fObject)->loadValue(propRef.fKey));
+    return JBox_GetBoolean(getValue(iPropertyPath));
+  }
+  inline void setBool(std::string const &iPropertyPath, bool iValue) {
+    setValue(iPropertyPath, JBox_MakeBoolean(iValue));
   }
 
   template<typename T = TJBox_Float64>
   T getNum(std::string const &iPropertyPath) const {
-    auto propRef = getPropertyRef(iPropertyPath);
-    return static_cast<T>(JBox_GetNumber(getObject(propRef.fObject)->loadValue(propRef.fKey)));
+    return static_cast<T>(JBox_GetNumber(getValue(iPropertyPath)));
+  }
+  template<typename T = TJBox_Float64>
+  void setNum(std::string const &iPropertyPath, T iValue) {
+    setValue(iPropertyPath, JBox_MakeNumber(iValue));
   }
 
   inline TJBox_Float64 getCVSocketValue(std::string const &iSocketPath) const {
     return getNum(fmt::printf("%s/value", iSocketPath.c_str()));
   }
+  inline void setCVSocketValue(std::string const &iSocketPath, TJBox_Float64 iValue) {
+    setNum(fmt::printf("%s/value", iSocketPath.c_str()), iValue);
+  }
+
 
 public: // used by Jukebox.cpp (need to be public)
   static Motherboard &instance();
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
-  TJBox_Value loadProperty(TJBox_PropertyRef iProperty);
-  void storeProperty(TJBox_PropertyRef iProperty, TJBox_Value const &iValue);
+  TJBox_Value loadProperty(TJBox_PropertyRef const &iProperty) const;
+  void storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue);
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
