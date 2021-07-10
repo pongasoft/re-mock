@@ -75,4 +75,79 @@ TEST(Jukebox, Basic)
   ASSERT_THROW(JBox_FindPropertyByTag(customProperties, 200), Error);
 }
 
+// Jukebox.AudioSocket
+TEST(Jukebox, AudioSocket)
+{
+  constexpr size_t DSP_BUFFER_SIZE = 64;
+
+  auto motherboard = Motherboard::init([](auto &mdef, auto &rtc) {
+    mdef.audio_inputs["input_1"] = jbox.audio_input();
+    mdef.audio_outputs["output_1"] = jbox.audio_output();
+  });
+
+  // testing input
+  {
+    auto input1Ref = JBox_GetMotherboardObjectRef("/audio_inputs/input_1");
+
+    ASSERT_EQ(DSP_BUFFER_SIZE,
+              JBox_GetDSPBufferInfo(JBox_LoadMOMPropertyByTag(input1Ref, kJBox_AudioInputBuffer)).fSampleCount);
+    ASSERT_EQ(DSP_BUFFER_SIZE,
+              JBox_GetDSPBufferInfo(JBox_LoadMOMProperty(JBox_MakePropertyRef(input1Ref, "buffer"))).fSampleCount);
+
+    auto input1Dsp = JBox_LoadMOMPropertyByTag(input1Ref, kJBox_AudioInputBuffer);
+    Motherboard::DSPBuffer input1Buffer{};
+    input1Buffer.fill(100);
+    ASSERT_TRUE(std::all_of(input1Buffer.begin(), input1Buffer.end(), [](auto s) { return s == 100; })); // sanity check
+    // testing reading full buffer
+    JBox_GetDSPBufferData(input1Dsp, 0, DSP_BUFFER_SIZE, input1Buffer.data());
+    ASSERT_TRUE(std::all_of(input1Buffer.begin(), input1Buffer.end(), [](auto s) { return s == 0; }));
+
+    // testing reading partial buffer [ ....., x, y, z, .... ] => [x, y, z, 100, 100...]
+    Motherboard::DSPBuffer buf{};
+    for(int i = 0; i < buf.size(); i++)
+      buf[i] = i + 1;
+    motherboard->setDSPBuffer("/audio_inputs/input_1", buf);
+
+    input1Buffer.fill(100);
+    JBox_GetDSPBufferData(input1Dsp, 10, 20, input1Buffer.data());
+    for(int i = 0; i < 10; i++)
+      ASSERT_FLOAT_EQ(buf[i + 10], input1Buffer[i]);
+    ASSERT_TRUE(std::all_of(input1Buffer.begin() + 10, input1Buffer.end(), [](auto s) { return s == 100; }));
+  }
+
+  // testing output
+  {
+    auto output1Ref = JBox_GetMotherboardObjectRef("/audio_outputs/output_1");
+
+    ASSERT_EQ(DSP_BUFFER_SIZE,
+              JBox_GetDSPBufferInfo(JBox_LoadMOMPropertyByTag(output1Ref, kJBox_AudioOutputBuffer)).fSampleCount);
+    ASSERT_EQ(DSP_BUFFER_SIZE,
+              JBox_GetDSPBufferInfo(JBox_LoadMOMProperty(JBox_MakePropertyRef(output1Ref, "buffer"))).fSampleCount);
+    auto output1Dsp = JBox_LoadMOMPropertyByTag(output1Ref, kJBox_AudioOutputBuffer);
+    Motherboard::DSPBuffer output1Buffer{};
+    output1Buffer.fill(100);
+
+    // we make sure that the output buffer is properly initialized with 0
+    auto o1 = motherboard->getDSPBuffer("/audio_outputs/output_1");
+    ASSERT_TRUE(std::all_of(o1.begin(), o1.end(), [](auto s) { return s == 0; }));
+
+    // testing writing full buffer
+    JBox_SetDSPBufferData(output1Dsp, 0, DSP_BUFFER_SIZE, output1Buffer.data());
+    o1 = motherboard->getDSPBuffer("/audio_outputs/output_1");
+    ASSERT_TRUE(std::all_of(o1.begin(), o1.end(), [](auto s) { return s == 100; }));
+
+    // testing writing partial buffer [x, y, z, ... ] -> [...., x, y, z, ...]
+    for(int i = 0; i < output1Buffer.size(); i++)
+      output1Buffer[i] = i + 1;
+    JBox_SetDSPBufferData(output1Dsp, 10, 20, output1Buffer.data());
+
+    o1 = motherboard->getDSPBuffer("/audio_outputs/output_1");
+    ASSERT_TRUE(std::all_of(o1.begin(), o1.begin() + 10, [](auto s) { return s == 100; }));
+    for(int i = 0; i < 10; i++)
+      ASSERT_FLOAT_EQ(o1[i + 10], output1Buffer[i]);
+    ASSERT_TRUE(std::all_of(o1.begin() + 20, o1.end(), [](auto s) { return s == 100; }));
+  }
+
+}
+
 }

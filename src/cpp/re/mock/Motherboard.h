@@ -20,6 +20,7 @@
 #ifndef __PongasoftCommon_re_mock_motherboard_h__
 #define __PongasoftCommon_re_mock_motherboard_h__
 
+#include <logging/logging.h>
 #include <JukeboxTypes.h>
 #include <Jukebox.h>
 #include <memory>
@@ -29,6 +30,7 @@
 #include <stdexcept>
 #include <vector>
 #include <set>
+#include <array>
 
 namespace re::mock {
 
@@ -55,6 +57,7 @@ std::string printf(const std::string& format, Args ... args )
   std::snprintf( buf.get(), size, format.c_str(), args ... );
   return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
 }
+
 }
 
 template<typename ... Args>
@@ -64,6 +67,8 @@ std::string printf(const std::string& format, Args ... args )
 }
 
 }
+
+
 
 enum class PropertyOwner {
   kHostOwner,
@@ -76,6 +81,34 @@ enum class PropertyOwner {
 class Motherboard;
 
 namespace impl {
+
+template<typename T>
+union JboxSecretInternal {
+  T fValue;
+  TJBox_UInt8 fSecret[15];
+};
+
+template<typename T>
+TJBox_Value jbox_make_value(TJBox_ValueType iValueType, T iValue)
+{
+  TJBox_Value res;
+
+  res.fSecret[0] = iValueType;
+  JboxSecretInternal<T> secret{};
+  secret.fValue = iValue;
+  std::copy(std::begin(secret.fSecret), std::end(secret.fSecret), std::begin(res.fSecret) + 1);
+
+  return res;
+};
+
+template<typename T>
+T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
+{
+  CHECK_F(iJboxValue.fSecret[0] == iValueType);
+  JboxSecretInternal<T> secret{};
+  std::copy(std::begin(iJboxValue.fSecret) + 1, std::end(iJboxValue.fSecret), std::begin(secret.fSecret));
+  return secret.fValue;
+}
 
 struct JboxProperty
 {
@@ -214,6 +247,10 @@ struct RealtimeController
 
 class Motherboard
 {
+public:
+  constexpr static size_t DSP_BUFFER_SIZE = 64;
+  using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
+
 public: // used by regular code
   static std::unique_ptr<Motherboard> init(std::function<void (MotherboardDef &, RealtimeController &)> iConfigFunction);
 
@@ -253,21 +290,27 @@ public: // used by regular code
     setNum(fmt::printf("%s/value", iSocketPath.c_str()), iValue);
   }
 
+  void setDSPBuffer(std::string const &iAudioSocketPath, DSPBuffer const &iBuffer);
+  DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const;
 
 public: // used by Jukebox.cpp (need to be public)
   static Motherboard &instance();
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
-  TJBox_Tag getPropertyTag(TJBox_PropertyRef iPropertyRef) const;
+  TJBox_Tag getPropertyTag(TJBox_PropertyRef const &iPropertyRef) const;
   TJBox_PropertyRef getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
   TJBox_Value loadProperty(TJBox_PropertyRef const &iProperty) const;
   TJBox_Value loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
   void storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue);
   void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue);
+  void getDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, TJBox_AudioSample oAudio[]) const;
+  void setDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, const TJBox_AudioSample iAudio[]);
+  TJBox_DSPBufferInfo getDSPBufferInfo(TJBox_Value const &iValue) const;
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
 
 protected:
+
   Motherboard();
 
   impl::JboxObject *addObject(std::string const &iObjectPath);
@@ -283,11 +326,16 @@ protected:
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
 
+  TJBox_Value createDSPBuffer();
+  DSPBuffer &getDSPBuffer(TJBox_Value const &iValue);
+  DSPBuffer const &getDSPBuffer(TJBox_Value const &iValue) const;
+
 protected:
   std::map<TJBox_ObjectRef, std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
+  std::map<int, DSPBuffer> fDSPBuffers{};
 };
 
 // Error handling

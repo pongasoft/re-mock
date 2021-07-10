@@ -72,7 +72,7 @@ TJBox_ObjectRef Motherboard::getObjectRef(std::string const &iObjectPath) const
 //------------------------------------------------------------------------
 // Motherboard::getPropertyTag
 //------------------------------------------------------------------------
-TJBox_Tag Motherboard::getPropertyTag(TJBox_PropertyRef iPropertyRef) const
+TJBox_Tag Motherboard::getPropertyTag(TJBox_PropertyRef const &iPropertyRef) const
 {
   return getObject(iPropertyRef.fObject)->getProperty(iPropertyRef.fKey)->fTag;
 }
@@ -179,7 +179,10 @@ std::unique_ptr<Motherboard> Motherboard::init(std::function<void(MotherboardDef
 //------------------------------------------------------------------------
 // Motherboard::addProperty
 //------------------------------------------------------------------------
-void Motherboard::addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, jbox_property const &iProperty)
+void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
+                              std::string const &iPropertyName,
+                              PropertyOwner iOwner,
+                              jbox_property const &iProperty)
 {
   fJboxObjects[iParentObject]->addProperty(iPropertyName, iOwner, iProperty.default_value, iProperty.property_tag);
 }
@@ -203,7 +206,7 @@ void Motherboard::addAudioInput(std::string const &iSocketName)
 {
   auto o = addObject(fmt::printf("/audio_inputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_AudioInputConnected);
-  // buffer / PropertyOwner::kHostOwner / kJBox_AudioInputBuffer
+  o->addProperty("buffer", PropertyOwner::kHostOwner, createDSPBuffer(), kJBox_AudioInputBuffer);
 }
 
 //------------------------------------------------------------------------
@@ -214,7 +217,7 @@ void Motherboard::addAudioOutput(std::string const &iSocketName)
   auto o = addObject(fmt::printf("/audio_outputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_AudioOutputConnected);
   o->addProperty("dsp_latency", PropertyOwner::kRTCOwner, JBox_MakeNumber(0), kJBox_AudioOutputDSPLatency);
-  // buffer / PropertyOwner::kHostOwner / kJBox_AudioOutputBuffer
+  o->addProperty("buffer", PropertyOwner::kHostOwner, createDSPBuffer(), kJBox_AudioOutputBuffer);
 }
 
 //------------------------------------------------------------------------
@@ -275,6 +278,100 @@ void Motherboard::nextFrame(std::function<void(TJBox_PropertyDiff const *, TJBox
 void Motherboard::connectSocket(std::string const &iSocketPath)
 {
   getObject(iSocketPath)->storeValue("connected", JBox_MakeBoolean(true));
+}
+
+//------------------------------------------------------------------------
+// jbox_get_dsp_id
+//------------------------------------------------------------------------
+inline int jbox_get_dsp_id(TJBox_Value const &iJboxValue)
+{
+  return impl::jbox_get_value<int>(kJBox_DSPBuffer, iJboxValue);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::setDSPBuffer
+//------------------------------------------------------------------------
+void Motherboard::setDSPBuffer(std::string const &iAudioSocketPath, Motherboard::DSPBuffer const &iBuffer)
+{
+  auto id = jbox_get_dsp_id(getValue(fmt::printf("%s/buffer", iAudioSocketPath)));
+  fDSPBuffers[id] = iBuffer;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getDSPBuffer
+//------------------------------------------------------------------------
+Motherboard::DSPBuffer Motherboard::getDSPBuffer(std::string const &iAudioSocketPath) const
+{
+  auto id = jbox_get_dsp_id(getValue(fmt::printf("%s/buffer", iAudioSocketPath)));
+  return fDSPBuffers.at(id);
+}
+
+
+static std::atomic<int> sDSPBufferCounter{1};
+
+//------------------------------------------------------------------------
+// Motherboard::createDSPBuffer
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::createDSPBuffer()
+{
+  auto id = sDSPBufferCounter++;
+  fDSPBuffers[id] = DSPBuffer{};
+  return impl::jbox_make_value<int>(kJBox_DSPBuffer, id);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getDSPBuffer
+//------------------------------------------------------------------------
+Motherboard::DSPBuffer const &Motherboard::getDSPBuffer(TJBox_Value const &iValue) const
+{
+  auto id = jbox_get_dsp_id(iValue);
+  CHECK_F(fDSPBuffers.find(id) != fDSPBuffers.end(), "invalid dsp buffer value");
+  return fDSPBuffers.at(id);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getDSPBuffer
+//------------------------------------------------------------------------
+Motherboard::DSPBuffer &Motherboard::getDSPBuffer(TJBox_Value const &iValue)
+{
+  auto id = jbox_get_dsp_id(iValue);
+  CHECK_F(fDSPBuffers.find(id) != fDSPBuffers.end(), "invalid dsp buffer value");
+  return fDSPBuffers.at(id);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getDSPBufferData
+//------------------------------------------------------------------------
+void Motherboard::getDSPBufferData(TJBox_Value const &iValue,
+                                   TJBox_AudioFramePos iStartFrame,
+                                   TJBox_AudioFramePos iEndFrame,
+                                   TJBox_AudioSample *oAudio) const
+{
+  CHECK_F(iStartFrame >= 0 && iEndFrame >= 0 && iEndFrame <= DSP_BUFFER_SIZE && iStartFrame <= iEndFrame);
+  auto const &buffer = getDSPBuffer(iValue);
+  std::copy(std::begin(buffer) + iStartFrame, std::begin(buffer) + iEndFrame, oAudio);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getDSPBufferData
+//------------------------------------------------------------------------
+void Motherboard::setDSPBufferData(TJBox_Value const &iValue,
+                                   TJBox_AudioFramePos iStartFrame,
+                                   TJBox_AudioFramePos iEndFrame,
+                                   TJBox_AudioSample const *iAudio)
+{
+  CHECK_F(iStartFrame >= 0 && iEndFrame >= 0 && iEndFrame <= DSP_BUFFER_SIZE && iStartFrame <= iEndFrame);
+  auto &buffer = getDSPBuffer(iValue);
+  std::copy(iAudio, iAudio + iEndFrame - iStartFrame, std::begin(buffer) + iStartFrame);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getDSPBufferData
+//------------------------------------------------------------------------
+TJBox_DSPBufferInfo Motherboard::getDSPBufferInfo(TJBox_Value const &iValue) const
+{
+  getDSPBuffer(iValue); // meant to check that iValue refers to a valid dsp buffer
+  return {.fSampleCount = DSP_BUFFER_SIZE};
 }
 
 static std::atomic<TJBox_ObjectRef> sObjectRefCounter{1};

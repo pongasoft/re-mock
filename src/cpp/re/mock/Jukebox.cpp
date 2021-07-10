@@ -17,41 +17,9 @@
  */
 
 #include <algorithm>
-#include <logging/logging.h>
 #include "Jukebox.h"
 #include "Motherboard.h"
 
-namespace re::mock::impl {
-
-template<typename T>
-union JboxSecretInternal {
-  T fValue;
-  TJBox_UInt8 fSecret[15];
-};
-
-template<typename T>
-TJBox_Value jbox_make_value(TJBox_ValueType iValueType, T iValue)
-{
-  TJBox_Value res;
-
-  res.fSecret[0] = iValueType;
-  JboxSecretInternal<T> secret{};
-  secret.fValue = iValue;
-  std::copy(std::begin(secret.fSecret), std::end(secret.fSecret), std::begin(res.fSecret) + 1);
-
-  return res;
-};
-
-template<typename T>
-T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
-{
-  CHECK_F(iJboxValue.fSecret[0] == iValueType);
-  JboxSecretInternal<T> secret{};
-  std::copy(std::begin(iJboxValue.fSecret) + 1, std::end(iJboxValue.fSecret), std::begin(secret.fSecret));
-  return secret.fValue;
-}
-
-}
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -153,16 +121,20 @@ void JBox_StoreMOMPropertyAsNumber(TJBox_ObjectRef iObject, TJBox_Tag iTag,TJBox
 void JBox_GetDSPBufferData(TJBox_Value iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame,
                            TJBox_AudioSample oAudio[])
 {
-  throw re::mock::Error("JBox_GetDSPBufferData: Not implemented yet");
+  return re::mock::Motherboard::instance().getDSPBufferData(iValue, iStartFrame, iEndFrame, oAudio);
 }
 
-void JBox_SetDSPBufferData(
-  TJBox_Value iValue,
-  TJBox_AudioFramePos iStartFrame,
-  TJBox_AudioFramePos iEndFrame,
-  const TJBox_AudioSample iAudio[])
+TJBox_DSPBufferInfo JBox_GetDSPBufferInfo(TJBox_Value iValue)
 {
-  throw re::mock::Error("JBox_SetDSPBufferData: Not implemented yet");
+  return re::mock::Motherboard::instance().getDSPBufferInfo(iValue);
+}
+
+void JBox_SetDSPBufferData(TJBox_Value iValue,
+                           TJBox_AudioFramePos iStartFrame,
+                           TJBox_AudioFramePos iEndFrame,
+                           const TJBox_AudioSample iAudio[])
+{
+  return re::mock::Motherboard::instance().setDSPBufferData(iValue, iStartFrame, iEndFrame, iAudio);
 }
 
 void JBox_Assert(const char iFile[], TJBox_Int32 iLine, const char iFailedExpression[], const char iMessage[])
@@ -244,11 +216,6 @@ void JBox_GetBLOBData(
   TJBox_UInt8 oData[])
 {
   throw re::mock::Error("JBox_GetBLOBData: Not implemented yet");
-}
-
-TJBox_DSPBufferInfo JBox_GetDSPBufferInfo(TJBox_Value iValue)
-{
-  throw re::mock::Error("JBox_GetDSPBufferInfo: Not implemented yet");
 }
 
 void JBox_SetRTStringData(TJBox_PropertyRef iProperty, TJBox_SizeT iSize, const TJBox_UInt8 iData[])
