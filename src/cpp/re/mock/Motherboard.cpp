@@ -36,6 +36,7 @@ Motherboard::Motherboard()
 {
 //  DLOG_F(INFO, "Motherboard(%p)", this);
   fCustomPropertiesRef = addObject("/custom_properties")->fObjectRef;
+  addProperty(fCustomPropertiesRef, "instance", PropertyOwner::kRTCOwner, {});
 }
 
 //------------------------------------------------------------------------
@@ -89,9 +90,8 @@ TJBox_PropertyRef Motherboard::getPropertyRef(std::string const &iPropertyPath) 
 //------------------------------------------------------------------------
 TJBox_Value Motherboard::loadProperty(TJBox_PropertyRef const &iProperty) const
 {
-  auto jboxObject = fJboxObjects.find(iProperty.fObject);
-  CHECK_F(jboxObject != fJboxObjects.end(), "Could not load property [%s]: Parent not found [%i] (did you configure it?)", iProperty.fKey, iProperty.fObject);
-  return jboxObject->second->loadValue(iProperty.fKey);
+  CHECK_F(iProperty.fObject < fJboxObjects.size(), "Could not load property [%s]: Parent not found [%i] (did you configure it?)", iProperty.fKey, iProperty.fObject);
+  return fJboxObjects[iProperty.fObject]->loadValue(iProperty.fKey);
 }
 
 //------------------------------------------------------------------------
@@ -107,9 +107,8 @@ TJBox_Value Motherboard::loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) c
 //------------------------------------------------------------------------
 void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue)
 {
-  auto jboxObject = fJboxObjects.find(iProperty.fObject);
-  CHECK_F(jboxObject != fJboxObjects.end(), "Could not store property [%s]: Parent not found [%i] (did you configure it?)", iProperty.fKey, iProperty.fObject);
-  auto diff = jboxObject->second->storeValue(iProperty.fKey, iValue);
+  CHECK_F(iProperty.fObject < fJboxObjects.size(), "Could not store property [%s]: Parent not found [%i] (did you configure it?)", iProperty.fKey, iProperty.fObject);
+  auto diff = fJboxObjects[iProperty.fObject]->storeValue(iProperty.fKey, iValue);
   if(diff)
     fCurrentFramePropertyDiffs.emplace_back(*diff);
 }
@@ -127,14 +126,15 @@ void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_V
 //------------------------------------------------------------------------
 // Motherboard::init
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::init(std::function<void(MotherboardDef &, RealtimeController &)> iConfigFunction)
+std::unique_ptr<Motherboard> Motherboard::init(std::function<void (MotherboardDef &, RealtimeController &, Realtime&)> iConfigFunction)
 {
   loguru::set_fatal_handler(loguru_fatal_handler);
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
   MotherboardDef motherboardDef{};
   RealtimeController realtimeController{};
-  iConfigFunction(motherboardDef, realtimeController);
+  Realtime realtime{};
+  iConfigFunction(motherboardDef, realtimeController, realtime);
 
   for(auto &&input: motherboardDef.audio_inputs)
     res->addAudioInput(input.first);
@@ -232,8 +232,8 @@ void Motherboard::addCVOutput(std::string const &iSocketName)
 //------------------------------------------------------------------------
 impl::JboxObject *Motherboard::getObject(TJBox_ObjectRef iObjectRef) const
 {
-  CHECK_F(fJboxObjects.find(iObjectRef) != fJboxObjects.end(), "missing object [%d]", iObjectRef);
-  return fJboxObjects.at(iObjectRef).get();
+  CHECK_F(iObjectRef < fJboxObjects.size(), "missing object [%d]", iObjectRef);
+  return fJboxObjects[iObjectRef].get();
 }
 
 //------------------------------------------------------------------------
@@ -275,6 +275,14 @@ inline int jbox_get_dsp_id(TJBox_Value const &iJboxValue)
 }
 
 //------------------------------------------------------------------------
+// jbox_get_native_object_id
+//------------------------------------------------------------------------
+inline int jbox_get_native_object_id(TJBox_Value const &iJboxValue)
+{
+  return impl::jbox_get_value<int>(kJBox_NativeObject, iJboxValue);
+}
+
+//------------------------------------------------------------------------
 // Motherboard::setDSPBuffer
 //------------------------------------------------------------------------
 void Motherboard::setDSPBuffer(std::string const &iAudioSocketPath, Motherboard::DSPBuffer const &iBuffer)
@@ -292,17 +300,12 @@ Motherboard::DSPBuffer Motherboard::getDSPBuffer(std::string const &iAudioSocket
   return fDSPBuffers.at(id);
 }
 
-
-static std::atomic<int> sDSPBufferCounter{1};
-
 //------------------------------------------------------------------------
 // Motherboard::createDSPBuffer
 //------------------------------------------------------------------------
 TJBox_Value Motherboard::createDSPBuffer()
 {
-  auto id = sDSPBufferCounter++;
-  fDSPBuffers[id] = DSPBuffer{};
-  return impl::jbox_make_value<int>(kJBox_DSPBuffer, id);
+  return impl::jbox_make_value<int>(kJBox_DSPBuffer, emplace_back(fDSPBuffers, DSPBuffer{}));
 }
 
 //------------------------------------------------------------------------
@@ -311,7 +314,7 @@ TJBox_Value Motherboard::createDSPBuffer()
 Motherboard::DSPBuffer const &Motherboard::getDSPBuffer(TJBox_Value const &iValue) const
 {
   auto id = jbox_get_dsp_id(iValue);
-  CHECK_F(fDSPBuffers.find(id) != fDSPBuffers.end(), "invalid dsp buffer value");
+  CHECK_F(id < fDSPBuffers.size(), "invalid dsp buffer value");
   return fDSPBuffers.at(id);
 }
 
@@ -321,7 +324,7 @@ Motherboard::DSPBuffer const &Motherboard::getDSPBuffer(TJBox_Value const &iValu
 Motherboard::DSPBuffer &Motherboard::getDSPBuffer(TJBox_Value const &iValue)
 {
   auto id = jbox_get_dsp_id(iValue);
-  CHECK_F(fDSPBuffers.find(id) != fDSPBuffers.end(), "invalid dsp buffer value");
+  CHECK_F(id < fDSPBuffers.size(), "invalid dsp buffer value");
   return fDSPBuffers.at(id);
 }
 
@@ -358,6 +361,30 @@ TJBox_DSPBufferInfo Motherboard::getDSPBufferInfo(TJBox_Value const &iValue) con
 {
   getDSPBuffer(iValue); // meant to check that iValue refers to a valid dsp buffer
   return {.fSampleCount = DSP_BUFFER_SIZE};
+}
+
+//------------------------------------------------------------------------
+// Motherboard::makeNativeObjectRW
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::vector<TJBox_Value> const &iParams)
+{
+  if(fRealtime.create_native_object)
+  {
+    auto nativeObject = fRealtime.create_native_object(iOperation, iParams);
+    if(nativeObject)
+    {
+      return impl::jbox_make_value<int>(kJBox_NativeObject, emplace_back(fNativeObjects, std::move(nativeObject)));
+    }
+  }
+  return JBox_MakeNil();
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getNativeObjectRW
+//------------------------------------------------------------------------
+void *Motherboard::getNativeObjectRW(TJBox_Value iValue) const
+{
+  return fNativeObjects[jbox_get_native_object_id(iValue)]->fObject;
 }
 
 static std::atomic<TJBox_ObjectRef> sObjectRefCounter{1};

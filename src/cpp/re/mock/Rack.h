@@ -22,8 +22,11 @@
 
 #include <map>
 #include "Motherboard.h"
+#include "LuaJBox.h"
 
 namespace re::mock {
+
+extern LuaJbox jbox;
 
 class Rack
 {
@@ -31,7 +34,7 @@ public:
   struct REConfId { int fId{}; };
   struct REInstId { int fId{}; };
 
-  using REConf = std::function<void (MotherboardDef &, RealtimeController &)>;
+  using REConf = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
 
   Rack();
 

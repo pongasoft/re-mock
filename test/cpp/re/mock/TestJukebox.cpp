@@ -28,7 +28,7 @@ TEST(Jukebox, Basic)
 {
   Rack rack{};
 
-  auto id = rack.instantiateRE([](auto &mdef, auto &rtc) {
+  auto id = rack.instantiateRE([](auto &mdef, auto &rtc, auto &rt) {
     mdef.document_owner.properties["prop_number_default"]  = jbox.number();
     mdef.document_owner.properties["prop_float"]           = jbox.number<float>({.property_tag = 100, .default_value = 0.7});
     mdef.document_owner.properties["prop_float_2"]         = jbox.number<float>(0.8);
@@ -87,7 +87,7 @@ TEST(Jukebox, AudioSocket)
 
   Rack rack{};
 
-  auto id = rack.instantiateRE([](auto &mdef, auto &rtc) {
+  auto id = rack.instantiateRE([](auto &mdef, auto &rtc, auto &rt) {
     mdef.audio_inputs["input_1"] = jbox.audio_input();
     mdef.audio_outputs["output_1"] = jbox.audio_output();
   });

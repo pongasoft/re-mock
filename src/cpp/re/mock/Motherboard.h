@@ -32,6 +32,7 @@
 #include <set>
 #include <array>
 #include "fmt.h"
+#include "LuaJBox.h"
 
 namespace re::mock {
 
@@ -44,6 +45,15 @@ enum class PropertyOwner {
 };
 
 class Motherboard;
+
+template<typename T>
+int emplace_back(std::vector<T> &iVector, T &&iElement)
+{
+  auto size = iVector.size();
+  iVector.emplace_back(std::forward<T>(iElement));
+  CHECK_F(size + 1 == iVector.size());
+  return size;
+}
 
 namespace impl {
 
@@ -94,11 +104,6 @@ protected:
   bool fWatched{};
 };
 
-//struct JboxDspBufferProperty : public JboxProperty
-//{
-//
-//};
-
 struct JboxObject
 {
   explicit JboxObject(std::string const &iObjectPath);
@@ -127,73 +132,6 @@ protected:
 
 }
 
-struct jbox_property {
-  int property_tag{};
-  TJBox_Value default_value{JBox_MakeNil()};
-  TJBox_Value getDefaultValue() const { return default_value; }
-};
-
-template<typename T = TJBox_Float64>
-struct jbox_num_property {
-  int property_tag{};
-  T default_value{};
-  TJBox_Value getDefaultValue() const { return JBox_MakeNumber(static_cast<TJBox_Float64>(default_value)); }
-};
-
-struct jbox_bool_property {
-  int property_tag{};
-  bool default_value{};
-  TJBox_Value getDefaultValue() const { return JBox_MakeBoolean(default_value); }
-};
-
-struct jbox_audio_input{};
-struct jbox_audio_output{};
-struct jbox_cv_input{};
-struct jbox_cv_output{};
-
-struct {
-  template<typename T = TJBox_Float64>
-  inline std::unique_ptr<jbox_property> number(jbox_num_property<T> iProperty = jbox_num_property<T>{.default_value = 0}) {
-    return createProperty(iProperty);
-  }
-
-  template<typename T = TJBox_Float64>
-  inline std::unique_ptr<jbox_property> number(T iDefaultValue) {
-    return createProperty(jbox_num_property<T>{.default_value = iDefaultValue});
-  }
-
-  inline std::unique_ptr<jbox_property> boolean(bool iDefaultValue) {
-    return createProperty(jbox_bool_property{.default_value = iDefaultValue});
-  }
-
-  inline std::unique_ptr<jbox_property> boolean(jbox_bool_property iProperty = {.default_value = false}) {
-    return createProperty(iProperty);
-  }
-
-  inline std::unique_ptr<jbox_property> property(TJBox_Value iDefaultValue) {
-    return createProperty(jbox_property{.default_value = iDefaultValue});
-  }
-
-  inline std::unique_ptr<jbox_property> property(jbox_property iProperty = {.default_value = JBox_MakeNumber(0)}) {
-    return createProperty(iProperty);
-  }
-
-  inline std::unique_ptr<jbox_audio_input> audio_input() { return std::make_unique<jbox_audio_input>(); }
-  inline std::unique_ptr<jbox_audio_output> audio_output() { return std::make_unique<jbox_audio_output>(); }
-  inline std::unique_ptr<jbox_cv_input> cv_input() { return std::make_unique<jbox_cv_input>(); }
-  inline std::unique_ptr<jbox_cv_output> cv_output() { return std::make_unique<jbox_cv_output>(); }
-
-private:
-  template<typename P>
-  std::unique_ptr<jbox_property> createProperty(P const &iProperty)
-  {
-    auto p = std::make_unique<jbox_property>();
-    p->property_tag = iProperty.property_tag;
-    p->default_value = iProperty.getDefaultValue();
-    return p;
-  }
-} jbox;
-
 struct MotherboardDef
 {
   std::map<std::string, std::unique_ptr<jbox_audio_input>> audio_inputs{};
@@ -207,7 +145,36 @@ struct MotherboardDef
 
 struct RealtimeController
 {
+  std::map<std::string, std::string> rtc_bindings;
+  std::map<std::string, std::function<void (std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue)>> global_rtc{};
   struct { std::set<std::string> notify{}; } rt_input_setup;
+};
+
+struct Realtime
+{
+  struct NativeObject
+  {
+    NativeObject(void *iObject, std::function<void(void*)> iDestructor = {}) : fObject{iObject}, fDestructor{std::move(iDestructor)} {}
+    ~NativeObject() { if(fDestructor) fDestructor(fObject); }
+    NativeObject(NativeObject const &) = delete;
+    NativeObject(NativeObject &&) = delete;
+
+    friend class Motherboard;
+
+  private:
+    void *fObject{};
+    std::function<void(void*)> fDestructor{};
+  };
+
+  template<typename T>
+  static inline std::unique_ptr<NativeObject> make_native_object(T *t) {
+    return std::make_unique<NativeObject>(t, [](void *o) {
+      std::default_delete<T>()(reinterpret_cast<T *>(o));
+    });
+  }
+
+  std::function<std::unique_ptr<NativeObject> (std::string const &iOperation, std::vector<TJBox_Value> const &iParams)> create_native_object{};
+  std::function<void (void *iPrivateState, std::vector<TJBox_PropertyDiff> const &iPropertyDiffs)> render_realtime;
 };
 
 class Motherboard
@@ -217,7 +184,7 @@ public:
   using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
 
 public: // used by regular code
-  static std::unique_ptr<Motherboard> init(std::function<void (MotherboardDef &, RealtimeController &)> iConfigFunction);
+  static std::unique_ptr<Motherboard> init(std::function<void (MotherboardDef &, RealtimeController &, Realtime&)> iConfigFunction);
 
   ~Motherboard();
 
@@ -258,6 +225,16 @@ public: // used by regular code
   void setDSPBuffer(std::string const &iAudioSocketPath, DSPBuffer const &iBuffer);
   DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const;
 
+  template<typename T>
+  inline T *getNativeOject(std::string const &iPropertyPath) const {
+    return reinterpret_cast<T *>(getNativeObjectRW(getValue(iPropertyPath)));
+  }
+
+  template<typename T>
+  inline T* getInstance() const {
+    return getNativeOject<T>("/custom_properties/instance");
+  }
+
 public: // used by Jukebox.cpp (need to be public)
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
   TJBox_Tag getPropertyTag(TJBox_PropertyRef const &iPropertyRef) const;
@@ -269,6 +246,8 @@ public: // used by Jukebox.cpp (need to be public)
   void getDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, TJBox_AudioSample oAudio[]) const;
   void setDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, const TJBox_AudioSample iAudio[]);
   TJBox_DSPBufferInfo getDSPBufferInfo(TJBox_Value const &iValue) const;
+  TJBox_Value makeNativeObjectRW(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
+  void *getNativeObjectRW(TJBox_Value iValue) const;
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
@@ -295,11 +274,13 @@ protected:
   DSPBuffer const &getDSPBuffer(TJBox_Value const &iValue) const;
 
 protected:
-  std::map<TJBox_ObjectRef, std::unique_ptr<impl::JboxObject>> fJboxObjects{};
+  std::vector<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
-  std::map<int, DSPBuffer> fDSPBuffers{};
+  std::vector<DSPBuffer> fDSPBuffers{};
+  Realtime fRealtime{};
+  std::vector<std::unique_ptr<Realtime::NativeObject>> fNativeObjects{};
 };
 
 // Error handling

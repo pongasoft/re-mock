@@ -28,7 +28,7 @@ TEST(Rack, Basic)
 {
   Rack rack{};
 
-  auto id = rack.instantiateRE([](auto &mdef, auto &rtc) {
+  auto id = rack.instantiateRE([](auto &mdef, auto &rtc, auto &rt) {
   });
 
   ASSERT_THROW(JBox_GetMotherboardObjectRef("/custom_properties"), Error);
