@@ -22,13 +22,6 @@
 
 namespace re::mock {
 
-// Handle loguru fatal error by throwing an exception (testable)
-void loguru_fatal_handler(const loguru::Message& message)
-{
-  LOG_F(ERROR, "Fatal Error at %s:%d | %s", message.filename, message.line, message.message);
-  throw Error(message.message);
-}
-
 //------------------------------------------------------------------------
 // Motherboard::Motherboard
 //------------------------------------------------------------------------
@@ -126,38 +119,46 @@ void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_V
 //------------------------------------------------------------------------
 // Motherboard::init
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::init(std::function<void (MotherboardDef &, RealtimeController &, Realtime&)> iConfigFunction)
+std::unique_ptr<Motherboard> Motherboard::init(std::function<void (MotherboardDef &, RealtimeController &, Realtime &)> iConfigFunction)
 {
-  loguru::set_fatal_handler(loguru_fatal_handler);
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
   MotherboardDef motherboardDef{};
   RealtimeController realtimeController{};
-  Realtime realtime{};
-  iConfigFunction(motherboardDef, realtimeController, realtime);
+  iConfigFunction(motherboardDef, realtimeController, res->fRealtime);
 
+  // audio_inputs
   for(auto &&input: motherboardDef.audio_inputs)
     res->addAudioInput(input.first);
 
+  // audio_outputs
   for(auto &&output: motherboardDef.audio_outputs)
     res->addAudioOutput(output.first);
 
+  // cv_inputs
   for(auto &&input: motherboardDef.cv_inputs)
     res->addCVInput(input.first);
 
+  // cv_outputs
   for(auto &&output: motherboardDef.cv_outputs)
     res->addCVOutput(output.first);
 
+  // document_owner.properties
   for(auto &&prop: motherboardDef.document_owner.properties)
     res->addProperty(res->fCustomPropertiesRef, prop.first, PropertyOwner::kDocOwner, *prop.second);
 
+  // rt_owner.properties
   for(auto &&prop: motherboardDef.rt_owner.properties)
     res->addProperty(res->fCustomPropertiesRef, prop.first, PropertyOwner::kRTOwner, *prop.second);
 
+  // rt_input_setup.notify
   for(auto &&propertyPath: realtimeController.rt_input_setup.notify)
   {
     res->registerNotifiableProperty(propertyPath);
   }
+
+  // global_rtc
+  res->fGlobalRTC = realtimeController.global_rtc;
 
   return res;
 }

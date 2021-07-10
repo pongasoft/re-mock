@@ -146,7 +146,9 @@ struct MotherboardDef
 struct RealtimeController
 {
   std::map<std::string, std::string> rtc_bindings;
-  std::map<std::string, std::function<void (std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue)>> global_rtc{};
+
+  using GlobalRTC = std::map<std::string, std::function<void (std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue)>>;
+  GlobalRTC global_rtc{};
   struct { std::set<std::string> notify{}; } rt_input_setup;
 };
 
@@ -279,6 +281,7 @@ protected:
   TJBox_ObjectRef fCustomPropertiesRef{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   std::vector<DSPBuffer> fDSPBuffers{};
+  RealtimeController::GlobalRTC fGlobalRTC{};
   Realtime fRealtime{};
   std::vector<std::unique_ptr<Realtime::NativeObject>> fNativeObjects{};
 };
