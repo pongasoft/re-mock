@@ -18,7 +18,7 @@
 
 #include <algorithm>
 #include "Jukebox.h"
-#include "Motherboard.h"
+#include "Rack.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,17 +69,17 @@ TJBox_PropertyRef JBox_MakePropertyRef(TJBox_ObjectRef iObject, const TJBox_Prop
 
 TJBox_ObjectRef JBox_GetMotherboardObjectRef(const TJBox_ObjectName iMOMPath)
 {
-  return re::mock::Motherboard::instance().getObjectRef(iMOMPath);
+  return re::mock::Rack::currentMotherboard().getObjectRef(iMOMPath);
 }
 
 TJBox_Tag JBox_GetPropertyTag(TJBox_PropertyRef iProperty)
 {
-  return re::mock::Motherboard::instance().getPropertyTag(iProperty);
+  return re::mock::Rack::currentMotherboard().getPropertyTag(iProperty);
 }
 
 TJBox_PropertyRef JBox_FindPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag)
 {
-  return re::mock::Motherboard::instance().getPropertyRef(iObject, iTag);
+  return re::mock::Rack::currentMotherboard().getPropertyRef(iObject, iTag);
 }
 
 TJBox_Bool JBox_IsReferencingSameProperty(TJBox_PropertyRef iProperty1, TJBox_PropertyRef iProperty2)
@@ -90,12 +90,12 @@ TJBox_Bool JBox_IsReferencingSameProperty(TJBox_PropertyRef iProperty1, TJBox_Pr
 
 TJBox_Value JBox_LoadMOMProperty(TJBox_PropertyRef iProperty)
 {
-  return re::mock::Motherboard::instance().loadProperty(iProperty);
+  return re::mock::Rack::currentMotherboard().loadProperty(iProperty);
 }
 
 TJBox_Value JBox_LoadMOMPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag)
 {
-  return re::mock::Motherboard::instance().loadProperty(iObject, iTag);
+  return re::mock::Rack::currentMotherboard().loadProperty(iObject, iTag);
 }
 
 TJBox_Float64 JBox_LoadMOMPropertyAsNumber(TJBox_ObjectRef iObject, TJBox_Tag iTag)
@@ -105,12 +105,12 @@ TJBox_Float64 JBox_LoadMOMPropertyAsNumber(TJBox_ObjectRef iObject, TJBox_Tag iT
 
 void JBox_StoreMOMProperty(TJBox_PropertyRef iProperty, TJBox_Value iValue)
 {
-  return re::mock::Motherboard::instance().storeProperty(iProperty, iValue);
+  return re::mock::Rack::currentMotherboard().storeProperty(iProperty, iValue);
 }
 
 void JBox_StoreMOMPropertyByTag(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value iValue)
 {
-  return re::mock::Motherboard::instance().storeProperty(iObject, iTag, iValue);
+  return re::mock::Rack::currentMotherboard().storeProperty(iObject, iTag, iValue);
 }
 
 void JBox_StoreMOMPropertyAsNumber(TJBox_ObjectRef iObject, TJBox_Tag iTag,TJBox_Float64 iValue)
@@ -121,12 +121,12 @@ void JBox_StoreMOMPropertyAsNumber(TJBox_ObjectRef iObject, TJBox_Tag iTag,TJBox
 void JBox_GetDSPBufferData(TJBox_Value iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame,
                            TJBox_AudioSample oAudio[])
 {
-  return re::mock::Motherboard::instance().getDSPBufferData(iValue, iStartFrame, iEndFrame, oAudio);
+  return re::mock::Rack::currentMotherboard().getDSPBufferData(iValue, iStartFrame, iEndFrame, oAudio);
 }
 
 TJBox_DSPBufferInfo JBox_GetDSPBufferInfo(TJBox_Value iValue)
 {
-  return re::mock::Motherboard::instance().getDSPBufferInfo(iValue);
+  return re::mock::Rack::currentMotherboard().getDSPBufferInfo(iValue);
 }
 
 void JBox_SetDSPBufferData(TJBox_Value iValue,
@@ -134,7 +134,7 @@ void JBox_SetDSPBufferData(TJBox_Value iValue,
                            TJBox_AudioFramePos iEndFrame,
                            const TJBox_AudioSample iAudio[])
 {
-  return re::mock::Motherboard::instance().setDSPBufferData(iValue, iStartFrame, iEndFrame, iAudio);
+  return re::mock::Rack::currentMotherboard().setDSPBufferData(iValue, iStartFrame, iEndFrame, iAudio);
 }
 
 void JBox_Assert(const char iFile[], TJBox_Int32 iLine, const char iFailedExpression[], const char iMessage[])

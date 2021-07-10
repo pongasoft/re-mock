@@ -31,44 +31,9 @@
 #include <vector>
 #include <set>
 #include <array>
+#include "fmt.h"
 
 namespace re::mock {
-
-namespace fmt {
-
-namespace impl {
-
-template<typename T>
-constexpr auto printf_arg(T const &t) { return t; }
-
-// Handles std::string without having to call c_str all the time
-template<>
-constexpr auto printf_arg<std::string>(std::string const &s) { return s.c_str(); }
-
-/*
- * Copied from https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf */
-template<typename ... Args>
-std::string printf(const std::string& format, Args ... args )
-{
-  int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
-  if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
-  auto size = static_cast<size_t>( size_s );
-  auto buf = std::make_unique<char[]>( size );
-  std::snprintf( buf.get(), size, format.c_str(), args ... );
-  return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
-}
-
-}
-
-template<typename ... Args>
-std::string printf(const std::string& format, Args ... args )
-{
-  return impl::printf(format, impl::printf_arg(args)...);
-}
-
-}
-
-
 
 enum class PropertyOwner {
   kHostOwner,
@@ -294,7 +259,6 @@ public: // used by regular code
   DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const;
 
 public: // used by Jukebox.cpp (need to be public)
-  static Motherboard &instance();
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
   TJBox_Tag getPropertyTag(TJBox_PropertyRef const &iPropertyRef) const;
   TJBox_PropertyRef getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;

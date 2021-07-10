@@ -22,22 +22,11 @@
 
 namespace re::mock {
 
-static thread_local Motherboard *sThreadLocalInstance{};
-
 // Handle loguru fatal error by throwing an exception (testable)
 void loguru_fatal_handler(const loguru::Message& message)
 {
   LOG_F(ERROR, "Fatal Error at %s:%d | %s", message.filename, message.line, message.message);
   throw Error(message.message);
-}
-
-//------------------------------------------------------------------------
-// Motherboard::instance
-//------------------------------------------------------------------------
-Motherboard &Motherboard::instance()
-{
-  CHECK_F(sThreadLocalInstance != nullptr, "You must create a local instance of the motherboard: ThreadLocalMotherboard motherboard{};");
-  return *sThreadLocalInstance;
 }
 
 //------------------------------------------------------------------------
@@ -55,7 +44,6 @@ Motherboard::Motherboard()
 Motherboard::~Motherboard()
 {
 //  DLOG_F(INFO, "~Motherboard(%p)", this);
-  sThreadLocalInstance = nullptr;
 }
 
 //------------------------------------------------------------------------
@@ -143,8 +131,6 @@ std::unique_ptr<Motherboard> Motherboard::init(std::function<void(MotherboardDef
 {
   loguru::set_fatal_handler(loguru_fatal_handler);
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
-
-  sThreadLocalInstance = res.get();
 
   MotherboardDef motherboardDef{};
   RealtimeController realtimeController{};
