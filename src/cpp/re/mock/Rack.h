@@ -23,6 +23,7 @@
 #include <map>
 #include "Motherboard.h"
 #include "LuaJBox.h"
+#include "ObjectManager.hpp"
 
 namespace re::mock {
 
@@ -36,7 +37,7 @@ public:
 
   using REConf = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
 
-  Rack();
+  Rack(int iSampleRate = 44100);
 
   REConfId configureRE(REConf iREConf);
   REInstId instantiateRE(REConfId id);
@@ -50,8 +51,9 @@ public:
   static Motherboard &currentMotherboard();
 
 protected:
-  std::map<decltype(REConfId::fId), REConf> fREConfigurations{};
-  std::map<decltype(REConfId::fId), std::unique_ptr<Motherboard>> fREInstances{};
+  int fSampleRate;
+  ObjectManager<REConf> fREConfigurations{};
+  ObjectManager<std::unique_ptr<Motherboard>> fREInstances{};
 };
 
 }

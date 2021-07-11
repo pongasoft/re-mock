@@ -33,6 +33,7 @@
 #include <array>
 #include "fmt.h"
 #include "LuaJBox.h"
+#include "ObjectManager.hpp"
 
 namespace re::mock {
 
@@ -106,7 +107,7 @@ protected:
 
 struct JboxObject
 {
-  explicit JboxObject(std::string const &iObjectPath);
+  explicit JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iObjectRef);
 
   ~JboxObject() = default;
 
@@ -154,30 +155,11 @@ struct RealtimeController
 
 struct Realtime
 {
-  struct NativeObject
-  {
-    NativeObject(void *iObject, std::function<void(void*)> iDestructor = {}) : fObject{iObject}, fDestructor{std::move(iDestructor)} {}
-    ~NativeObject() { if(fDestructor) fDestructor(fObject); }
-    NativeObject(NativeObject const &) = delete;
-    NativeObject(NativeObject &&) = delete;
-
-    friend class Motherboard;
-
-  private:
-    void *fObject{};
-    std::function<void(void*)> fDestructor{};
-  };
-
-  template<typename T>
-  static inline std::unique_ptr<NativeObject> make_native_object(T *t) {
-    return std::make_unique<NativeObject>(t, [](void *o) {
-      std::default_delete<T>()(reinterpret_cast<T *>(o));
-    });
-  }
-
-  std::function<std::unique_ptr<NativeObject> (std::string const &iOperation, std::vector<TJBox_Value> const &iParams)> create_native_object{};
+  std::function<void* (std::string const &iOperation, std::vector<TJBox_Value> const &iParams)> create_native_object{};
   std::function<void (void *iPrivateState, std::vector<TJBox_PropertyDiff> const &iPropertyDiffs)> render_realtime;
 };
+
+class Rack;
 
 class Motherboard
 {
@@ -186,13 +168,13 @@ public:
   using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
 
 public: // used by regular code
-  static std::unique_ptr<Motherboard> init(std::function<void (MotherboardDef &, RealtimeController &, Realtime&)> iConfigFunction);
-
   ~Motherboard();
 
   void nextFrame(std::function<void(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> iNextFrameCallback);
 
-  void connectSocket(std::string const &iSocketPath);
+//  void connectSocket(std::string const &iSocketPath);
+
+  inline int getSampleRate() const { return getNum<int>("/environment/system_sample_rate"); }
 
   inline TJBox_Value getValue(std::string const &iPropertyPath) const {
     return loadProperty(getPropertyRef(iPropertyPath));
@@ -224,7 +206,7 @@ public: // used by regular code
     setNum(fmt::printf("%s/value", iSocketPath.c_str()), iValue);
   }
 
-  void setDSPBuffer(std::string const &iAudioSocketPath, DSPBuffer const &iBuffer);
+  void setDSPBuffer(std::string const &iAudioSocketPath, DSPBuffer iBuffer);
   DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const;
 
   template<typename T>
@@ -254,7 +236,11 @@ public: // used by Jukebox.cpp (need to be public)
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
 
+  friend class Rack;
+
 protected:
+
+  static std::unique_ptr<Motherboard> init(int iSampleRate, std::function<void (MotherboardDef &, RealtimeController &, Realtime&)> iConfigFunction);
 
   Motherboard();
 
@@ -276,14 +262,14 @@ protected:
   DSPBuffer const &getDSPBuffer(TJBox_Value const &iValue) const;
 
 protected:
-  std::vector<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
+  ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
-  std::vector<DSPBuffer> fDSPBuffers{};
+  ObjectManager<DSPBuffer> fDSPBuffers{};
   RealtimeController::GlobalRTC fGlobalRTC{};
   Realtime fRealtime{};
-  std::vector<std::unique_ptr<Realtime::NativeObject>> fNativeObjects{};
+  ObjectManager<void *> fNativeObjects{};
 };
 
 // Error handling

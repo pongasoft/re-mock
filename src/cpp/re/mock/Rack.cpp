@@ -17,7 +17,6 @@
  */
 
 #include <logging/logging.h>
-#include <atomic>
 #include "Rack.h"
 
 namespace re::mock {
@@ -43,36 +42,27 @@ Motherboard &Rack::currentMotherboard()
 //------------------------------------------------------------------------
 // Rack::Rack
 //------------------------------------------------------------------------
-Rack::Rack()
+Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}
 {
   // set up loguru
   loguru::set_fatal_handler(loguru_fatal_handler);
 }
-
-static std::atomic<int> sREConfigurationsCounter{1};
 
 //------------------------------------------------------------------------
 // Rack::configureRE
 //------------------------------------------------------------------------
 Rack::REConfId Rack::configureRE(Rack::REConf iREConf)
 {
-  REConfId id{ .fId = sREConfigurationsCounter++ };
-  fREConfigurations[id.fId] = std::move(iREConf);
-  return id;
+  return { .fId = fREConfigurations.add(std::move(iREConf)) };
 }
-
-static std::atomic<int> sREInstancesCounter{1};
 
 //------------------------------------------------------------------------
 // Rack::instantiateRE
 //------------------------------------------------------------------------
 Rack::REInstId Rack::instantiateRE(Rack::REConfId id)
 {
-  auto config = fREConfigurations.find(id.fId);
-  CHECK_F(config != fREConfigurations.end(), "Unknown RE with configuration [%d] (did you call configureRE?)", id.fId);
-  REInstId instanceId{ .fId = sREInstancesCounter++ };
-  fREInstances[instanceId.fId] = Motherboard::init(config->second);
-  return instanceId;
+  auto config = fREConfigurations.get(id.fId);
+  return { .fId = fREInstances.add(Motherboard::init(fSampleRate, config)) };
 }
 
 struct InternalThreadLocalRAII
@@ -88,10 +78,9 @@ struct InternalThreadLocalRAII
 //------------------------------------------------------------------------
 void Rack::useRE(Rack::REInstId id, std::function<void(Motherboard *)> iCallback)
 {
-  auto motherboard = fREInstances.find(id.fId);
-  CHECK_F(motherboard != fREInstances.end(), "Unknown RE with instance [%d] (did you call instantiateRE?)", id.fId);
-  InternalThreadLocalRAII raii{motherboard->second.get()};
-  iCallback(motherboard->second.get());
+  auto &motherboard = fREInstances.get(id.fId);
+  InternalThreadLocalRAII raii{motherboard.get()};
+  iCallback(motherboard.get());
 }
 
 
