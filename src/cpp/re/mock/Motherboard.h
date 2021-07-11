@@ -155,8 +155,8 @@ struct RealtimeController
 
 struct Realtime
 {
-  std::function<void* (std::string const &iOperation, std::vector<TJBox_Value> const &iParams)> create_native_object{};
-  std::function<void (void *iPrivateState, std::vector<TJBox_PropertyDiff> const &iPropertyDiffs)> render_realtime;
+  std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)> create_native_object{};
+  std::function<void (void *privateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> render_realtime;
 };
 
 class Rack;
