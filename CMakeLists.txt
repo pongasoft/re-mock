@@ -24,6 +24,8 @@ project(re-common LANGUAGES CXX)
 # Using C++17
 set(CMAKE_CXX_STANDARD 17)
 
+enable_testing()
+
 include(re-common.cmake)
 
 # Using RE SDK version 4.2.0
@@ -63,4 +65,6 @@ set(TEST_CASE_SOURCES
 
 add_executable("${target_test}" "${TEST_CASE_SOURCES}")
 target_link_libraries("${target_test}" gtest_main ${target})
-target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}" "${GTEST_INCLUDE_DIRS}")
+target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}")
+
+gtest_discover_tests("${target_test}")
