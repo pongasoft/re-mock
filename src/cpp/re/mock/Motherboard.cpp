@@ -28,8 +28,15 @@ namespace re::mock {
 Motherboard::Motherboard()
 {
 //  DLOG_F(INFO, "Motherboard(%p)", this);
+
+  // /custom_properties
   fCustomPropertiesRef = addObject("/custom_properties")->fObjectRef;
+
+  // /custom_properties/instance (for the "privateState")
   addProperty(fCustomPropertiesRef, "instance", PropertyOwner::kRTCOwner, {});
+
+  // global_rtc
+  addObject("/global_rtc");
 }
 
 //------------------------------------------------------------------------
@@ -68,6 +75,14 @@ TJBox_PropertyRef Motherboard::getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag
 }
 
 //------------------------------------------------------------------------
+// Motherboard::getPropertyPath
+//------------------------------------------------------------------------
+std::string Motherboard::getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const
+{
+  return getObject(iPropertyRef.fObject)->getProperty(iPropertyRef.fKey)->fPropertyPath;
+}
+
+//------------------------------------------------------------------------
 // Motherboard::getPropertyRef
 //------------------------------------------------------------------------
 TJBox_PropertyRef Motherboard::getPropertyRef(std::string const &iPropertyPath) const
@@ -99,9 +114,7 @@ TJBox_Value Motherboard::loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) c
 //------------------------------------------------------------------------
 void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue)
 {
-  auto diff = fJboxObjects.get(iProperty.fObject)->storeValue(iProperty.fKey, iValue);
-  if(diff)
-    fCurrentFramePropertyDiffs.emplace_back(*diff);
+  handlePropertyDiff(fJboxObjects.get(iProperty.fObject)->storeValue(iProperty.fKey, iValue));
 }
 
 //------------------------------------------------------------------------
@@ -109,16 +122,30 @@ void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value 
 //------------------------------------------------------------------------
 void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue)
 {
-  auto diff = getObject(iObject)->storeValue(iTag, iValue);
-  if(diff)
-    fCurrentFramePropertyDiffs.emplace_back(*diff);
+  handlePropertyDiff(getObject(iObject)->storeValue(iTag, iValue));
 }
 
 //------------------------------------------------------------------------
-// Motherboard::init
+// Motherboard::handlePropertyDiff
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::init(int iSampleRate,
-                                               std::function<void (MotherboardDef &, RealtimeController &, Realtime &)> iConfigFunction)
+void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iPropertyDiff)
+{
+  if(iPropertyDiff)
+  {
+    auto binding = fRTCBindings.find(iPropertyDiff->fPropertyRef);
+    if(binding != fRTCBindings.end())
+      binding->second(getPropertyPath(iPropertyDiff->fPropertyRef), iPropertyDiff->fCurrentValue);
+
+    if(fRTCNofify.find(iPropertyDiff->fPropertyRef) != fRTCNofify.end())
+      fCurrentFramePropertyDiffs.emplace_back(*iPropertyDiff);
+  }
+}
+
+//------------------------------------------------------------------------
+// Motherboard::create
+//------------------------------------------------------------------------
+std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate,
+                                                 std::function<void (MotherboardDef &, RealtimeController &, Realtime &)> iConfigFunction)
 {
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
@@ -158,13 +185,31 @@ std::unique_ptr<Motherboard> Motherboard::init(int iSampleRate,
   // rt_input_setup.notify
   for(auto &&propertyPath: realtimeController.rt_input_setup.notify)
   {
-    res->registerNotifiableProperty(propertyPath);
+    res->registerRTCNotify(propertyPath);
   }
 
-  // global_rtc
-  res->fGlobalRTC = realtimeController.global_rtc;
+  // rtc_bindings
+  for(auto &&[propertyPath, bindingKey]: realtimeController.rtc_bindings)
+  {
+    auto bindingRef = res->getPropertyRef(bindingKey);
+    auto binding = realtimeController.global_rtc.find(bindingRef.fKey);
+    CHECK_F(binding != realtimeController.global_rtc.end(), "Missing binding [%s] for [%s]", bindingKey.c_str(), propertyPath.c_str());
+    res->registerRTCBinding(propertyPath, binding->second);
+  }
 
   return res;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::init
+//------------------------------------------------------------------------
+void Motherboard::init()
+{
+  for(auto &&diff: fInitBindings)
+  {
+    fRTCBindings[diff.fPropertyRef](getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
+  }
+  fInitBindings.clear();
 }
 
 //------------------------------------------------------------------------
@@ -179,15 +224,26 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 }
 
 //------------------------------------------------------------------------
-// Motherboard::registerNotifiableProperty
+// Motherboard::registerRTCNotify
 //------------------------------------------------------------------------
-void Motherboard::registerNotifiableProperty(std::string const &iPropertyPath)
+void Motherboard::registerRTCNotify(std::string const &iPropertyPath)
 {
   if(iPropertyPath.find_last_of('*') != std::string::npos)
     throw Error(fmt::printf("wildcard properties not implemented yet: [%s]", iPropertyPath));
 
   auto ref = getPropertyRef(iPropertyPath);
   fCurrentFramePropertyDiffs.emplace_back(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
+  fRTCNofify.emplace(ref);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::registerRTCBinding
+//------------------------------------------------------------------------
+void Motherboard::registerRTCBinding(std::string const &iPropertyPath, RTCCallback iCallback)
+{
+  auto ref = getPropertyRef(iPropertyPath);
+  fInitBindings.emplace_back(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
+  fRTCBindings[ref] = std::move(iCallback);
 }
 
 //------------------------------------------------------------------------
@@ -259,6 +315,20 @@ void Motherboard::nextFrame(std::function<void(TJBox_PropertyDiff const *, TJBox
 {
   iNextFrameCallback(fCurrentFramePropertyDiffs.data(), fCurrentFramePropertyDiffs.size());
   fCurrentFramePropertyDiffs.clear();
+}
+
+//------------------------------------------------------------------------
+// Motherboard::nextFrame
+//------------------------------------------------------------------------
+void Motherboard::nextFrame()
+{
+  if(fRealtime.render_realtime)
+  {
+    auto callback = [this](const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) {
+      fRealtime.render_realtime(getInstance<void *>(), iPropertyDiffs, iDiffCount);
+    };
+    nextFrame(std::move(callback));
+  }
 }
 
 //------------------------------------------------------------------------
@@ -482,7 +552,10 @@ impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::str
 //------------------------------------------------------------------------
 std::optional<TJBox_PropertyDiff> impl::JboxProperty::storeValue(TJBox_Value const &iValue)
 {
-  CHECK_F(iValue.fSecret[0] == fValue.fSecret[0], "invalid property type for [%s]", fPropertyPath.c_str());
+  CHECK_F(iValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
+          fValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
+          iValue.fSecret[0] == fValue.fSecret[0],
+          "invalid property type for [%s]", fPropertyPath.c_str());
 
   if(fWatched)
   {

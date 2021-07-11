@@ -62,7 +62,9 @@ Rack::REConfId Rack::configureRE(Rack::REConf iREConf)
 Rack::REInstId Rack::instantiateRE(Rack::REConfId id)
 {
   auto config = fREConfigurations.get(id.fId);
-  return { .fId = fREInstances.add(Motherboard::init(fSampleRate, config)) };
+  auto instId = REInstId{ .fId = fREInstances.add(Motherboard::create(fSampleRate, config)) };
+  useRE(instId, [](Motherboard *m) { m->init(); });
+  return instId;
 }
 
 struct InternalThreadLocalRAII

@@ -47,15 +47,6 @@ enum class PropertyOwner {
 
 class Motherboard;
 
-template<typename T>
-int emplace_back(std::vector<T> &iVector, T &&iElement)
-{
-  auto size = iVector.size();
-  iVector.emplace_back(std::forward<T>(iElement));
-  CHECK_F(size + 1 == iVector.size());
-  return size;
-}
-
 namespace impl {
 
 template<typename T>
@@ -144,19 +135,19 @@ struct MotherboardDef
   struct { std::map<std::string, std::unique_ptr<jbox_property>> properties{}; } rt_owner;
 };
 
+using RTCCallback = std::function<void (std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue)>;
+
 struct RealtimeController
 {
   std::map<std::string, std::string> rtc_bindings;
-
-  using GlobalRTC = std::map<std::string, std::function<void (std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue)>>;
-  GlobalRTC global_rtc{};
+  std::map<std::string, RTCCallback> global_rtc{};
   struct { std::set<std::string> notify{}; } rt_input_setup;
 };
 
 struct Realtime
 {
   std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)> create_native_object{};
-  std::function<void (void *privateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> render_realtime;
+  std::function<void (void *privateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> render_realtime{};
 };
 
 class Rack;
@@ -240,9 +231,12 @@ public: // used by Jukebox.cpp (need to be public)
 
 protected:
 
-  static std::unique_ptr<Motherboard> init(int iSampleRate, std::function<void (MotherboardDef &, RealtimeController &, Realtime&)> iConfigFunction);
+  static std::unique_ptr<Motherboard> create(int iSampleRate,
+                                             std::function<void (MotherboardDef &, RealtimeController &, Realtime&)> iConfigFunction);
 
   Motherboard();
+
+  void init();
 
   impl::JboxObject *addObject(std::string const &iObjectPath);
   inline impl::JboxObject *getObject(std::string const &iObjectPath) const { return getObject(getObjectRef(iObjectPath)); }
@@ -253,23 +247,42 @@ protected:
   void addCVInput(std::string const &iSocketName);
   void addCVOutput(std::string const &iSocketName);
   void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, jbox_property const &iProperty);
-  void registerNotifiableProperty(std::string const &iPropertyPath);
+  void registerRTCNotify(std::string const &iPropertyPath);
+  void registerRTCBinding(std::string const &iPropertyPath, RTCCallback iCallback);
+  void handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iPropertyDiff);
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
+  std::string getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const;
 
   TJBox_Value createDSPBuffer();
   DSPBuffer &getDSPBuffer(TJBox_Value const &iValue);
   DSPBuffer const &getDSPBuffer(TJBox_Value const &iValue) const;
 
+  void nextFrame();
+
+protected:
+
+  static bool compare(TJBox_PropertyRef const &l, TJBox_PropertyRef const &r)
+  {
+    if(l.fObject == r.fObject)
+      return strncmp(l.fKey, r.fKey, kJBox_MaxPropertyNameLen + 1);
+    else
+      return l.fObject < r.fObject;
+  }
+
+  using ComparePropertyRef = decltype(&compare);
+
 protected:
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
+  std::vector<TJBox_PropertyDiff> fInitBindings{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};
-  RealtimeController::GlobalRTC fGlobalRTC{};
   Realtime fRealtime{};
   ObjectManager<void *> fNativeObjects{};
+  std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNofify{compare};
+  std::map<TJBox_PropertyRef, RTCCallback, ComparePropertyRef> fRTCBindings{compare};
 };
 
 // Error handling
