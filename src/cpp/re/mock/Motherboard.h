@@ -142,12 +142,17 @@ struct RealtimeController
   std::map<std::string, std::string> rtc_bindings;
   std::map<std::string, RTCCallback> global_rtc{};
   struct { std::set<std::string> notify{}; } rt_input_setup;
+
+  static RealtimeController byDefault();
 };
 
 struct Realtime
 {
   std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)> create_native_object{};
-  std::function<void (void *privateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> render_realtime{};
+  std::function<void (void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> render_realtime{};
+
+  template<typename T>
+  static Realtime byDefault();
 };
 
 class Rack;
@@ -162,8 +167,6 @@ public: // used by regular code
   ~Motherboard();
 
   void nextFrame(std::function<void(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> iNextFrameCallback);
-
-//  void connectSocket(std::string const &iSocketPath);
 
   inline int getSampleRate() const { return getNum<int>("/environment/system_sample_rate"); }
 
@@ -260,6 +263,8 @@ protected:
   DSPBuffer getDSPBuffer(TJBox_ObjectRef iAudioSocket) const;
   void setDSPBuffer(TJBox_ObjectRef iAudioSocket, DSPBuffer iBuffer);
 
+  void connectSocket(TJBox_ObjectRef iSocket);
+
   TJBox_Float64 getCVSocketValue(TJBox_ObjectRef iCVSocket) const;
   void setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iValue);
 
@@ -295,6 +300,33 @@ struct Error : public std::logic_error {
   Error(std::string s) : std::logic_error(s.c_str()) {}
   Error(char const *s) : std::logic_error(s) {}
 };
+
+template<typename T>
+Realtime Realtime::byDefault()
+{
+  return {
+    .create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void *{
+      if(std::strcmp(iOperation, "Instance") == 0)
+      {
+        if(iCount >= 1)
+        {
+          TJBox_Float64 sampleRate = JBox_GetNumber(iParams[0]);
+          return new T(static_cast<int>(sampleRate));
+        }
+      }
+
+      return nullptr;
+    },
+
+    .render_realtime = [](void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) {
+      if(!iPrivateState)
+        return;
+
+      auto device = reinterpret_cast<T *>(iPrivateState);
+      device->renderBatch(iPropertyDiffs, iDiffCount);
+    }
+  };
+}
 
 }
 

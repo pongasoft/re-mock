@@ -74,6 +74,9 @@ public:
     CVOutSocket getCVOutSocket(std::string const &iSocketName) const;
     CVInSocket getCVInSocket(std::string const &iSocketName) const;
 
+    template<typename T>
+    inline T* getInstance() const { return fMotherboard->template getInstance<T>(); }
+
     friend class Rack;
 
   private:

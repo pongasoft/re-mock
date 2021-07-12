@@ -469,6 +469,14 @@ void *Motherboard::getNativeObjectRW(TJBox_Value iValue) const
 }
 
 //------------------------------------------------------------------------
+// Motherboard::connectSocket
+//------------------------------------------------------------------------
+void Motherboard::connectSocket(TJBox_ObjectRef iSocket)
+{
+  fJboxObjects.get(iSocket)->storeValue("connected", JBox_MakeBoolean(true));
+}
+
+//------------------------------------------------------------------------
 // Motherboard::getCVSocketValue
 //------------------------------------------------------------------------
 TJBox_Float64 Motherboard::getCVSocketValue(TJBox_ObjectRef iCVSocket) const
