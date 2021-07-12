@@ -49,24 +49,23 @@ Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}
 }
 
 //------------------------------------------------------------------------
-// Rack::configureRE
+// Rack::newExtension
 //------------------------------------------------------------------------
-Rack::REConfId Rack::configureRE(Rack::REConf iREConf)
+std::shared_ptr<Rack::Extension> Rack::newExtension(Extension::Configuration iConfig)
 {
-  return { .fId = fREConfigurations.add(std::move(iREConf)) };
+  auto id = fExtensions.add([this, &iConfig](int id) {
+    auto motherboard = Motherboard::create(fSampleRate, iConfig);
+    return std::shared_ptr<Extension>(new Extension(id, this, std::move(motherboard)));
+  });
+
+  auto res = fExtensions.get(id);
+  res->use([](Motherboard *m) { m->init(); });
+  return res;
 }
 
 //------------------------------------------------------------------------
-// Rack::instantiateRE
+// InternalThreadLocalRAII - to add/remove the "current" motherboard
 //------------------------------------------------------------------------
-Rack::REInstId Rack::instantiateRE(Rack::REConfId id)
-{
-  auto config = fREConfigurations.get(id.fId);
-  auto instId = REInstId{ .fId = fREInstances.add(Motherboard::create(fSampleRate, config)) };
-  useRE(instId, [](Motherboard *m) { m->init(); });
-  return instId;
-}
-
 struct InternalThreadLocalRAII
 {
   explicit InternalThreadLocalRAII(Motherboard *iMotherboard) { sThreadLocalInstance = iMotherboard; }
@@ -76,13 +75,44 @@ struct InternalThreadLocalRAII
 };
 
 //------------------------------------------------------------------------
-// Rack::useRE
+// Rack::Extension::use
 //------------------------------------------------------------------------
-void Rack::useRE(Rack::REInstId id, std::function<void(Motherboard *)> iCallback)
+void Rack::Extension::use(std::function<void(Motherboard *)> iCallback)
 {
-  auto &motherboard = fREInstances.get(id.fId);
-  InternalThreadLocalRAII raii{motherboard.get()};
-  iCallback(motherboard.get());
+  InternalThreadLocalRAII raii{fMotherboard.get()};
+  iCallback(fMotherboard.get());
+}
+
+//------------------------------------------------------------------------
+// Rack::Extension::getAudioOutSocket
+//------------------------------------------------------------------------
+Rack::Extension::AudioOutSocket Rack::Extension::getAudioOutSocket(std::string const &iSocketName) const
+{
+  return {{{fId, fMotherboard->getObjectRef(fmt::printf("/audio_outputs/%s", iSocketName))}}};
+}
+
+//------------------------------------------------------------------------
+// Rack::Extension::AudioInSocket
+//------------------------------------------------------------------------
+Rack::Extension::AudioInSocket Rack::Extension::getAudioInSocket(std::string const &iSocketName) const
+{
+  return {{{fId, fMotherboard->getObjectRef(fmt::printf("/audio_inputs/%s", iSocketName))}}};
+}
+
+//------------------------------------------------------------------------
+// Rack::Extension::getCVOutSocket
+//------------------------------------------------------------------------
+Rack::Extension::CVOutSocket Rack::Extension::getCVOutSocket(std::string const &iSocketName) const
+{
+  return {{{fId, fMotherboard->getObjectRef(fmt::printf("/cv_outputs/%s", iSocketName))}}};
+}
+
+//------------------------------------------------------------------------
+// Rack::Extension::getCVInSocket
+//------------------------------------------------------------------------
+Rack::Extension::CVInSocket Rack::Extension::getCVInSocket(std::string const &iSocketName) const
+{
+  return {{{fId, fMotherboard->getObjectRef(fmt::printf("/cv_inputs/%s", iSocketName))}}};
 }
 
 

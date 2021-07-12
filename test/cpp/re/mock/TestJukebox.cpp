@@ -28,7 +28,7 @@ TEST(Jukebox, Basic)
 {
   Rack rack{};
 
-  auto id = rack.instantiateRE([](auto &mdef, auto &rtc, auto &rt) {
+  auto re = rack.newExtension([](auto &mdef, auto &rtc, auto &rt) {
     mdef.document_owner.properties["prop_number_default"]  = jbox.number();
     mdef.document_owner.properties["prop_float"]           = jbox.number<float>({.property_tag = 100, .default_value = 0.7});
     mdef.document_owner.properties["prop_float_2"]         = jbox.number<float>(0.8);
@@ -40,7 +40,7 @@ TEST(Jukebox, Basic)
     mdef.document_owner.properties["prop_generic_2"]       = jbox.property({.default_value = JBox_MakeNumber(0.3)});
   });
 
-  rack.useRE(id, []() {
+  re->use([]() {
     auto customProperties = JBox_GetMotherboardObjectRef("/custom_properties");
 
     ASSERT_FLOAT_EQ(0, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_number_default"))));
@@ -87,12 +87,12 @@ TEST(Jukebox, AudioSocket)
 
   Rack rack{};
 
-  auto id = rack.instantiateRE([](auto &mdef, auto &rtc, auto &rt) {
+  auto re = rack.newExtension([](auto &mdef, auto &rtc, auto &rt) {
     mdef.audio_inputs["input_1"] = jbox.audio_input();
     mdef.audio_outputs["output_1"] = jbox.audio_output();
   });
 
-  rack.useRE(id, [](auto motherboard) {
+  re->use([](auto motherboard) {
     // testing input
     {
       auto input1Ref = JBox_GetMotherboardObjectRef("/audio_inputs/input_1");

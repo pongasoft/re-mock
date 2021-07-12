@@ -32,29 +32,70 @@ extern LuaJbox jbox;
 class Rack
 {
 public:
-  struct REConfId { int fId{}; };
-  struct REInstId { int fId{}; };
+  class Extension
+  {
+  public:
+    using Configuration = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
 
-  using REConf = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
+    struct Socket {
+      int fExtensionId{};
+      TJBox_ObjectRef fSocketRef{};
+    };
+
+    struct AudioSocket : public Socket {};
+    struct AudioOutSocket : public AudioSocket {};
+    struct AudioInSocket : public AudioSocket {};
+    struct CVSocket : public Socket {};
+    struct CVOutSocket : public CVSocket {};
+    struct CVInSocket : public CVSocket {};
+
+    struct AudioWire {
+      AudioOutSocket fFromSocket{};
+      AudioInSocket fToSocket{};
+    };
+
+    struct CVWire {
+      CVOutSocket fFromSocket{};
+      CVInSocket fToSocket{};
+    };
+
+  public:
+    void use(std::function<void (Motherboard *)> iCallback);
+    inline void use(std::function<void ()> iCallback) {
+      use([&iCallback](auto motherboard) { iCallback(); });
+    }
+
+    AudioOutSocket getAudioOutSocket(std::string const &iSocketName) const;
+    AudioInSocket getAudioInSocket(std::string const &iSocketName) const;
+    CVOutSocket getCVOutSocket(std::string const &iSocketName) const;
+    CVInSocket getCVInSocket(std::string const &iSocketName) const;
+
+    friend class Rack;
+
+  private:
+    Extension(int id, Rack *iRack, std::unique_ptr<Motherboard> iMotherboard) :
+      fId{id}, fRack{iRack}, fMotherboard{std::move(iMotherboard)} {};
+
+  private:
+    int fId;
+    Rack *fRack;
+    std::unique_ptr<Motherboard> fMotherboard;
+  };
 
   Rack(int iSampleRate = 44100);
 
-  REConfId configureRE(REConf iREConf);
-  REInstId instantiateRE(REConfId id);
-  inline REInstId instantiateRE(REConf iREConf) { return instantiateRE(configureRE(std::move(iREConf))); }
+  std::shared_ptr<Extension> newExtension(Extension::Configuration iConfig);
 
-  void useRE(REInstId id, std::function<void (Motherboard *)> iCallback);
-  inline void useRE(REInstId id, std::function<void ()> iCallback) {
-    useRE(id, [&iCallback](auto motherboard) { iCallback(); });
-  }
+  void wire(Extension::AudioOutSocket iOutSocket, Extension::AudioInSocket iInSocket);
+  void wire(Extension::CVOutSocket iOutSocket, Extension::CVInSocket iInSocket);
 
   static Motherboard &currentMotherboard();
 
 protected:
   int fSampleRate;
-  ObjectManager<REConf> fREConfigurations{};
-  ObjectManager<std::unique_ptr<Motherboard>> fREInstances{};
+  ObjectManager<std::shared_ptr<Extension>> fExtensions{};
 };
+
 
 }
 
