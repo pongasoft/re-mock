@@ -39,9 +39,13 @@ public:
   O const &get(K id) const;
   O &get(K id);
   void remove(K id);
+  typename std::map<K, O>::iterator begin() noexcept { return fObjects.begin(); }
+  typename std::map<K, O>::iterator end() noexcept { return fObjects.end(); }
+  typename std::map<K, O>::const_iterator cbegin() const noexcept { return fObjects.cbegin(); }
+  typename std::map<K, O>::const_iterator cend() const noexcept { return fObjects.cend(); }
 
 protected:
-  std::map<key_type, object_type> fObjects{};
+  std::map<K, O> fObjects{};
 
 private:
   std::atomic<K> fCounter{1};

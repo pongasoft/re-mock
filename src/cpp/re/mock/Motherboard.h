@@ -257,6 +257,11 @@ protected:
   TJBox_Value createDSPBuffer();
   DSPBuffer &getDSPBuffer(TJBox_Value const &iValue);
   DSPBuffer const &getDSPBuffer(TJBox_Value const &iValue) const;
+  DSPBuffer getDSPBuffer(TJBox_ObjectRef iAudioSocket) const;
+  void setDSPBuffer(TJBox_ObjectRef iAudioSocket, DSPBuffer iBuffer);
+
+  TJBox_Float64 getCVSocketValue(TJBox_ObjectRef iCVSocket) const;
+  void setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iValue);
 
   void nextFrame();
 

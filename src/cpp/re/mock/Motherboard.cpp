@@ -366,6 +366,24 @@ Motherboard::DSPBuffer Motherboard::getDSPBuffer(std::string const &iAudioSocket
 }
 
 //------------------------------------------------------------------------
+// Motherboard::getDSPBuffer
+//------------------------------------------------------------------------
+Motherboard::DSPBuffer Motherboard::getDSPBuffer(TJBox_ObjectRef iAudioSocket) const
+{
+  auto id = jbox_get_dsp_id(fJboxObjects.get(iAudioSocket)->loadValue("buffer"));
+  return fDSPBuffers.get(id);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::setDSPBuffer
+//------------------------------------------------------------------------
+void Motherboard::setDSPBuffer(TJBox_ObjectRef iAudioSocket, Motherboard::DSPBuffer iBuffer)
+{
+  auto id = jbox_get_dsp_id(fJboxObjects.get(iAudioSocket)->loadValue("buffer"));
+  fDSPBuffers.replace(id, std::move(iBuffer));
+}
+
+//------------------------------------------------------------------------
 // Motherboard::createDSPBuffer
 //------------------------------------------------------------------------
 TJBox_Value Motherboard::createDSPBuffer()
@@ -448,6 +466,22 @@ TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::
 void *Motherboard::getNativeObjectRW(TJBox_Value iValue) const
 {
   return fNativeObjects.get(jbox_get_native_object_id(iValue));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getCVSocketValue
+//------------------------------------------------------------------------
+TJBox_Float64 Motherboard::getCVSocketValue(TJBox_ObjectRef iCVSocket) const
+{
+  return JBox_GetNumber(fJboxObjects.get(iCVSocket)->loadValue("value"));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::setCVSocketValue
+//------------------------------------------------------------------------
+void Motherboard::setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iValue)
+{
+  fJboxObjects.get(iCVSocket)->storeValue("value", JBox_MakeNumber(iValue));
 }
 
 //------------------------------------------------------------------------
