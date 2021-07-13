@@ -59,6 +59,7 @@ public:
   void copyBuffer(TJBox_ObjectRef const &iFromSocket, buffer_type &iToBuffer);
   void copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket);
 
+  static void wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension);
 
 public:
   StereoBuffer fBuffer{};

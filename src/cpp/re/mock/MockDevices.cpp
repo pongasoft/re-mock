@@ -62,13 +62,22 @@ void MockAudioDevice::copyBuffer(TJBox_ObjectRef const &iFromSocket, MockAudioDe
 //------------------------------------------------------------------------
 // MockAudioDevice::copyBuffer
 //------------------------------------------------------------------------
-void MockAudioDevice::copyBuffer(MockAudioDevice::buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket)
+void MockAudioDevice::copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket)
 {
   if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "connected"))))
   {
     auto dspToBuffer = JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "buffer"));
     JBox_SetDSPBufferData(dspToBuffer, 0, iFromBuffer.size(), iFromBuffer.data());
   }
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::wire
+//------------------------------------------------------------------------
+void MockAudioDevice::wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension)
+{
+  iRack.wire(iFromExtension->getAudioOutSocket(LEFT_SOCKET), iToExtension->getAudioInSocket(LEFT_SOCKET));
+  iRack.wire(iFromExtension->getAudioOutSocket(RIGHT_SOCKET), iToExtension->getAudioInSocket(RIGHT_SOCKET));
 }
 
 //------------------------------------------------------------------------
@@ -205,6 +214,7 @@ void MAuPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
   copyBuffer(fInSocket, fBuffer);
   copyBuffer(fBuffer, fOutSocket);
 }
+
 
 
 }

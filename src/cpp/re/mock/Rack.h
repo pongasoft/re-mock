@@ -86,12 +86,15 @@ public:
     void wire(AudioOutSocket const &iOutSocket, AudioInSocket const &iInSocket);
     void wire(CVOutSocket const &iOutSocket, CVInSocket const &iInSocket);
 
+    inline std::set<int> const &getDependents() const { return fDependents; }
+
   private:
     int fId;
     Rack *fRack;
     std::unique_ptr<Motherboard> fMotherboard;
     std::vector<AudioWire> fAudioWires{};
     std::vector<CVWire> fCVWires{};
+    std::set<int> fDependents{};
   };
 
   Rack(int iSampleRate = 44100);
@@ -108,6 +111,8 @@ public:
 protected:
   void copyAudioBuffers(Extension::AudioWire const &iWire);
   void copyCVValue(Extension::CVWire const &iWire);
+  void nextFrame(Extension &iExtension);
+  void nextFrame(Extension &iExtension, std::set<int> &iProcessedExtensions);
 
 protected:
   int fSampleRate;

@@ -59,11 +59,8 @@ TEST(Rack, Wiring) {
 
   ASSERT_TRUE(pstBuffer.check(0, 0));
 
-  rack.wire(src->getAudioOutSocket(MAuSrc::LEFT_SOCKET), pst->getAudioInSocket(MAuPst::LEFT_SOCKET));
-  rack.wire(pst->getAudioOutSocket(MAuPst::LEFT_SOCKET), dst->getAudioInSocket(MAuDst::LEFT_SOCKET));
-
-  rack.wire(src->getAudioOutSocket(MAuSrc::RIGHT_SOCKET), pst->getAudioInSocket(MAuPst::RIGHT_SOCKET));
-  rack.wire(pst->getAudioOutSocket(MAuPst::RIGHT_SOCKET), dst->getAudioInSocket(MAuDst::RIGHT_SOCKET));
+  MockAudioDevice::wire(rack, src, pst);
+  MockAudioDevice::wire(rack, pst, dst);
 
   ASSERT_TRUE(srcBuffer.check(0, 0));
   ASSERT_TRUE(dstBuffer.check(0, 0));

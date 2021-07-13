@@ -36,6 +36,18 @@ inline bool all_item(Container const &iContainer, T const &iItem)
   return all_of(iContainer, [&iItem](auto &item) {return item == iItem; });
 }
 
+template<typename Container, typename T>
+inline bool contains(Container const &iContainer, T const &iItem)
+{
+  return std::find(std::begin(iContainer), std::end(iContainer), iItem) != std::end(iContainer);
+}
+
+template<typename Container, typename Predicate>
+inline bool find_if(Container const &iContainer, Predicate iPredicate)
+{
+  return std::find_if(std::begin(iContainer), std::end(iContainer), iPredicate) != std::end(iContainer);
+}
+
 }
 
 #endif //__PongasoftCommon_re_mock_stl_h__
