@@ -120,9 +120,9 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 }
 
 //------------------------------------------------------------------------
-// MockAudioSrc::Config
+// MAUSrc::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MAuSrc::Config = [](auto &def, auto &rtc, auto &rt) {
+const Rack::Extension::Configuration MAUSrc::Config = [](auto &def, auto &rtc, auto &rt) {
   // It is a source so it only produces audio
   def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
   def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
@@ -131,29 +131,29 @@ const Rack::Extension::Configuration MAuSrc::Config = [](auto &def, auto &rtc, a
   rtc = RealtimeController::byDefault();
 
   // rt
-  rt = Realtime::byDefault<MAuSrc>();
+  rt = Realtime::byDefault<MAUSrc>();
 };
 
 //------------------------------------------------------------------------
-// MockAudioDst::MockAudioDst
+// MAUSrc::MAUSrc
 //------------------------------------------------------------------------
-MAuSrc::MAuSrc(int iSampleRate) :
+MAUSrc::MAUSrc(int iSampleRate) :
   MockAudioDevice(iSampleRate), fOutSocket{StereoSocket::output()}
 {
 }
 
 //------------------------------------------------------------------------
-// MockAudioDst::renderBatch
+// MAUSrc::renderBatch
 //------------------------------------------------------------------------
-void MAuSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
+void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 {
   copyBuffer(fBuffer, fOutSocket);
 }
 
 //------------------------------------------------------------------------
-// MockAudioDst::Config
+// MAUDst::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MAuDst::Config = [](auto &def, auto &rtc, auto &rt) {
+const Rack::Extension::Configuration MAUDst::Config = [](auto &def, auto &rtc, auto &rt) {
   // It is a destination so it only receives audio
   def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
   def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
@@ -162,29 +162,29 @@ const Rack::Extension::Configuration MAuDst::Config = [](auto &def, auto &rtc, a
   rtc = RealtimeController::byDefault();
 
   // rt
-  rt = Realtime::byDefault<MAuDst>();
+  rt = Realtime::byDefault<MAUDst>();
 };
 
 //------------------------------------------------------------------------
-// MockAudioDst::MockAudioDst
+// MAUDst::MAUDst
 //------------------------------------------------------------------------
-MAuDst::MAuDst(int iSampleRate) :
+MAUDst::MAUDst(int iSampleRate) :
   MockAudioDevice(iSampleRate), fInSocket{StereoSocket::input()}
 {
 }
 
 //------------------------------------------------------------------------
-// MockSource::renderBatch
+// MAUDst::renderBatch
 //------------------------------------------------------------------------
-void MAuDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
+void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 {
   copyBuffer(fInSocket, fBuffer);
 }
 
 //------------------------------------------------------------------------
-// MockAudioPassThrough::Config
+// MAUPst::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MAuPst::Config = [](auto &def, auto &rtc, auto &rt) {
+const Rack::Extension::Configuration MAUPst::Config = [](auto &def, auto &rtc, auto &rt) {
   def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
   def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
   def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
@@ -194,27 +194,152 @@ const Rack::Extension::Configuration MAuPst::Config = [](auto &def, auto &rtc, a
   rtc = RealtimeController::byDefault();
 
   // rt
-  rt = Realtime::byDefault<MAuPst>();
+  rt = Realtime::byDefault<MAUPst>();
 };
 
 //------------------------------------------------------------------------
-// MockAudioPassThrough::MockAudioPassThrough
+// MAUPst::MockAudioPassThrough
 //------------------------------------------------------------------------
-MAuPst::MAuPst(int iSampleRate) :
+MAUPst::MAUPst(int iSampleRate) :
   MockAudioDevice(iSampleRate), fInSocket{StereoSocket::input()}, fOutSocket{StereoSocket::output()}
 {
 
 }
 
 //------------------------------------------------------------------------
-// MockAudioPassThrough::renderBatch
+// MAUPst::renderBatch
 //------------------------------------------------------------------------
-void MAuPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
+void MAUPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 {
   copyBuffer(fInSocket, fBuffer);
   copyBuffer(fBuffer, fOutSocket);
 }
 
 
+//------------------------------------------------------------------------
+// MockCVDevice::MockCVDevice
+//------------------------------------------------------------------------
+MockCVDevice::MockCVDevice(int iSampleRate) : fSampleRate{iSampleRate} {}
+
+//------------------------------------------------------------------------
+// MockCVDevice::loadValue
+//------------------------------------------------------------------------
+void MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket)
+{
+  if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "connected"))))
+    fValue = JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "value")));
+}
+
+//------------------------------------------------------------------------
+// MockCVDevice::storeValue
+//------------------------------------------------------------------------
+void MockCVDevice::storeValue(TJBox_ObjectRef const &iToSocket)
+{
+  if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "connected"))))
+    JBox_StoreMOMProperty(JBox_MakePropertyRef(iToSocket, "value"), JBox_MakeNumber(fValue));
+}
+
+//------------------------------------------------------------------------
+// MockCVDevice::wire
+//------------------------------------------------------------------------
+void MockCVDevice::wire(Rack &iRack,
+                        std::shared_ptr<Rack::Extension> iFromExtension,
+                        std::shared_ptr<Rack::Extension> iToExtension)
+{
+  iRack.wire(iFromExtension->getCVOutSocket(SOCKET), iToExtension->getCVInSocket(SOCKET));
+}
+
+//------------------------------------------------------------------------
+// MCVSrc::Config
+//------------------------------------------------------------------------
+const Rack::Extension::Configuration MCVSrc::Config = [](auto &def, auto &rtc, auto &rt) {
+  // It is a source so it only produces cv
+  def.cv_outputs[SOCKET] = jbox.cv_output();
+
+  // use default bindings
+  rtc = RealtimeController::byDefault();
+
+  // rt
+  rt = Realtime::byDefault<MCVSrc>();
+};
+
+//------------------------------------------------------------------------
+// MCVSrc::MCVSrc
+//------------------------------------------------------------------------
+MCVSrc::MCVSrc(int iSampleRate) :
+  MockCVDevice(iSampleRate), fOutSocket{JBox_GetMotherboardObjectRef(fmt::printf("/cv_outputs/%s", SOCKET).c_str())}
+{
+}
+
+//------------------------------------------------------------------------
+// MCVSrc::renderBatch
+//------------------------------------------------------------------------
+void MCVSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
+{
+  storeValue(fOutSocket);
+}
+
+//------------------------------------------------------------------------
+// MCVDst::Config
+//------------------------------------------------------------------------
+const Rack::Extension::Configuration MCVDst::Config = [](auto &def, auto &rtc, auto &rt) {
+  // It is a destination so it only reads cv
+  def.cv_inputs[SOCKET] = jbox.cv_input();
+
+  // use default bindings
+  rtc = RealtimeController::byDefault();
+
+  // rt
+  rt = Realtime::byDefault<MCVDst>();
+};
+
+//------------------------------------------------------------------------
+// MCVDst::MCVDst
+//------------------------------------------------------------------------
+MCVDst::MCVDst(int iSampleRate) :
+  MockCVDevice(iSampleRate), fInSocket{JBox_GetMotherboardObjectRef(fmt::printf("/cv_inputs/%s", SOCKET).c_str())}
+{
+}
+
+//------------------------------------------------------------------------
+// MCVDst::renderBatch
+//------------------------------------------------------------------------
+void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
+{
+  loadValue(fInSocket);
+}
+
+//------------------------------------------------------------------------
+// MCVPst::Config
+//------------------------------------------------------------------------
+const Rack::Extension::Configuration MCVPst::Config = [](auto &def, auto &rtc, auto &rt) {
+  def.cv_inputs[SOCKET] = jbox.cv_input();
+  def.cv_outputs[SOCKET] = jbox.cv_output();
+
+  // use default bindings
+  rtc = RealtimeController::byDefault();
+
+  // rt
+  rt = Realtime::byDefault<MCVPst>();
+};
+
+//------------------------------------------------------------------------
+// MCVPst::MCVPst
+//------------------------------------------------------------------------
+MCVPst::MCVPst(int iSampleRate) :
+  MockCVDevice(iSampleRate),
+  fInSocket{JBox_GetMotherboardObjectRef(fmt::printf("/cv_inputs/%s", SOCKET).c_str())},
+  fOutSocket{JBox_GetMotherboardObjectRef(fmt::printf("/cv_outputs/%s", SOCKET).c_str())}
+{
+}
+
+//------------------------------------------------------------------------
+// MCVDst::renderBatch
+//------------------------------------------------------------------------
+void MCVPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
+{
+  loadValue(fInSocket);
+  storeValue(fOutSocket);
+}
 
 }

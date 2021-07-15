@@ -25,6 +25,10 @@
 
 namespace re::mock {
 
+//------------------------------------------------------------------------
+// Audio Devices
+//------------------------------------------------------------------------
+
 class MockAudioDevice
 {
 public:
@@ -62,16 +66,16 @@ public:
   static void wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension);
 
 public:
-  StereoBuffer fBuffer{};
   int fSampleRate;
+  StereoBuffer fBuffer{};
 };
 
 /**
  * Audio source mock device. Copy `fBuffer` to output. */
-class MAuSrc : public MockAudioDevice
+class MAUSrc : public MockAudioDevice
 {
 public:
-  explicit MAuSrc(int iSampleRate);
+  explicit MAUSrc(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
   static const Rack::Extension::Configuration Config;
@@ -82,10 +86,10 @@ private:
 
 /**
  * Audio destination mock device. Copy input to `fBuffer`. */
-class MAuDst : public MockAudioDevice
+class MAUDst : public MockAudioDevice
 {
 public:
-  explicit MAuDst(int iSampleRate);
+  explicit MAUDst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
   static const Rack::Extension::Configuration Config;
@@ -96,10 +100,10 @@ private:
 
 /**
  * Audio pass through mock device: copy input to output. Keep a copy of the buffer in `fBuffer` */
-class MAuPst : public MockAudioDevice
+class MAUPst : public MockAudioDevice
 {
 public:
-  explicit MAuPst(int iSampleRate);
+  explicit MAUPst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
   static const Rack::Extension::Configuration Config;
@@ -107,6 +111,73 @@ public:
 private:
   StereoSocket fInSocket{};
   StereoSocket fOutSocket{};
+};
+
+//------------------------------------------------------------------------
+// CV Devices
+//------------------------------------------------------------------------
+
+class MockCVDevice
+{
+public:
+  constexpr static auto SOCKET = "C";
+
+  using value_type = TJBox_Float64; // cv values are float64 numbers
+
+public:
+  explicit MockCVDevice(int iSampleRate);
+  virtual ~MockCVDevice() = default; // allow for subclassing
+  void loadValue(TJBox_ObjectRef const &iFromSocket);
+  void storeValue(TJBox_ObjectRef const &iToSocket);
+
+  static void wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension);
+
+public:
+  int fSampleRate;
+  TJBox_Float64 fValue{};
+};
+
+/**
+ * CV source mock device. Copy `fValue` to output. */
+class MCVSrc : public MockCVDevice
+{
+public:
+  explicit MCVSrc(int iSampleRate);
+  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+
+  static const Rack::Extension::Configuration Config;
+
+private:
+  TJBox_ObjectRef fOutSocket{};
+};
+
+/**
+ * CV destination mock device. Copy input to `fValue`. */
+class MCVDst : public MockCVDevice
+{
+public:
+  explicit MCVDst(int iSampleRate);
+  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+
+  static const Rack::Extension::Configuration Config;
+
+private:
+  TJBox_ObjectRef fInSocket{};
+};
+
+/**
+ * CV pass through mock device: copy input to output. Keep a copy of the value in `fValue` */
+class MCVPst : public MockCVDevice
+{
+public:
+  explicit MCVPst(int iSampleRate);
+  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+
+  static const Rack::Extension::Configuration Config;
+
+private:
+  TJBox_ObjectRef fInSocket{};
+  TJBox_ObjectRef fOutSocket{};
 };
 
 }

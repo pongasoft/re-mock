@@ -41,21 +41,22 @@ TEST(Rack, Basic)
 
 }
 
-TEST(Rack, Wiring) {
+// Rack.AudioWiring
+TEST(Rack, AudioWiring) {
   Rack rack{};
 
-  auto src = rack.newExtension(MAuSrc::Config);
-  auto &srcBuffer = src->getInstance<MAuSrc>()->fBuffer;
+  auto src = rack.newExtension(MAUSrc::Config);
+  auto &srcBuffer = src->getInstance<MAUSrc>()->fBuffer;
 
   ASSERT_TRUE(srcBuffer.check(0, 0));
 
-  auto dst = rack.newExtension(MAuDst::Config);
-  auto const &dstBuffer = dst->getInstance<MAuDst>()->fBuffer;
+  auto dst = rack.newExtension(MAUDst::Config);
+  auto const &dstBuffer = dst->getInstance<MAUDst>()->fBuffer;
 
   ASSERT_TRUE(dstBuffer.check(0, 0));
 
-  auto pst = rack.newExtension(MAuPst::Config);
-  auto const &pstBuffer = pst->getInstance<MAuDst>()->fBuffer;
+  auto pst = rack.newExtension(MAUPst::Config);
+  auto const &pstBuffer = pst->getInstance<MAUDst>()->fBuffer;
 
   ASSERT_TRUE(pstBuffer.check(0, 0));
 
@@ -91,6 +92,59 @@ TEST(Rack, Wiring) {
   ASSERT_TRUE(srcBuffer.check(4.0, 5.0));
   ASSERT_TRUE(dstBuffer.check(4.0, 5.0));
   ASSERT_TRUE(pstBuffer.check(4.0, 5.0));
+}
+
+// Rack.CVWiring
+TEST(Rack, CVWiring) {
+  Rack rack{};
+
+  auto src = rack.newExtension(MCVSrc::Config);
+  auto &srcValue = src->getInstance<MCVSrc>()->fValue;
+
+  ASSERT_FLOAT_EQ(0, srcValue);
+
+  auto dst = rack.newExtension(MCVDst::Config);
+  auto const &dstValue = dst->getInstance<MCVDst>()->fValue;
+
+  ASSERT_FLOAT_EQ(0, dstValue);
+
+  auto pst = rack.newExtension(MCVPst::Config);
+  auto const &pstValue = pst->getInstance<MCVDst>()->fValue;
+
+  ASSERT_FLOAT_EQ(0, pstValue);
+
+  MockCVDevice::wire(rack, src, pst);
+  MockCVDevice::wire(rack, pst, dst);
+
+  ASSERT_FLOAT_EQ(0, srcValue);
+  ASSERT_FLOAT_EQ(0, dstValue);
+  ASSERT_FLOAT_EQ(0, pstValue);
+
+  rack.nextFrame();
+
+  ASSERT_FLOAT_EQ(0, srcValue);
+  ASSERT_FLOAT_EQ(0, dstValue);
+  ASSERT_FLOAT_EQ(0, pstValue);
+
+  srcValue = 2.0;
+
+  ASSERT_FLOAT_EQ(2.0, srcValue);
+  ASSERT_FLOAT_EQ(0, dstValue);
+  ASSERT_FLOAT_EQ(0, pstValue);
+
+  rack.nextFrame();
+
+  srcValue = 4.0;
+
+  ASSERT_FLOAT_EQ(4.0, srcValue);
+  ASSERT_FLOAT_EQ(2.0, dstValue);
+  ASSERT_FLOAT_EQ(2.0, pstValue);
+
+  rack.nextFrame();
+
+  ASSERT_FLOAT_EQ(4.0, srcValue);
+  ASSERT_FLOAT_EQ(4.0, dstValue);
+  ASSERT_FLOAT_EQ(4.0, pstValue);
 }
 
 }
