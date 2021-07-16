@@ -69,7 +69,7 @@ public:
   public:
     void use(std::function<void (Motherboard *)> iCallback) { fImpl->use(std::move(iCallback)); }
     inline void use(std::function<void ()> iCallback) {
-      use([&iCallback](auto motherboard) { iCallback(); });
+      use([callback = std::move(iCallback)](auto motherboard) { callback(); });
     }
 
     AudioOutSocket getAudioOutSocket(std::string const &iSocketName) const { return fImpl->getAudioOutSocket(iSocketName); }
@@ -131,7 +131,7 @@ protected:
 
   private:
     int fId;
-    Rack *fRack;
+    [[maybe_unused]] Rack *fRack; // unused at this time...
     std::unique_ptr<Motherboard> fMotherboard;
     std::vector<Extension::AudioWire> fAudioWires{};
     std::vector<Extension::CVWire> fCVWires{};
