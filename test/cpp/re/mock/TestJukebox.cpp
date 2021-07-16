@@ -28,17 +28,20 @@ TEST(Jukebox, Basic)
 {
   Rack rack{};
 
-  auto re = rack.newExtension([](auto &mdef, auto &rtc, auto &rt) {
-    mdef.document_owner.properties["prop_number_default"]  = jbox.number();
-    mdef.document_owner.properties["prop_float"]           = jbox.number<float>({.property_tag = 100, .default_value = 0.7});
-    mdef.document_owner.properties["prop_float_2"]         = jbox.number<float>(0.8);
-    mdef.document_owner.properties["prop_bool_default"]    = jbox.boolean();
-    mdef.document_owner.properties["prop_bool"]            = jbox.boolean({.default_value = true});
-    mdef.document_owner.properties["prop_bool_2"]          = jbox.boolean(true);
-    mdef.document_owner.properties["prop_generic_default"] = jbox.property();
-    mdef.document_owner.properties["prop_generic"]         = jbox.property(JBox_MakeNumber(0.2));
-    mdef.document_owner.properties["prop_generic_2"]       = jbox.property({.default_value = JBox_MakeNumber(0.3)});
+  Config c = Config::with([](auto &def, auto &rtc, auto &rt) {
+    def.document_owner.properties["prop_number_default"]  = jbox.number();
+    def.document_owner.properties["prop_float"]           = jbox.number<float>({.property_tag = 100, .default_value = 0.7});
+    def.document_owner.properties["prop_float_2"]         = jbox.number<float>(0.8);
+    def.document_owner.properties["prop_bool_default"]    = jbox.boolean();
+    def.document_owner.properties["prop_bool"]            = jbox.boolean({.default_value = true});
+    def.document_owner.properties["prop_bool_2"]          = jbox.boolean(true);
+    def.document_owner.properties["prop_generic_default"] = jbox.property();
+    def.document_owner.properties["prop_generic"]         = jbox.property(JBox_MakeNumber(0.2));
+    def.document_owner.properties["prop_generic_2"]       = jbox.property({.default_value = JBox_MakeNumber(0.3)});
   });
+
+
+  auto re = rack.newExtension(c);
 
   re.use([]() {
     auto customProperties = JBox_GetMotherboardObjectRef("/custom_properties");
@@ -84,13 +87,14 @@ constexpr size_t DSP_BUFFER_SIZE = 64;
 // Jukebox.AudioSocket
 TEST(Jukebox, AudioSocket)
 {
-
   Rack rack{};
 
-  auto re = rack.newExtension([](auto &mdef, auto &rtc, auto &rt) {
-    mdef.audio_inputs["input_1"] = jbox.audio_input();
-    mdef.audio_outputs["output_1"] = jbox.audio_output();
+  Config c = Config::with([](auto &def, auto &rtc, auto &rt) {
+    def.audio_inputs["input_1"] = jbox.audio_input();
+    def.audio_outputs["output_1"] = jbox.audio_output();
   });
+
+  auto re = rack.newExtension(c);
 
   re.use([](auto motherboard) {
     // testing input

@@ -52,7 +52,7 @@ Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}
 //------------------------------------------------------------------------
 // Rack::newExtension
 //------------------------------------------------------------------------
-Rack::Extension Rack::newExtension(Extension::Configuration iConfig)
+Rack::Extension Rack::newExtension(Config const &iConfig)
 {
   auto id = fExtensions.add([this, &iConfig](int id) {
     auto motherboard = Motherboard::create(fSampleRate, iConfig);
@@ -62,6 +62,14 @@ Rack::Extension Rack::newExtension(Extension::Configuration iConfig)
   auto res = fExtensions.get(id);
   res->use([](Motherboard *m) { m->init(); });
   return Rack::Extension{res};
+}
+
+//------------------------------------------------------------------------
+// Rack::newExtension
+//------------------------------------------------------------------------
+Rack::Extension Rack::newExtension(Config::callback_t iConfigCallback)
+{
+  return newExtension(Config::with(std::move(iConfigCallback)));
 }
 
 //------------------------------------------------------------------------
@@ -174,6 +182,7 @@ void Rack::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket 
     extension->wire(iOutSocket, iInSocket);
   }
 }
+
 
 //------------------------------------------------------------------------
 // InternalThreadLocalRAII - to add/remove the "current" motherboard

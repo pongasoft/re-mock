@@ -160,6 +160,24 @@ struct Realtime
   static Realtime byDefault();
 };
 
+struct Config
+{
+  using callback_t = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
+
+  MotherboardDef def{};
+  RealtimeController rtc{};
+  Realtime rt{};
+
+
+  static Config with(callback_t iCallback);
+
+  template<typename T>
+  static Config byDefault();
+
+  template<typename T>
+  static Config withDefault(callback_t iCallback);
+};
+
 class Rack;
 
 class Motherboard
@@ -167,7 +185,6 @@ class Motherboard
 public:
   constexpr static size_t DSP_BUFFER_SIZE = 64;
   using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
-  using Configuration = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
 
 public: // used by regular code
   ~Motherboard();
@@ -238,7 +255,7 @@ public: // used by Jukebox.cpp (need to be public)
 
 protected:
 
-  static std::unique_ptr<Motherboard> create(int iSampleRate, Configuration iConfigFunction);
+  static std::unique_ptr<Motherboard> create(int iSampleRate, Config const &iConfig);
 
   Motherboard();
 
@@ -350,6 +367,30 @@ Realtime Realtime::byDefault()
       device->renderBatch(iPropertyDiffs, iDiffCount);
     }
   };
+}
+
+//------------------------------------------------------------------------
+// Config::byDefault
+//------------------------------------------------------------------------
+template<typename T>
+Config Config::byDefault()
+{
+  Config c{};
+  c.rtc = RealtimeController::byDefault();
+  c.rt = Realtime::byDefault<T>();
+  return c;
+}
+
+//------------------------------------------------------------------------
+// Config::withDefault
+//------------------------------------------------------------------------
+template<typename T>
+Config Config::withDefault(callback_t iCallback)
+{
+  Config c = Config::byDefault<T>();
+  if(iCallback)
+    iCallback(c.def, c.rtc, c.rt);
+  return c;
 }
 
 }

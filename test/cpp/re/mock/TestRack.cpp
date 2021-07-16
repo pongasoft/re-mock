@@ -29,8 +29,7 @@ TEST(Rack, Basic)
 {
   Rack rack{};
 
-  auto re = rack.newExtension([](auto &mdef, auto &rtc, auto &rt) {
-  });
+  auto re = rack.newExtension(Config{});
 
   ASSERT_THROW(JBox_GetMotherboardObjectRef("/custom_properties"), Error);
 
@@ -152,6 +151,7 @@ TEST(Rack, CircularWiring)
   struct MAUSrcCVDst : public MAUSrc, MCVDst
   {
     MAUSrcCVDst(int iSampleRate) : MAUSrc(iSampleRate), MCVDst(iSampleRate){}
+
     void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)
     {
       MAUSrc::renderBatch(iPropertyDiffs, iDiffCount);
@@ -159,7 +159,7 @@ TEST(Rack, CircularWiring)
     }
   };
 
-  const auto MAUSrcCVDstConfig = Rack::ExtensionDevice<MAUSrcCVDst>::withDefault([](auto &def, auto &rtc, auto &rt) {
+  const auto MAUSrcCVDstConfig = Config::withDefault<MAUSrcCVDst>([](auto &def, auto &rtc, auto &rt) {
     // MAUSrcCVDst emits audio
     def.audio_outputs[MAUSrcCVDst::LEFT_SOCKET] = jbox.audio_output();
     def.audio_outputs[MAUSrcCVDst::RIGHT_SOCKET] = jbox.audio_output();
@@ -178,7 +178,7 @@ TEST(Rack, CircularWiring)
     }
   };
 
-  const auto MAUDstCVSrcConfig = Rack::ExtensionDevice<MAUDstCVSrc>::withDefault([](auto &def, auto &rtc, auto &rt) {
+  const auto MAUDstCVSrcConfig = Config::withDefault<MAUDstCVSrc>([](auto &def, auto &rtc, auto &rt) {
     // MAUDstCVSrc receives audio
     def.audio_inputs[MAUDstCVSrc::LEFT_SOCKET] = jbox.audio_input();
     def.audio_inputs[MAUDstCVSrc::RIGHT_SOCKET] = jbox.audio_input();
@@ -240,14 +240,12 @@ TEST(Rack, SelfConnection)
     TJBox_ObjectRef fOutput{};
   };
 
-  const auto SelfConnectedDeviceConfig = Rack::ExtensionDevice<SelfConnectedDevice>::withDefault([](auto &def, auto &rtc, auto &rt) {
+  Rack rack{};
+
+  auto dev = rack.newDeviceWithDefault<SelfConnectedDevice>([](auto &def, auto &rtc, auto &rt) {
     def.cv_inputs["I"] = jbox.cv_input();
     def.cv_outputs["O"] = jbox.cv_output();
   });
-
-  Rack rack{};
-
-  auto dev = rack.newDevice<SelfConnectedDevice>(SelfConnectedDeviceConfig);
 
   rack.wire(dev.getCVOutSocket("O"), dev.getCVInSocket("I"));
 

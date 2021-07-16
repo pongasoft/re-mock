@@ -144,14 +144,9 @@ void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iP
 //------------------------------------------------------------------------
 // Motherboard::create
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate, Configuration iConfigFunction)
+std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate, Config const &iConfig)
 {
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
-
-  MotherboardDef motherboardDef{};
-  RealtimeController realtimeController{};
-  if(iConfigFunction)
-    iConfigFunction(motherboardDef, realtimeController, res->fRealtime);
 
   // /environment/system_sample_rate
   auto environment = res->addObject("/environment");
@@ -159,43 +154,46 @@ std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate, Configuration 
                    { .property_tag = kJBox_EnvironmentSystemSampleRate, .default_value = JBox_MakeNumber(iSampleRate) });
 
   // audio_inputs
-  for(auto &&input: motherboardDef.audio_inputs)
+  for(auto &&input: iConfig.def.audio_inputs)
     res->addAudioInput(input.first);
 
   // audio_outputs
-  for(auto &&output: motherboardDef.audio_outputs)
+  for(auto &&output: iConfig.def.audio_outputs)
     res->addAudioOutput(output.first);
 
   // cv_inputs
-  for(auto &&input: motherboardDef.cv_inputs)
+  for(auto &&input: iConfig.def.cv_inputs)
     res->addCVInput(input.first);
 
   // cv_outputs
-  for(auto &&output: motherboardDef.cv_outputs)
+  for(auto &&output: iConfig.def.cv_outputs)
     res->addCVOutput(output.first);
 
   // document_owner.properties
-  for(auto &&prop: motherboardDef.document_owner.properties)
+  for(auto &&prop: iConfig.def.document_owner.properties)
     res->addProperty(res->fCustomPropertiesRef, prop.first, PropertyOwner::kDocOwner, *prop.second);
 
   // rt_owner.properties
-  for(auto &&prop: motherboardDef.rt_owner.properties)
+  for(auto &&prop: iConfig.def.rt_owner.properties)
     res->addProperty(res->fCustomPropertiesRef, prop.first, PropertyOwner::kRTOwner, *prop.second);
 
   // rt_input_setup.notify
-  for(auto &&propertyPath: realtimeController.rt_input_setup.notify)
+  for(auto &&propertyPath: iConfig.rtc.rt_input_setup.notify)
   {
     res->registerRTCNotify(propertyPath);
   }
 
   // rtc_bindings
-  for(auto &&[propertyPath, bindingKey]: realtimeController.rtc_bindings)
+  for(auto &&[propertyPath, bindingKey]: iConfig.rtc.rtc_bindings)
   {
     auto bindingRef = res->getPropertyRef(bindingKey);
-    auto binding = realtimeController.global_rtc.find(bindingRef.fKey);
-    CHECK_F(binding != realtimeController.global_rtc.end(), "Missing binding [%s] for [%s]", bindingKey.c_str(), propertyPath.c_str());
+    auto binding = iConfig.rtc.global_rtc.find(bindingRef.fKey);
+    CHECK_F(binding != iConfig.rtc.global_rtc.end(), "Missing binding [%s] for [%s]", bindingKey.c_str(), propertyPath.c_str());
     res->registerRTCBinding(propertyPath, binding->second);
   }
+
+  // rt
+  res->fRealtime = iConfig.rt;
 
   return res;
 }
@@ -635,6 +633,18 @@ Motherboard::NativeObject::~NativeObject()
   if(fDeleter)
     fDeleter(fOperation.c_str(), fParams.data(), fParams.size(), fNativeObject);
 }
+
+//------------------------------------------------------------------------
+// Config::with()
+//------------------------------------------------------------------------
+Config Config::with(callback_t iCallback)
+{
+  Config c{};
+  if(iCallback)
+    iCallback(c.def, c.rtc, c.rt);
+  return c;
+}
+
 
 }
 

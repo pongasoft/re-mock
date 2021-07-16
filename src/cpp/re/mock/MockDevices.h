@@ -80,7 +80,7 @@ public:
   explicit MAUSrc(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
-  static const Rack::Extension::Configuration Config;
+  static const Config Config;
 
 private:
   StereoSocket fOutSocket{};
@@ -94,7 +94,7 @@ public:
   explicit MAUDst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
-  static const Rack::Extension::Configuration Config;
+  static const Config Config;
 
 private:
   StereoSocket fInSocket{};
@@ -108,7 +108,7 @@ public:
   explicit MAUPst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
-  static const Rack::Extension::Configuration Config;
+  static const Config Config;
 
 private:
   StereoSocket fInSocket{};
@@ -149,7 +149,7 @@ public:
   explicit MCVSrc(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
-  static const Rack::Extension::Configuration Config;
+  static const Config Config;
 
 private:
   TJBox_ObjectRef fOutSocket{};
@@ -163,7 +163,7 @@ public:
   explicit MCVDst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
-  static const Rack::Extension::Configuration Config;
+  static const Config Config;
 
 private:
   TJBox_ObjectRef fInSocket{};
@@ -177,7 +177,7 @@ public:
   explicit MCVPst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
 
-  static const Rack::Extension::Configuration Config;
+  static const Config Config;
 
 private:
   TJBox_ObjectRef fInSocket{};

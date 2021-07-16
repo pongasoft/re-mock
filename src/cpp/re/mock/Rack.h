@@ -38,8 +38,6 @@ public:
   class Extension
   {
   public:
-    using Configuration = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
-
     struct Socket {
       int fExtensionId{};
       TJBox_ObjectRef fSocketRef{};
@@ -98,8 +96,6 @@ public:
 
     friend class Rack;
 
-    static Rack::Extension::Configuration withDefault(Rack::Extension::Configuration iConfiguration);
-
   private:
     explicit ExtensionDevice(std::shared_ptr<ExtensionImpl> iExtensionImpl) : Extension{iExtensionImpl} {}
   };
@@ -141,10 +137,17 @@ protected:
 public:
   Rack(int iSampleRate = 44100);
 
-  Extension newExtension(Extension::Configuration iConfig);
+  Extension newExtension(Config const &iConfig);
+  Extension newExtension(Config::callback_t iConfigCallback);
 
   template<typename Device>
-  ExtensionDevice<Device> newDevice(Extension::Configuration iConfig);
+  ExtensionDevice<Device> newDevice(Config const &iConfig);
+
+  template<typename Device>
+  ExtensionDevice<Device> newDevice(Config::callback_t iConfigCallback);
+
+  template<typename Device>
+  ExtensionDevice<Device> newDeviceWithDefault(Config::callback_t iDefaultConfigCallback);
 
   void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
   void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
@@ -177,29 +180,28 @@ T *Rack::Extension::getInstance() const
 // Rack::newDevice
 //------------------------------------------------------------------------
 template<typename Device>
-Rack::ExtensionDevice<Device> Rack::newDevice(Rack::Extension::Configuration iConfig)
+Rack::ExtensionDevice<Device> Rack::newDevice(Config const &iConfig)
 {
   return ExtensionDevice<Device>(newExtension(iConfig).fImpl);
 }
 
 //------------------------------------------------------------------------
-// Rack::ExtensionDevice<Device>::withDefault
+// Rack::newDevice
 //------------------------------------------------------------------------
 template<typename Device>
-Rack::Extension::Configuration Rack::ExtensionDevice<Device>::withDefault(Rack::Extension::Configuration iConfiguration)
+Rack::ExtensionDevice<Device> Rack::newDevice(Config::callback_t iConfigCallback)
 {
-  return [config = std::move(iConfiguration)](auto &def, auto &rtc, auto &rt) {
-    // use default bindings
-    rtc = RealtimeController::byDefault();
-
-    // rt
-    rt = Realtime::byDefault<Device>();
-
-    if(config)
-      config(def, rtc, rt);
-  };
+  return newDevice<Device>(Config::with(std::move(iConfigCallback)));
 }
 
+//------------------------------------------------------------------------
+// Rack::newDeviceWithDefault
+//------------------------------------------------------------------------
+template<typename Device>
+Rack::ExtensionDevice<Device> Rack::newDeviceWithDefault(Config::callback_t iDefaultConfigCallback)
+{
+  return newDevice<Device>(Config::withDefault<Device>(std::move(iDefaultConfigCallback)));
+}
 
 }
 
