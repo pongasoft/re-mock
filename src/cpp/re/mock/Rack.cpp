@@ -52,16 +52,16 @@ Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}
 //------------------------------------------------------------------------
 // Rack::newExtension
 //------------------------------------------------------------------------
-std::shared_ptr<Rack::Extension> Rack::newExtension(Extension::Configuration iConfig)
+Rack::Extension Rack::newExtension(Extension::Configuration iConfig)
 {
   auto id = fExtensions.add([this, &iConfig](int id) {
     auto motherboard = Motherboard::create(fSampleRate, iConfig);
-    return std::shared_ptr<Extension>(new Extension(id, this, std::move(motherboard)));
+    return std::shared_ptr<ExtensionImpl>(new ExtensionImpl(id, this, std::move(motherboard)));
   });
 
   auto res = fExtensions.get(id);
   res->use([](Motherboard *m) { m->init(); });
-  return res;
+  return Rack::Extension{res};
 }
 
 //------------------------------------------------------------------------
@@ -80,7 +80,7 @@ void Rack::nextFrame()
 //------------------------------------------------------------------------
 // Rack::nextFrame
 //------------------------------------------------------------------------
-void Rack::nextFrame(Extension &iExtension, std::set<int> &iProcessedExtensions)
+void Rack::nextFrame(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensions)
 {
   if(stl::contains(iProcessedExtensions, iExtension.fId))
     // already processed
@@ -102,7 +102,7 @@ void Rack::nextFrame(Extension &iExtension, std::set<int> &iProcessedExtensions)
 //------------------------------------------------------------------------
 // Rack::nextFrame
 //------------------------------------------------------------------------
-void Rack::nextFrame(Extension &iExtension)
+void Rack::nextFrame(ExtensionImpl &iExtension)
 {
   iExtension.use([](Motherboard *m) { m->nextFrame(); });
 
@@ -189,53 +189,53 @@ private:
 };
 
 //------------------------------------------------------------------------
-// Rack::Extension::use
+// Rack::ExtensionImpl::use
 //------------------------------------------------------------------------
-void Rack::Extension::use(std::function<void(Motherboard *)> iCallback)
+void Rack::ExtensionImpl::use(std::function<void(Motherboard *)> iCallback)
 {
   InternalThreadLocalRAII raii{fMotherboard.get()};
   iCallback(fMotherboard.get());
 }
 
 //------------------------------------------------------------------------
-// Rack::Extension::getAudioOutSocket
+// Rack::ExtensionImpl::getAudioOutSocket
 //------------------------------------------------------------------------
-Rack::Extension::AudioOutSocket Rack::Extension::getAudioOutSocket(std::string const &iSocketName) const
+Rack::Extension::AudioOutSocket Rack::ExtensionImpl::getAudioOutSocket(std::string const &iSocketName) const
 {
   return {{{fId, fMotherboard->getObjectRef(fmt::printf("/audio_outputs/%s", iSocketName))}}};
 }
 
 //------------------------------------------------------------------------
-// Rack::Extension::AudioInSocket
+// Rack::ExtensionImpl::AudioInSocket
 //------------------------------------------------------------------------
-Rack::Extension::AudioInSocket Rack::Extension::getAudioInSocket(std::string const &iSocketName) const
+Rack::Extension::AudioInSocket Rack::ExtensionImpl::getAudioInSocket(std::string const &iSocketName) const
 {
   return {{{fId, fMotherboard->getObjectRef(fmt::printf("/audio_inputs/%s", iSocketName))}}};
 }
 
 //------------------------------------------------------------------------
-// Rack::Extension::getCVOutSocket
+// Rack::ExtensionImpl::getCVOutSocket
 //------------------------------------------------------------------------
-Rack::Extension::CVOutSocket Rack::Extension::getCVOutSocket(std::string const &iSocketName) const
+Rack::Extension::CVOutSocket Rack::ExtensionImpl::getCVOutSocket(std::string const &iSocketName) const
 {
   return {{{fId, fMotherboard->getObjectRef(fmt::printf("/cv_outputs/%s", iSocketName))}}};
 }
 
 //------------------------------------------------------------------------
-// Rack::Extension::getCVInSocket
+// Rack::ExtensionImpl::getCVInSocket
 //------------------------------------------------------------------------
-Rack::Extension::CVInSocket Rack::Extension::getCVInSocket(std::string const &iSocketName) const
+Rack::Extension::CVInSocket Rack::ExtensionImpl::getCVInSocket(std::string const &iSocketName) const
 {
   return {{{fId, fMotherboard->getObjectRef(fmt::printf("/cv_inputs/%s", iSocketName))}}};
 }
 
 //------------------------------------------------------------------------
-// Rack::Extension::wire
+// Rack::ExtensionImpl::wire
 //------------------------------------------------------------------------
-void Rack::Extension::wire(AudioOutSocket const &iOutSocket, AudioInSocket const &iInSocket)
+void Rack::ExtensionImpl::wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket)
 {
   CHECK_F(iInSocket.fExtensionId == fId || iOutSocket.fExtensionId == fId); // sanity check...
-  auto newWire = AudioWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
+  auto newWire = Extension::AudioWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
 
   // check for duplicate
   CHECK_F(!stl::find_if(fAudioWires, [&newWire](auto &wire) { return Rack::Extension::AudioWire::overlap(wire, newWire); }), "Audio socket in use");
@@ -271,12 +271,12 @@ bool Rack::Extension::AudioWire::overlap(AudioWire const &iWire1, AudioWire cons
 }
 
 //------------------------------------------------------------------------
-// Rack::Extension::wire
+// Rack::ExtensionImpl::wire
 //------------------------------------------------------------------------
-void Rack::Extension::wire(CVOutSocket const &iOutSocket, CVInSocket const &iInSocket)
+void Rack::ExtensionImpl::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket)
 {
   CHECK_F(iInSocket.fExtensionId == fId || iOutSocket.fExtensionId == fId); // sanity check...
-  auto newWire = CVWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
+  auto newWire = Extension::CVWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
 
   // check for duplicate
   CHECK_F(!stl::find_if(fCVWires, [&newWire](auto &wire) { return Rack::Extension::CVWire::overlap(wire, newWire); }), "CV socket in use");

@@ -94,10 +94,10 @@ void MockAudioDevice::copyBuffer(MockAudioDevice::StereoBuffer const &iFromBuffe
 //------------------------------------------------------------------------
 // MockAudioDevice::wire
 //------------------------------------------------------------------------
-void MockAudioDevice::wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension)
+void MockAudioDevice::wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension)
 {
-  iRack.wire(iFromExtension->getAudioOutSocket(LEFT_SOCKET), iToExtension->getAudioInSocket(LEFT_SOCKET));
-  iRack.wire(iFromExtension->getAudioOutSocket(RIGHT_SOCKET), iToExtension->getAudioInSocket(RIGHT_SOCKET));
+  iRack.wire(iFromExtension.getAudioOutSocket(LEFT_SOCKET), iToExtension.getAudioInSocket(LEFT_SOCKET));
+  iRack.wire(iFromExtension.getAudioOutSocket(RIGHT_SOCKET), iToExtension.getAudioInSocket(RIGHT_SOCKET));
 }
 
 //------------------------------------------------------------------------
@@ -278,11 +278,9 @@ void MockCVDevice::storeValue(TJBox_ObjectRef const &iToSocket)
 //------------------------------------------------------------------------
 // MockCVDevice::wire
 //------------------------------------------------------------------------
-void MockCVDevice::wire(Rack &iRack,
-                        std::shared_ptr<Rack::Extension> iFromExtension,
-                        std::shared_ptr<Rack::Extension> iToExtension)
+void MockCVDevice::wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension)
 {
-  iRack.wire(iFromExtension->getCVOutSocket(SOCKET), iToExtension->getCVInSocket(SOCKET));
+  iRack.wire(iFromExtension.getCVOutSocket(SOCKET), iToExtension.getCVInSocket(SOCKET));
 }
 
 //------------------------------------------------------------------------

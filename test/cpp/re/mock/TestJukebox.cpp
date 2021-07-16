@@ -40,7 +40,7 @@ TEST(Jukebox, Basic)
     mdef.document_owner.properties["prop_generic_2"]       = jbox.property({.default_value = JBox_MakeNumber(0.3)});
   });
 
-  re->use([]() {
+  re.use([]() {
     auto customProperties = JBox_GetMotherboardObjectRef("/custom_properties");
 
     ASSERT_FLOAT_EQ(0, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_number_default"))));
@@ -92,7 +92,7 @@ TEST(Jukebox, AudioSocket)
     mdef.audio_outputs["output_1"] = jbox.audio_output();
   });
 
-  re->use([](auto motherboard) {
+  re.use([](auto motherboard) {
     // testing input
     {
       auto input1Ref = JBox_GetMotherboardObjectRef("/audio_inputs/input_1");

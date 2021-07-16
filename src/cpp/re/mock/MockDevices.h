@@ -65,7 +65,7 @@ public:
   static void copyBuffer(StereoBuffer const &iFromBuffer, StereoBuffer &iToBuffer);
   static void copyBuffer(buffer_type const &iFromBuffer, buffer_type &iToBuffer);
 
-  static void wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension);
+  static void wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension);
 
 public:
   int fSampleRate;
@@ -134,7 +134,7 @@ public:
   void loadValue(TJBox_ObjectRef const &iFromSocket);
   void storeValue(TJBox_ObjectRef const &iToSocket);
 
-  static void wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension);
+  static void wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension);
 
 public:
   int fSampleRate;
