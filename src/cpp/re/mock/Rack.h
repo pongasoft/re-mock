@@ -98,6 +98,8 @@ public:
 
     friend class Rack;
 
+    static Rack::Extension::Configuration withDefault(Rack::Extension::Configuration iConfiguration);
+
   private:
     explicit ExtensionDevice(std::shared_ptr<ExtensionImpl> iExtensionImpl) : Extension{iExtensionImpl} {}
   };
@@ -179,6 +181,25 @@ Rack::ExtensionDevice<Device> Rack::newDevice(Rack::Extension::Configuration iCo
 {
   return ExtensionDevice<Device>(newExtension(iConfig).fImpl);
 }
+
+//------------------------------------------------------------------------
+// Rack::ExtensionDevice<Device>::withDefault
+//------------------------------------------------------------------------
+template<typename Device>
+Rack::Extension::Configuration Rack::ExtensionDevice<Device>::withDefault(Rack::Extension::Configuration iConfiguration)
+{
+  return [config = std::move(iConfiguration)](auto &def, auto &rtc, auto &rt) {
+    // use default bindings
+    rtc = RealtimeController::byDefault();
+
+    // rt
+    rt = Realtime::byDefault<Device>();
+
+    if(config)
+      config(def, rtc, rt);
+  };
+}
+
 
 }
 

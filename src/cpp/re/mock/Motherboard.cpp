@@ -144,14 +144,14 @@ void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iP
 //------------------------------------------------------------------------
 // Motherboard::create
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate,
-                                                 std::function<void (MotherboardDef &, RealtimeController &, Realtime &)> iConfigFunction)
+std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate, Configuration iConfigFunction)
 {
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
   MotherboardDef motherboardDef{};
   RealtimeController realtimeController{};
-  iConfigFunction(motherboardDef, realtimeController, res->fRealtime);
+  if(iConfigFunction)
+    iConfigFunction(motherboardDef, realtimeController, res->fRealtime);
 
   // /environment/system_sample_rate
   auto environment = res->addObject("/environment");

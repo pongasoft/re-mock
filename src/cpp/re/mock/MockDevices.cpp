@@ -142,17 +142,11 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 //------------------------------------------------------------------------
 // MAUSrc::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MAUSrc::Config = [](auto &def, auto &rtc, auto &rt) {
+const auto MAUSrc::Config = Rack::ExtensionDevice<MAUSrc>::withDefault([](auto &def, auto &rtc, auto &rt) {
   // It is a source so it only produces audio
   def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
   def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
-
-  // use default bindings
-  rtc = RealtimeController::byDefault();
-
-  // rt
-  rt = Realtime::byDefault<MAUSrc>();
-};
+});
 
 //------------------------------------------------------------------------
 // MAUSrc::MAUSrc
@@ -173,17 +167,11 @@ void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUDst::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MAUDst::Config = [](auto &def, auto &rtc, auto &rt) {
+const auto MAUDst::Config = Rack::ExtensionDevice<MAUDst>::withDefault([](auto &def, auto &rtc, auto &rt) {
   // It is a destination so it only receives audio
   def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
   def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
-
-  // use default bindings
-  rtc = RealtimeController::byDefault();
-
-  // rt
-  rt = Realtime::byDefault<MAUDst>();
-};
+});
 
 //------------------------------------------------------------------------
 // MAUDst::MAUDst
@@ -204,18 +192,12 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUPst::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MAUPst::Config = [](auto &def, auto &rtc, auto &rt) {
+const auto MAUPst::Config = Rack::ExtensionDevice<MAUPst>::withDefault([](auto &def, auto &rtc, auto &rt) {
   def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
   def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
   def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
   def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
-
-  // use default bindings
-  rtc = RealtimeController::byDefault();
-
-  // rt
-  rt = Realtime::byDefault<MAUPst>();
-};
+});
 
 //------------------------------------------------------------------------
 // MAUPst::MockAudioPassThrough
@@ -286,16 +268,10 @@ void MockCVDevice::wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Exte
 //------------------------------------------------------------------------
 // MCVSrc::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MCVSrc::Config = [](auto &def, auto &rtc, auto &rt) {
+const auto MCVSrc::Config = Rack::ExtensionDevice<MCVSrc>::withDefault([](auto &def, auto &rtc, auto &rt) {
   // It is a source so it only produces cv
   def.cv_outputs[SOCKET] = jbox.cv_output();
-
-  // use default bindings
-  rtc = RealtimeController::byDefault();
-
-  // rt
-  rt = Realtime::byDefault<MCVSrc>();
-};
+});
 
 //------------------------------------------------------------------------
 // MCVSrc::MCVSrc
@@ -316,16 +292,10 @@ void MCVSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MCVDst::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MCVDst::Config = [](auto &def, auto &rtc, auto &rt) {
+const auto MCVDst::Config = Rack::ExtensionDevice<MCVDst>::withDefault([](auto &def, auto &rtc, auto &rt) {
   // It is a destination so it only reads cv
   def.cv_inputs[SOCKET] = jbox.cv_input();
-
-  // use default bindings
-  rtc = RealtimeController::byDefault();
-
-  // rt
-  rt = Realtime::byDefault<MCVDst>();
-};
+});
 
 //------------------------------------------------------------------------
 // MCVDst::MCVDst
@@ -346,16 +316,10 @@ void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MCVPst::Config
 //------------------------------------------------------------------------
-const Rack::Extension::Configuration MCVPst::Config = [](auto &def, auto &rtc, auto &rt) {
+const auto MCVPst::Config = Rack::ExtensionDevice<MCVPst>::withDefault([](auto &def, auto &rtc, auto &rt) {
   def.cv_inputs[SOCKET] = jbox.cv_input();
   def.cv_outputs[SOCKET] = jbox.cv_output();
-
-  // use default bindings
-  rtc = RealtimeController::byDefault();
-
-  // rt
-  rt = Realtime::byDefault<MCVPst>();
-};
+});
 
 //------------------------------------------------------------------------
 // MCVPst::MCVPst

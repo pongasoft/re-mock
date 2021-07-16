@@ -159,20 +159,14 @@ TEST(Rack, CircularWiring)
     }
   };
 
-  const Rack::Extension::Configuration MAUSrcCVDstConfig = [](auto &def, auto &rtc, auto &rt) {
+  const auto MAUSrcCVDstConfig = Rack::ExtensionDevice<MAUSrcCVDst>::withDefault([](auto &def, auto &rtc, auto &rt) {
     // MAUSrcCVDst emits audio
     def.audio_outputs[MAUSrcCVDst::LEFT_SOCKET] = jbox.audio_output();
     def.audio_outputs[MAUSrcCVDst::RIGHT_SOCKET] = jbox.audio_output();
 
     // MAUSrcCVDst receives CV
     def.cv_inputs[MAUSrcCVDst::SOCKET] = jbox.cv_input();
-
-    // use default bindings
-    rtc = RealtimeController::byDefault();
-
-    // rt
-    rt = Realtime::byDefault<MAUSrcCVDst>();
-  };
+  });
 
   struct MAUDstCVSrc : public MAUDst, MCVSrc
   {
@@ -184,20 +178,14 @@ TEST(Rack, CircularWiring)
     }
   };
 
-  static const Rack::Extension::Configuration MAUDstCVSrcConfig = [](auto &def, auto &rtc, auto &rt) {
+  const auto MAUDstCVSrcConfig = Rack::ExtensionDevice<MAUDstCVSrc>::withDefault([](auto &def, auto &rtc, auto &rt) {
     // MAUDstCVSrc receives audio
     def.audio_inputs[MAUDstCVSrc::LEFT_SOCKET] = jbox.audio_input();
     def.audio_inputs[MAUDstCVSrc::RIGHT_SOCKET] = jbox.audio_input();
 
     // MAUDstCVSrc emits CV
     def.cv_outputs[MAUDstCVSrc::SOCKET] = jbox.cv_output();
-
-    // use default bindings
-    rtc = RealtimeController::byDefault();
-
-    // rt
-    rt = Realtime::byDefault<MAUDstCVSrc>();
-  };
+  });
 
 
   Rack rack{};
@@ -252,16 +240,10 @@ TEST(Rack, SelfConnection)
     TJBox_ObjectRef fOutput{};
   };
 
-  const Rack::Extension::Configuration SelfConnectedDeviceConfig = [](auto &def, auto &rtc, auto &rt) {
+  const auto SelfConnectedDeviceConfig = Rack::ExtensionDevice<SelfConnectedDevice>::withDefault([](auto &def, auto &rtc, auto &rt) {
     def.cv_inputs["I"] = jbox.cv_input();
     def.cv_outputs["O"] = jbox.cv_output();
-
-    // use default bindings
-    rtc = RealtimeController::byDefault();
-
-    // rt
-    rt = Realtime::byDefault<SelfConnectedDevice>();
-  };
+  });
 
   Rack rack{};
 
