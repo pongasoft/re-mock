@@ -162,6 +162,7 @@ class Motherboard
 public:
   constexpr static size_t DSP_BUFFER_SIZE = 64;
   using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
+  using Configuration = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
 
 public: // used by regular code
   ~Motherboard();
@@ -234,8 +235,7 @@ public: // used by Jukebox.cpp (need to be public)
 
 protected:
 
-  static std::unique_ptr<Motherboard> create(int iSampleRate,
-                                             std::function<void (MotherboardDef &, RealtimeController &, Realtime&)> iConfigFunction);
+  static std::unique_ptr<Motherboard> create(int iSampleRate, Configuration iConfigFunction);
 
   Motherboard();
 

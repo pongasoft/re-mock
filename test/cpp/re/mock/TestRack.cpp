@@ -241,4 +241,58 @@ TEST(Rack, CircularWiring)
   ASSERT_FLOAT_EQ(3.0, ex1Value);
 }
 
+// Rack.SelfConnection
+TEST(Rack, SelfConnection)
+{
+  struct SelfConnectedDevice
+  {
+    SelfConnectedDevice(int /* iSampleRate */) :
+      fInput{JBox_GetMotherboardObjectRef("/cv_inputs/I")},
+      fOutput{JBox_GetMotherboardObjectRef("/cv_outputs/O")}
+    {}
+
+    void renderBatch(const TJBox_PropertyDiff [], TJBox_UInt32)
+    {
+      TJBox_Float64 inputValue{};
+      MockCVDevice::loadValue(fInput, inputValue);
+      fValue = inputValue + 1.0;
+      MockCVDevice::storeValue(fValue, fOutput);
+    }
+
+    TJBox_Float64 fValue{};
+    TJBox_ObjectRef fInput{};
+    TJBox_ObjectRef fOutput{};
+  };
+
+  const Rack::Extension::Configuration SelfConnectedDeviceConfig = [](auto &def, auto &rtc, auto &rt) {
+    def.cv_inputs["I"] = jbox.cv_input();
+    def.cv_outputs["O"] = jbox.cv_output();
+
+    // use default bindings
+    rtc = RealtimeController::byDefault();
+
+    // rt
+    rt = Realtime::byDefault<SelfConnectedDevice>();
+  };
+
+  Rack rack{};
+
+  auto dev = rack.newExtension(SelfConnectedDeviceConfig);
+  auto &value = dev->getInstance<SelfConnectedDevice>()->fValue;
+
+  rack.wire(dev->getCVOutSocket("O"), dev->getCVInSocket("I"));
+
+  rack.nextFrame();
+
+  ASSERT_FLOAT_EQ(1.0, value);
+
+  rack.nextFrame();
+
+  ASSERT_FLOAT_EQ(2.0, value);
+
+  rack.nextFrame();
+
+  ASSERT_FLOAT_EQ(3.0, value);
+}
+
 }

@@ -72,6 +72,26 @@ void MockAudioDevice::copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef
 }
 
 //------------------------------------------------------------------------
+// MockAudioDevice::copyBuffer
+//------------------------------------------------------------------------
+void MockAudioDevice::copyBuffer(MockAudioDevice::buffer_type const &iFromBuffer,
+                                 MockAudioDevice::buffer_type &iToBuffer)
+{
+  iToBuffer = iFromBuffer;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::copyBuffer
+//------------------------------------------------------------------------
+void MockAudioDevice::copyBuffer(MockAudioDevice::StereoBuffer const &iFromBuffer,
+                                 MockAudioDevice::StereoBuffer &iToBuffer)
+{
+  copyBuffer(iFromBuffer.fLeft, iToBuffer.fLeft);
+  copyBuffer(iFromBuffer.fRight, iToBuffer.fRight);
+}
+
+
+//------------------------------------------------------------------------
 // MockAudioDevice::wire
 //------------------------------------------------------------------------
 void MockAudioDevice::wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension)
@@ -224,10 +244,27 @@ MockCVDevice::MockCVDevice(int iSampleRate) : fSampleRate{iSampleRate} {}
 //------------------------------------------------------------------------
 // MockCVDevice::loadValue
 //------------------------------------------------------------------------
-void MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket)
+void MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket, TJBox_Float64 &oValue)
 {
   if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "connected"))))
-    fValue = JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "value")));
+    oValue = JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "value")));
+}
+
+//------------------------------------------------------------------------
+// MockCVDevice::storeValue
+//------------------------------------------------------------------------
+void MockCVDevice::storeValue(TJBox_Float64 iValue, TJBox_ObjectRef const &iToSocket)
+{
+  if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "connected"))))
+    JBox_StoreMOMProperty(JBox_MakePropertyRef(iToSocket, "value"), JBox_MakeNumber(iValue));
+}
+
+//------------------------------------------------------------------------
+// MockCVDevice::loadValue
+//------------------------------------------------------------------------
+void MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket)
+{
+  loadValue(iFromSocket, fValue);
 }
 
 //------------------------------------------------------------------------
@@ -235,8 +272,7 @@ void MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket)
 //------------------------------------------------------------------------
 void MockCVDevice::storeValue(TJBox_ObjectRef const &iToSocket)
 {
-  if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "connected"))))
-    JBox_StoreMOMProperty(JBox_MakePropertyRef(iToSocket, "value"), JBox_MakeNumber(fValue));
+  storeValue(fValue, iToSocket);
 }
 
 //------------------------------------------------------------------------

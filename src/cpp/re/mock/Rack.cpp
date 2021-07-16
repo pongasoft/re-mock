@@ -143,12 +143,17 @@ void Rack::copyCVValue(Extension::CVWire const &iWire)
 void Rack::wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket)
 {
   auto extension = fExtensions.get(iInSocket.fExtensionId);
-  extension->wire(iOutSocket, iInSocket);
   extension->fMotherboard->connectSocket(iInSocket.fSocketRef);
+  extension->wire(iOutSocket, iInSocket);
 
   extension = fExtensions.get(iOutSocket.fExtensionId);
-  extension->wire(iOutSocket, iInSocket);
   extension->fMotherboard->connectSocket(iOutSocket.fSocketRef);
+
+  // case when an extension is connected to itself
+  if(iInSocket.fExtensionId != iOutSocket.fExtensionId)
+  {
+    extension->wire(iOutSocket, iInSocket);
+  }
 }
 
 //------------------------------------------------------------------------
@@ -157,12 +162,17 @@ void Rack::wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInS
 void Rack::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket)
 {
   auto extension = fExtensions.get(iInSocket.fExtensionId);
-  extension->wire(iOutSocket, iInSocket);
   extension->fMotherboard->connectSocket(iInSocket.fSocketRef);
+  extension->wire(iOutSocket, iInSocket);
 
   extension = fExtensions.get(iOutSocket.fExtensionId);
-  extension->wire(iOutSocket, iInSocket);
   extension->fMotherboard->connectSocket(iOutSocket.fSocketRef);
+
+  // case when an extension is connected to itself
+  if(iInSocket.fExtensionId != iOutSocket.fExtensionId)
+  {
+    extension->wire(iOutSocket, iInSocket);
+  }
 }
 
 //------------------------------------------------------------------------
@@ -170,10 +180,12 @@ void Rack::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket 
 //------------------------------------------------------------------------
 struct InternalThreadLocalRAII
 {
-  explicit InternalThreadLocalRAII(Motherboard *iMotherboard) { sThreadLocalInstance = iMotherboard; }
+  explicit InternalThreadLocalRAII(Motherboard *iMotherboard) : fPrevious{sThreadLocalInstance} { sThreadLocalInstance = iMotherboard; }
   InternalThreadLocalRAII(InternalThreadLocalRAII &&) = delete;
   InternalThreadLocalRAII(InternalThreadLocalRAII const &) = delete;
-  ~InternalThreadLocalRAII() { sThreadLocalInstance = nullptr; }
+  ~InternalThreadLocalRAII() { sThreadLocalInstance = fPrevious; }
+private:
+  Motherboard *fPrevious;
 };
 
 //------------------------------------------------------------------------

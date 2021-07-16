@@ -58,10 +58,12 @@ public:
 public:
   explicit MockAudioDevice(int iSampleRate);
   virtual ~MockAudioDevice() = default; // allow for subclassing
-  void copyBuffer(StereoSocket const &iFromSocket, StereoBuffer &iToBuffer);
-  void copyBuffer(StereoBuffer const &iFromBuffer, StereoSocket const &iToSocket);
-  void copyBuffer(TJBox_ObjectRef const &iFromSocket, buffer_type &iToBuffer);
-  void copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket);
+  static void copyBuffer(StereoSocket const &iFromSocket, StereoBuffer &iToBuffer);
+  static void copyBuffer(StereoBuffer const &iFromBuffer, StereoSocket const &iToSocket);
+  static void copyBuffer(TJBox_ObjectRef const &iFromSocket, buffer_type &iToBuffer);
+  static void copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket);
+  static void copyBuffer(StereoBuffer const &iFromBuffer, StereoBuffer &iToBuffer);
+  static void copyBuffer(buffer_type const &iFromBuffer, buffer_type &iToBuffer);
 
   static void wire(Rack &iRack, std::shared_ptr<Rack::Extension> iFromExtension, std::shared_ptr<Rack::Extension> iToExtension);
 
@@ -127,6 +129,8 @@ public:
 public:
   explicit MockCVDevice(int iSampleRate);
   virtual ~MockCVDevice() = default; // allow for subclassing
+  static void loadValue(TJBox_ObjectRef const &iFromSocket, TJBox_Float64 &oValue);
+  static void storeValue(TJBox_Float64 iValue, TJBox_ObjectRef const &iToSocket);
   void loadValue(TJBox_ObjectRef const &iFromSocket);
   void storeValue(TJBox_ObjectRef const &iToSocket);
 
