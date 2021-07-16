@@ -148,8 +148,13 @@ struct RealtimeController
 
 struct Realtime
 {
-  std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)> create_native_object{};
-  std::function<void (void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> render_realtime{};
+  using create_native_object_t = std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)>;
+  using destroy_native_object_t = std::function<void (const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iPrivateState)>;
+  using render_realtime_t = std::function<void (void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)>;
+
+  create_native_object_t create_native_object{};
+  destroy_native_object_t destroy_native_object{};
+  render_realtime_t render_realtime{};
 
   template<typename T>
   static Realtime byDefault();
@@ -166,8 +171,6 @@ public:
 
 public: // used by regular code
   ~Motherboard();
-
-  void nextFrame(std::function<void(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)> iNextFrameCallback);
 
   inline int getSampleRate() const { return getNum<int>("/environment/system_sample_rate"); }
 
@@ -282,6 +285,16 @@ protected:
 
   using ComparePropertyRef = decltype(&compare);
 
+  struct NativeObject
+  {
+    void *fNativeObject{};
+    std::string fOperation{};
+    std::vector<TJBox_Value> fParams{};
+    Realtime::destroy_native_object_t fDeleter{};
+
+    ~NativeObject();
+  };
+
 protected:
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
@@ -290,8 +303,8 @@ protected:
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};
   Realtime fRealtime{};
-  ObjectManager<void *> fNativeObjects{};
-  std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNofify{compare};
+  ObjectManager<std::unique_ptr<NativeObject>> fNativeObjects{};
+  std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, RTCCallback, ComparePropertyRef> fRTCBindings{compare};
 };
 
@@ -301,6 +314,9 @@ struct Error : public std::logic_error {
   Error(char const *s) : std::logic_error(s) {}
 };
 
+//------------------------------------------------------------------------
+// Realtime::byDefault
+//------------------------------------------------------------------------
 template<typename T>
 Realtime Realtime::byDefault()
 {
@@ -316,6 +332,14 @@ Realtime Realtime::byDefault()
       }
 
       return nullptr;
+    },
+
+    .destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
+      if(std::strcmp(iOperation, "Instance") == 0)
+      {
+        auto device = reinterpret_cast<T *>(iNativeObject);
+        delete device;
+      }
     },
 
     .render_realtime = [](void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) {

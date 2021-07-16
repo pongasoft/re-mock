@@ -136,7 +136,7 @@ void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iP
     if(binding != fRTCBindings.end())
       binding->second(getPropertyPath(iPropertyDiff->fPropertyRef), iPropertyDiff->fCurrentValue);
 
-    if(fRTCNofify.find(iPropertyDiff->fPropertyRef) != fRTCNofify.end())
+    if(fRTCNotify.find(iPropertyDiff->fPropertyRef) != fRTCNotify.end())
       fCurrentFramePropertyDiffs.emplace_back(*iPropertyDiff);
   }
 }
@@ -233,7 +233,7 @@ void Motherboard::registerRTCNotify(std::string const &iPropertyPath)
 
   auto ref = getPropertyRef(iPropertyPath);
   fCurrentFramePropertyDiffs.emplace_back(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
-  fRTCNofify.emplace(ref);
+  fRTCNotify.emplace(ref);
 }
 
 //------------------------------------------------------------------------
@@ -311,24 +311,14 @@ impl::JboxObject *Motherboard::addObject(std::string const &iObjectPath)
 //------------------------------------------------------------------------
 // Motherboard::nextFrame
 //------------------------------------------------------------------------
-void Motherboard::nextFrame(std::function<void(TJBox_PropertyDiff const *, TJBox_UInt32)> iNextFrameCallback)
-{
-  iNextFrameCallback(fCurrentFramePropertyDiffs.data(), fCurrentFramePropertyDiffs.size());
-  fCurrentFramePropertyDiffs.clear();
-}
-
-//------------------------------------------------------------------------
-// Motherboard::nextFrame
-//------------------------------------------------------------------------
 void Motherboard::nextFrame()
 {
   if(fRealtime.render_realtime)
-  {
-    auto callback = [this](const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) {
-      fRealtime.render_realtime(getInstance<void *>(), iPropertyDiffs, iDiffCount);
-    };
-    nextFrame(std::move(callback));
-  }
+    fRealtime.render_realtime(getInstance<void *>(),
+                              fCurrentFramePropertyDiffs.data(),
+                              fCurrentFramePropertyDiffs.size());
+
+  fCurrentFramePropertyDiffs.clear();
 }
 
 //------------------------------------------------------------------------
@@ -454,7 +444,12 @@ TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::
     auto nativeObject = fRealtime.create_native_object(iOperation.c_str(), iParams.data(), iParams.size());
     if(nativeObject)
     {
-      return impl::jbox_make_value<int>(kJBox_NativeObject, fNativeObjects.add((void *) nativeObject));
+      auto uno =
+        std::unique_ptr<NativeObject>(new NativeObject{.fNativeObject = nativeObject,
+                                                       .fOperation = iOperation,
+                                                       .fParams = iParams,
+                                                       .fDeleter = fRealtime.destroy_native_object });
+      return impl::jbox_make_value<int>(kJBox_NativeObject, fNativeObjects.add(std::move(uno)));
     }
   }
   return JBox_MakeNil();
@@ -465,7 +460,7 @@ TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::
 //------------------------------------------------------------------------
 void *Motherboard::getNativeObjectRW(TJBox_Value iValue) const
 {
-  return fNativeObjects.get(jbox_get_native_object_id(iValue));
+  return fNativeObjects.get(jbox_get_native_object_id(iValue))->fNativeObject;
 }
 
 //------------------------------------------------------------------------
@@ -630,6 +625,15 @@ TJBox_PropertyDiff impl::JboxProperty::watchForChange()
     .fPropertyRef = fPropertyRef,
     .fPropertyTag = fTag
   };
+}
+
+//------------------------------------------------------------------------
+// Motherboard::NativeObject::~NativeObject()
+//------------------------------------------------------------------------
+Motherboard::NativeObject::~NativeObject()
+{
+  if(fDeleter)
+    fDeleter(fOperation.c_str(), fParams.data(), fParams.size(), fNativeObject);
 }
 
 }
