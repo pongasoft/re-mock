@@ -23,13 +23,19 @@
 #include <JukeboxTypes.h>
 #include <Jukebox.h>
 #include <memory>
+#include <functional>
+#include <string>
+#include <vector>
 
 namespace re::mock {
+
+class Motherboard;
 
 struct jbox_property {
   int property_tag{};
   TJBox_Value default_value{JBox_MakeNil()};
   TJBox_Value getDefaultValue() const { return default_value; }
+  std::function<TJBox_Value (Motherboard *)> computeDefaultValue{[this] (Motherboard *) { return getDefaultValue(); }};
 };
 
 template<typename T = TJBox_Float64>
@@ -49,6 +55,14 @@ struct jbox_audio_input{};
 struct jbox_audio_output{};
 struct jbox_cv_input{};
 struct jbox_cv_output{};
+
+struct jbox_native_object {
+  int property_tag{};
+  struct {
+    std::string operation;
+    std::vector<TJBox_Value> params;
+  } default_value{};
+};
 
 struct LuaJbox {
   template<typename T = TJBox_Float64>
@@ -82,8 +96,11 @@ struct LuaJbox {
   inline std::unique_ptr<jbox_cv_input> cv_input() { return std::make_unique<jbox_cv_input>(); }
   inline std::unique_ptr<jbox_cv_output> cv_output() { return std::make_unique<jbox_cv_output>(); }
 
+  std::unique_ptr<jbox_property> native_object(jbox_native_object iNativeObject = {});
+
   TJBox_Value load_property(std::string const &iPropertyPath);
   TJBox_Value make_native_object_rw(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
+  TJBox_Value make_native_object_ro(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
   void store_property(std::string const &iPropertyPath, TJBox_Value const &iValue);
 
 private:

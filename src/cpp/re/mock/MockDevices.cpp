@@ -22,9 +22,14 @@
 namespace re::mock {
 
 //------------------------------------------------------------------------
+// MockDevice::MockDevice
+//------------------------------------------------------------------------
+MockDevice::MockDevice(int iSampleRate) : fSampleRate{iSampleRate} {}
+
+//------------------------------------------------------------------------
 // MockAudioDevice::MockAudioDevice
 //------------------------------------------------------------------------
-MockAudioDevice::MockAudioDevice(int iSampleRate) : fSampleRate{iSampleRate} {}
+MockAudioDevice::MockAudioDevice(int iSampleRate) : MockDevice{iSampleRate} {}
 
 //------------------------------------------------------------------------
 // MockAudioDevice::copyBuffer
@@ -142,7 +147,7 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 //------------------------------------------------------------------------
 // MAUSrc::Config
 //------------------------------------------------------------------------
-const auto MAUSrc::Config = Config::withDefault<MAUSrc>([](auto &def, auto &rtc, auto &rt) {
+const auto MAUSrc::Config = Config::byDefault<MAUSrc>([](auto &def, auto &rtc, auto &rt) {
   // It is a source so it only produces audio
   def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
   def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
@@ -167,7 +172,7 @@ void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUDst::Config
 //------------------------------------------------------------------------
-const auto MAUDst::Config = Config::withDefault<MAUDst>([](auto &def, auto &rtc, auto &rt) {
+const auto MAUDst::Config = Config::byDefault<MAUDst>([](auto &def, auto &rtc, auto &rt) {
   // It is a destination so it only receives audio
   def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
   def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
@@ -192,7 +197,7 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUPst::Config
 //------------------------------------------------------------------------
-const auto MAUPst::Config = Config::withDefault<MAUPst>([](auto &def, auto &rtc, auto &rt) {
+const auto MAUPst::Config = Config::byDefault<MAUPst>([](auto &def, auto &rtc, auto &rt) {
   def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
   def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
   def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
@@ -221,7 +226,7 @@ void MAUPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MockCVDevice::MockCVDevice
 //------------------------------------------------------------------------
-MockCVDevice::MockCVDevice(int iSampleRate) : fSampleRate{iSampleRate} {}
+MockCVDevice::MockCVDevice(int iSampleRate) : MockDevice{iSampleRate} {}
 
 //------------------------------------------------------------------------
 // MockCVDevice::loadValue
@@ -268,7 +273,7 @@ void MockCVDevice::wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Exte
 //------------------------------------------------------------------------
 // MCVSrc::Config
 //------------------------------------------------------------------------
-const auto MCVSrc::Config = Config::withDefault<MCVSrc>([](auto &def, auto &rtc, auto &rt) {
+const auto MCVSrc::Config = Config::byDefault<MCVSrc>([](auto &def, auto &rtc, auto &rt) {
   // It is a source so it only produces cv
   def.cv_outputs[SOCKET] = jbox.cv_output();
 });
@@ -292,7 +297,7 @@ void MCVSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MCVDst::Config
 //------------------------------------------------------------------------
-const auto MCVDst::Config = Config::withDefault<MCVDst>([](auto &def, auto &rtc, auto &rt) {
+const auto MCVDst::Config = Config::byDefault<MCVDst>([](auto &def, auto &rtc, auto &rt) {
   // It is a destination so it only reads cv
   def.cv_inputs[SOCKET] = jbox.cv_input();
 });
@@ -316,7 +321,7 @@ void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MCVPst::Config
 //------------------------------------------------------------------------
-const auto MCVPst::Config = Config::withDefault<MCVPst>([](auto &def, auto &rtc, auto &rt) {
+const auto MCVPst::Config = Config::byDefault<MCVPst>([](auto &def, auto &rtc, auto &rt) {
   def.cv_inputs[SOCKET] = jbox.cv_input();
   def.cv_outputs[SOCKET] = jbox.cv_output();
 });

@@ -148,6 +148,9 @@ std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate, Config const &
 {
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
+  // rt
+  res->fRealtime = iConfig.rt;
+
   // /environment/system_sample_rate
   auto environment = res->addObject("/environment");
   res->addProperty(environment->fObjectRef, "system_sample_rate", PropertyOwner::kHostOwner,
@@ -192,9 +195,6 @@ std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate, Config const &
     res->registerRTCBinding(propertyPath, binding->second);
   }
 
-  // rt
-  res->fRealtime = iConfig.rt;
-
   return res;
 }
 
@@ -218,7 +218,10 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
                               PropertyOwner iOwner,
                               jbox_property const &iProperty)
 {
-  fJboxObjects.get(iParentObject)->addProperty(iPropertyName, iOwner, iProperty.default_value, iProperty.property_tag);
+  fJboxObjects.get(iParentObject)->addProperty(iPropertyName,
+                                               iOwner,
+                                               iProperty.computeDefaultValue(this),
+                                               iProperty.property_tag);
 }
 
 //------------------------------------------------------------------------
@@ -433,24 +436,56 @@ TJBox_DSPBufferInfo Motherboard::getDSPBufferInfo(TJBox_Value const &iValue) con
 }
 
 //------------------------------------------------------------------------
-// Motherboard::makeNativeObjectRW
+// Motherboard::makeNativeObject
 //------------------------------------------------------------------------
-TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::vector<TJBox_Value> const &iParams)
+TJBox_Value Motherboard::makeNativeObject(std::string const &iOperation,
+                                          std::vector<TJBox_Value> const &iParams,
+                                          impl::NativeObject::AccessMode iAccessMode)
 {
   if(fRealtime.create_native_object)
   {
     auto nativeObject = fRealtime.create_native_object(iOperation.c_str(), iParams.data(), iParams.size());
     if(nativeObject)
     {
-      auto uno =
-        std::unique_ptr<NativeObject>(new NativeObject{.fNativeObject = nativeObject,
-                                                       .fOperation = iOperation,
-                                                       .fParams = iParams,
-                                                       .fDeleter = fRealtime.destroy_native_object });
+      auto uno = std::unique_ptr<impl::NativeObject>(new impl::NativeObject{
+        .fNativeObject = nativeObject,
+        .fOperation = iOperation,
+        .fParams = iParams,
+        .fDeleter = fRealtime.destroy_native_object,
+        .fAccessMode = iAccessMode
+      });
       return impl::jbox_make_value<int>(kJBox_NativeObject, fNativeObjects.add(std::move(uno)));
     }
   }
   return JBox_MakeNil();
+}
+
+
+//------------------------------------------------------------------------
+// Motherboard::makeNativeObjectRO
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::makeNativeObjectRO(std::string const &iOperation, std::vector<TJBox_Value> const &iParams)
+{
+  return makeNativeObject(iOperation, iParams, impl::NativeObject::kReadOnly);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::makeNativeObjectRW
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::vector<TJBox_Value> const &iParams)
+{
+  return makeNativeObject(iOperation, iParams, impl::NativeObject::kReadWrite);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getNativeObjectRO
+//------------------------------------------------------------------------
+const void *Motherboard::getNativeObjectRO(TJBox_Value iValue) const
+{
+  if(JBox_GetType(iValue) == kJBox_Nil)
+    return nullptr;
+  else
+    return fNativeObjects.get(jbox_get_native_object_id(iValue))->fNativeObject;
 }
 
 //------------------------------------------------------------------------
@@ -458,7 +493,14 @@ TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::
 //------------------------------------------------------------------------
 void *Motherboard::getNativeObjectRW(TJBox_Value iValue) const
 {
-  return fNativeObjects.get(jbox_get_native_object_id(iValue))->fNativeObject;
+  if(JBox_GetType(iValue) == kJBox_Nil)
+    return nullptr;
+  else
+  {
+    auto &no = fNativeObjects.get(jbox_get_native_object_id(iValue));
+    CHECK_F(no->fAccessMode == impl::NativeObject::kReadWrite, "Trying to access RO native object in RW mode");
+    return no->fNativeObject;
+  }
 }
 
 //------------------------------------------------------------------------
@@ -624,27 +666,6 @@ TJBox_PropertyDiff impl::JboxProperty::watchForChange()
     .fPropertyTag = fTag
   };
 }
-
-//------------------------------------------------------------------------
-// Motherboard::NativeObject::~NativeObject()
-//------------------------------------------------------------------------
-Motherboard::NativeObject::~NativeObject()
-{
-  if(fDeleter)
-    fDeleter(fOperation.c_str(), fParams.data(), fParams.size(), fNativeObject);
-}
-
-//------------------------------------------------------------------------
-// Config::with()
-//------------------------------------------------------------------------
-Config Config::with(callback_t iCallback)
-{
-  Config c{};
-  if(iCallback)
-    iCallback(c.def, c.rtc, c.rt);
-  return c;
-}
-
 
 }
 

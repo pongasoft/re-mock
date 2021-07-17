@@ -33,150 +33,11 @@
 #include <array>
 #include "fmt.h"
 #include "LuaJBox.h"
+#include "Config.h"
 #include "ObjectManager.hpp"
+#include "MotherboardImpl.h"
 
 namespace re::mock {
-
-enum class PropertyOwner {
-  kHostOwner,
-  kRTOwner,
-  kRTCOwner,
-  kDocOwner,
-  kGUIOwner
-};
-
-class Motherboard;
-
-namespace impl {
-
-template<typename T>
-union JboxSecretInternal {
-  T fValue;
-  TJBox_UInt8 fSecret[15];
-};
-
-template<typename T>
-TJBox_Value jbox_make_value(TJBox_ValueType iValueType, T iValue)
-{
-  TJBox_Value res;
-
-  res.fSecret[0] = iValueType;
-  JboxSecretInternal<T> secret{};
-  secret.fValue = iValue;
-  std::copy(std::begin(secret.fSecret), std::end(secret.fSecret), std::begin(res.fSecret) + 1);
-
-  return res;
-};
-
-template<typename T>
-T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
-{
-  CHECK_F(iJboxValue.fSecret[0] == iValueType);
-  JboxSecretInternal<T> secret{};
-  std::copy(std::begin(iJboxValue.fSecret) + 1, std::end(iJboxValue.fSecret), std::begin(secret.fSecret));
-  return secret.fValue;
-}
-
-struct JboxProperty
-{
-  JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::string const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
-
-  inline TJBox_Value loadValue() const { return fValue; };
-  std::optional<TJBox_PropertyDiff> storeValue(TJBox_Value const &iValue);
-
-  TJBox_PropertyDiff watchForChange();
-
-  const TJBox_PropertyRef fPropertyRef;
-  const std::string fPropertyPath;
-  const PropertyOwner fOwner;
-  const TJBox_Tag fTag;
-
-protected:
-  TJBox_Value fValue;
-  bool fWatched{};
-};
-
-struct JboxObject
-{
-  explicit JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iObjectRef);
-
-  ~JboxObject() = default;
-
-  TJBox_Value loadValue(std::string const &iPropertyName) const;
-  TJBox_Value loadValue(TJBox_Tag iPropertyTag) const;
-  std::optional<TJBox_PropertyDiff> storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
-  std::optional<TJBox_PropertyDiff> storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue);
-  TJBox_PropertyDiff watchPropertyForChange(std::string const &iPropertyName);
-
-  const std::string fObjectPath;
-  const TJBox_ObjectRef fObjectRef;
-
-  friend class re::mock::Motherboard;
-
-protected:
-  void addProperty(std::string iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iPropertyTag);
-  JboxProperty *getProperty(std::string const &iPropertyName) const;
-  JboxProperty *getProperty(TJBox_Tag iPropertyTag) const;
-
-protected:
-  std::map<std::string, std::unique_ptr<JboxProperty>> fProperties{};
-};
-
-}
-
-struct MotherboardDef
-{
-  std::map<std::string, std::unique_ptr<jbox_audio_input>> audio_inputs{};
-  std::map<std::string, std::unique_ptr<jbox_audio_output>> audio_outputs{};
-  std::map<std::string, std::unique_ptr<jbox_cv_input>> cv_inputs{};
-  std::map<std::string, std::unique_ptr<jbox_cv_output>> cv_outputs{};
-
-  struct { std::map<std::string, std::unique_ptr<jbox_property>> properties{}; } document_owner;
-  struct { std::map<std::string, std::unique_ptr<jbox_property>> properties{}; } rt_owner;
-};
-
-using RTCCallback = std::function<void (std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue)>;
-
-struct RealtimeController
-{
-  std::map<std::string, std::string> rtc_bindings;
-  std::map<std::string, RTCCallback> global_rtc{};
-  struct { std::set<std::string> notify{}; } rt_input_setup;
-
-  static RealtimeController byDefault();
-};
-
-struct Realtime
-{
-  using create_native_object_t = std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)>;
-  using destroy_native_object_t = std::function<void (const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iPrivateState)>;
-  using render_realtime_t = std::function<void (void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)>;
-
-  create_native_object_t create_native_object{};
-  destroy_native_object_t destroy_native_object{};
-  render_realtime_t render_realtime{};
-
-  template<typename T>
-  static Realtime byDefault();
-};
-
-struct Config
-{
-  using callback_t = std::function<void (MotherboardDef &, RealtimeController &, Realtime &)>;
-
-  MotherboardDef def{};
-  RealtimeController rtc{};
-  Realtime rt{};
-
-
-  static Config with(callback_t iCallback);
-
-  template<typename T>
-  static Config byDefault();
-
-  template<typename T>
-  static Config withDefault(callback_t iCallback);
-};
 
 class Rack;
 
@@ -225,13 +86,18 @@ public: // used by regular code
   DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const;
 
   template<typename T>
-  inline T *getNativeOject(std::string const &iPropertyPath) const {
+  inline T *getNativeObjectRW(std::string const &iPropertyPath) const {
     return reinterpret_cast<T *>(getNativeObjectRW(getValue(iPropertyPath)));
   }
 
   template<typename T>
+  inline const T *getNativeObjectRO(std::string const &iPropertyPath) const {
+    return reinterpret_cast<T const *>(getNativeObjectRO(getValue(iPropertyPath)));
+  }
+
+  template<typename T>
   inline T* getInstance() const {
-    return getNativeOject<T>("/custom_properties/instance");
+    return getNativeObjectRW<T>("/custom_properties/instance");
   }
 
 public: // used by Jukebox.cpp (need to be public)
@@ -246,6 +112,8 @@ public: // used by Jukebox.cpp (need to be public)
   void setDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, const TJBox_AudioSample iAudio[]);
   TJBox_DSPBufferInfo getDSPBufferInfo(TJBox_Value const &iValue) const;
   TJBox_Value makeNativeObjectRW(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
+  TJBox_Value makeNativeObjectRO(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
+  const void *getNativeObjectRO(TJBox_Value iValue) const;
   void *getNativeObjectRW(TJBox_Value iValue) const;
 
   Motherboard(Motherboard const &iOther) = delete;
@@ -288,6 +156,10 @@ protected:
   TJBox_Float64 getCVSocketValue(TJBox_ObjectRef iCVSocket) const;
   void setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iValue);
 
+  TJBox_Value makeNativeObject(std::string const &iOperation,
+                               std::vector<TJBox_Value> const &iParams,
+                               impl::NativeObject::AccessMode iAccessMode);
+
   void nextFrame();
 
 protected:
@@ -302,16 +174,6 @@ protected:
 
   using ComparePropertyRef = decltype(&compare);
 
-  struct NativeObject
-  {
-    void *fNativeObject{};
-    std::string fOperation{};
-    std::vector<TJBox_Value> fParams{};
-    Realtime::destroy_native_object_t fDeleter{};
-
-    ~NativeObject();
-  };
-
 protected:
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
@@ -320,7 +182,7 @@ protected:
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};
   Realtime fRealtime{};
-  ObjectManager<std::unique_ptr<NativeObject>> fNativeObjects{};
+  ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, RTCCallback, ComparePropertyRef> fRTCBindings{compare};
 };
@@ -331,67 +193,6 @@ struct Error : public std::logic_error {
   Error(char const *s) : std::logic_error(s) {}
 };
 
-//------------------------------------------------------------------------
-// Realtime::byDefault
-//------------------------------------------------------------------------
-template<typename T>
-Realtime Realtime::byDefault()
-{
-  return {
-    .create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void *{
-      if(std::strcmp(iOperation, "Instance") == 0)
-      {
-        if(iCount >= 1)
-        {
-          TJBox_Float64 sampleRate = JBox_GetNumber(iParams[0]);
-          return new T(static_cast<int>(sampleRate));
-        }
-      }
-
-      return nullptr;
-    },
-
-    .destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
-      if(std::strcmp(iOperation, "Instance") == 0)
-      {
-        auto device = reinterpret_cast<T *>(iNativeObject);
-        delete device;
-      }
-    },
-
-    .render_realtime = [](void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) {
-      if(!iPrivateState)
-        return;
-
-      auto device = reinterpret_cast<T *>(iPrivateState);
-      device->renderBatch(iPropertyDiffs, iDiffCount);
-    }
-  };
-}
-
-//------------------------------------------------------------------------
-// Config::byDefault
-//------------------------------------------------------------------------
-template<typename T>
-Config Config::byDefault()
-{
-  Config c{};
-  c.rtc = RealtimeController::byDefault();
-  c.rt = Realtime::byDefault<T>();
-  return c;
-}
-
-//------------------------------------------------------------------------
-// Config::withDefault
-//------------------------------------------------------------------------
-template<typename T>
-Config Config::withDefault(callback_t iCallback)
-{
-  Config c = Config::byDefault<T>();
-  if(iCallback)
-    iCallback(c.def, c.rtc, c.rt);
-  return c;
-}
 
 }
 

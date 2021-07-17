@@ -177,12 +177,12 @@ void JBox_GetSubstring(
 
 const void *JBox_GetNativeObjectRO(TJBox_Value iValue)
 {
-  throw re::mock::Error("JBox_GetNativeObjectRO: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getNativeObjectRO(iValue);
 }
 
 void *JBox_GetNativeObjectRW(TJBox_Value iValue)
 {
-  throw re::mock::Error("JBox_GetNativeObjectRW: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getNativeObjectRW(iValue);
 }
 
 TJBox_SampleInfo JBox_GetSampleInfo(TJBox_Value iValue)

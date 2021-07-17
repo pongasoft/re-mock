@@ -36,7 +36,7 @@ void loguru_fatal_handler(const loguru::Message& message)
 //------------------------------------------------------------------------
 Motherboard &Rack::currentMotherboard()
 {
-  CHECK_F(sThreadLocalInstance != nullptr, "Not called in the context of a device. You should call rack.useRE(...)!");
+  CHECK_F(sThreadLocalInstance != nullptr, "Not called in the context of a device. You should call re.use(...)!");
   return *sThreadLocalInstance;
 }
 
@@ -60,16 +60,8 @@ Rack::Extension Rack::newExtension(Config const &iConfig)
   });
 
   auto res = fExtensions.get(id);
-  res->use([](Motherboard *m) { m->init(); });
+  res->use([](Motherboard &m) { m.init(); });
   return Rack::Extension{res};
-}
-
-//------------------------------------------------------------------------
-// Rack::newExtension
-//------------------------------------------------------------------------
-Rack::Extension Rack::newExtension(Config::callback_t iConfigCallback)
-{
-  return newExtension(Config::with(std::move(iConfigCallback)));
 }
 
 //------------------------------------------------------------------------
@@ -112,7 +104,7 @@ void Rack::nextFrame(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensi
 //------------------------------------------------------------------------
 void Rack::nextFrame(ExtensionImpl &iExtension)
 {
-  iExtension.use([](Motherboard *m) { m->nextFrame(); });
+  iExtension.use([](Motherboard &m) { m.nextFrame(); });
 
   for(auto &wire: iExtension.fAudioWires)
     copyAudioBuffers(wire);
@@ -200,42 +192,42 @@ private:
 //------------------------------------------------------------------------
 // Rack::ExtensionImpl::use
 //------------------------------------------------------------------------
-void Rack::ExtensionImpl::use(std::function<void(Motherboard *)> iCallback)
+void Rack::ExtensionImpl::use(std::function<void(Motherboard &)> iCallback)
 {
   InternalThreadLocalRAII raii{fMotherboard.get()};
-  iCallback(fMotherboard.get());
+  iCallback(*fMotherboard.get());
 }
 
 //------------------------------------------------------------------------
-// Rack::ExtensionImpl::getAudioOutSocket
+// Rack::Extension::getAudioOutSocket
 //------------------------------------------------------------------------
-Rack::Extension::AudioOutSocket Rack::ExtensionImpl::getAudioOutSocket(std::string const &iSocketName) const
+Rack::Extension::AudioOutSocket Rack::Extension::getAudioOutSocket(std::string const &iSocketName) const
 {
-  return {{{fId, fMotherboard->getObjectRef(fmt::printf("/audio_outputs/%s", iSocketName))}}};
+  return {{{fImpl->fId, motherboard().getObjectRef(fmt::printf("/audio_outputs/%s", iSocketName))}}};
 }
 
 //------------------------------------------------------------------------
-// Rack::ExtensionImpl::AudioInSocket
+// Rack::Extension::AudioInSocket
 //------------------------------------------------------------------------
-Rack::Extension::AudioInSocket Rack::ExtensionImpl::getAudioInSocket(std::string const &iSocketName) const
+Rack::Extension::AudioInSocket Rack::Extension::getAudioInSocket(std::string const &iSocketName) const
 {
-  return {{{fId, fMotherboard->getObjectRef(fmt::printf("/audio_inputs/%s", iSocketName))}}};
+  return {{{fImpl->fId, motherboard().getObjectRef(fmt::printf("/audio_inputs/%s", iSocketName))}}};
 }
 
 //------------------------------------------------------------------------
-// Rack::ExtensionImpl::getCVOutSocket
+// Rack::Extension::getCVOutSocket
 //------------------------------------------------------------------------
-Rack::Extension::CVOutSocket Rack::ExtensionImpl::getCVOutSocket(std::string const &iSocketName) const
+Rack::Extension::CVOutSocket Rack::Extension::getCVOutSocket(std::string const &iSocketName) const
 {
-  return {{{fId, fMotherboard->getObjectRef(fmt::printf("/cv_outputs/%s", iSocketName))}}};
+  return {{{fImpl->fId, motherboard().getObjectRef(fmt::printf("/cv_outputs/%s", iSocketName))}}};
 }
 
 //------------------------------------------------------------------------
-// Rack::ExtensionImpl::getCVInSocket
+// Rack::Extension::getCVInSocket
 //------------------------------------------------------------------------
-Rack::Extension::CVInSocket Rack::ExtensionImpl::getCVInSocket(std::string const &iSocketName) const
+Rack::Extension::CVInSocket Rack::Extension::getCVInSocket(std::string const &iSocketName) const
 {
-  return {{{fId, fMotherboard->getObjectRef(fmt::printf("/cv_inputs/%s", iSocketName))}}};
+  return {{{fImpl->fId, motherboard().getObjectRef(fmt::printf("/cv_inputs/%s", iSocketName))}}};
 }
 
 //------------------------------------------------------------------------
@@ -330,8 +322,7 @@ RealtimeController RealtimeController::byDefault()
   rtc.rtc_bindings["/environment/system_sample_rate"] = "/global_rtc/init_instance";
 
   rtc.global_rtc["init_instance"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
-    auto sample_rate = jbox.load_property("/environment/system_sample_rate");
-    auto new_no = jbox.make_native_object_rw("Instance", { sample_rate });
+    auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
     jbox.store_property("/custom_properties/instance", new_no);
   };
 

@@ -28,7 +28,12 @@ TEST(Jukebox, Basic)
 {
   Rack rack{};
 
-  Config c = Config::with([](auto &def, auto &rtc, auto &rt) {
+  struct Gain
+  {
+    TJBox_Float64 fVolume{};
+  };
+
+  Config c([](auto &def, auto &rtc, auto &rt) {
     def.document_owner.properties["prop_number_default"]  = jbox.number();
     def.document_owner.properties["prop_float"]           = jbox.number<float>({.property_tag = 100, .default_value = 0.7});
     def.document_owner.properties["prop_float_2"]         = jbox.number<float>(0.8);
@@ -38,6 +43,40 @@ TEST(Jukebox, Basic)
     def.document_owner.properties["prop_generic_default"] = jbox.property();
     def.document_owner.properties["prop_generic"]         = jbox.property(JBox_MakeNumber(0.2));
     def.document_owner.properties["prop_generic_2"]       = jbox.property({.default_value = JBox_MakeNumber(0.3)});
+    def.document_owner.properties["prop_volume_ro"]       = jbox.number<float>(0.8);
+    def.document_owner.properties["prop_volume_rw"]       = jbox.number<float>(0.9);
+
+    def.rt_owner.properties["prop_gain_default"]          = jbox.native_object();
+    def.rt_owner.properties["prop_gain"]                  = jbox.native_object({.default_value = {.operation = "Gain", .params = {JBox_MakeNumber(0.7)}}});
+    def.rt_owner.properties["prop_gain_ro"]               = jbox.native_object();
+    def.rt_owner.properties["prop_gain_rw"]               = jbox.native_object();
+
+    rtc.rtc_bindings["/custom_properties/prop_volume_ro"]   = "/global_rtc/new_gain_ro";
+    rtc.rtc_bindings["/custom_properties/prop_volume_rw"]   = "/global_rtc/new_gain_rw";
+
+    rtc.global_rtc["new_gain_ro"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+      auto new_no = jbox.make_native_object_ro("Gain", { iNewValue });
+      jbox.store_property("/custom_properties/prop_gain_ro", new_no);
+    };
+
+    rtc.global_rtc["new_gain_rw"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+      auto new_no = jbox.make_native_object_rw("Gain", { iNewValue });
+      jbox.store_property("/custom_properties/prop_gain_rw", new_no);
+    };
+
+    rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
+      if(std::strcmp(iOperation, "Gain") == 0)
+        return new Gain{JBox_GetNumber(iParams[0])};
+
+      return nullptr;
+    };
+
+    rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
+      if(std::strcmp(iOperation, "Gain") == 0)
+      {
+        delete reinterpret_cast<Gain *>(iNativeObject);
+      }
+    };
   });
 
 
@@ -69,6 +108,37 @@ TEST(Jukebox, Basic)
     ASSERT_FLOAT_EQ(0.2, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_generic"))));
     ASSERT_FLOAT_EQ(0.3, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_generic_2"))));
 
+    ASSERT_TRUE(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_default"))) == nullptr);
+    ASSERT_TRUE(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_default"))) == nullptr);
+
+    {
+      auto gain = reinterpret_cast<Gain *>(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain"))));
+      ASSERT_FLOAT_EQ(0.7, gain->fVolume);
+      gain->fVolume = 0.75;
+    }
+
+    {
+      auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain"))));
+      ASSERT_FLOAT_EQ(0.75, gain->fVolume);
+    }
+
+    {
+      auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))));
+      ASSERT_FLOAT_EQ(0.8, gain->fVolume);
+      ASSERT_THROW(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))), Error);
+    }
+
+    {
+      auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))));
+      ASSERT_FLOAT_EQ(0.9, gain->fVolume);
+    }
+
+    {
+      auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))));
+      ASSERT_FLOAT_EQ(0.9, gain->fVolume);
+    }
+
+
     ASSERT_THROW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "invalid")), Error);
     ASSERT_THROW(JBox_LoadMOMPropertyByTag(customProperties, 200), Error);
     ASSERT_THROW(JBox_LoadMOMPropertyAsNumber(customProperties, 200), Error);
@@ -89,14 +159,14 @@ TEST(Jukebox, AudioSocket)
 {
   Rack rack{};
 
-  Config c = Config::with([](auto &def, auto &rtc, auto &rt) {
+  Config c([](auto &def, auto &rtc, auto &rt) {
     def.audio_inputs["input_1"] = jbox.audio_input();
     def.audio_outputs["output_1"] = jbox.audio_output();
   });
 
   auto re = rack.newExtension(c);
 
-  re.use([](auto motherboard) {
+  re.use([](auto &motherboard) {
     // testing input
     {
       auto input1Ref = JBox_GetMotherboardObjectRef("/audio_inputs/input_1");
@@ -119,7 +189,7 @@ TEST(Jukebox, AudioSocket)
       Motherboard::DSPBuffer buf{};
       for(int i = 0; i < buf.size(); i++)
         buf[i] = i + 1;
-      motherboard->setDSPBuffer("/audio_inputs/input_1", buf);
+      motherboard.setDSPBuffer("/audio_inputs/input_1", buf);
 
       input1Buffer.fill(100);
       JBox_GetDSPBufferData(input1Dsp, 10, 20, input1Buffer.data());
@@ -141,12 +211,12 @@ TEST(Jukebox, AudioSocket)
       output1Buffer.fill(100);
 
       // we make sure that the output buffer is properly initialized with 0
-      auto o1 = motherboard->getDSPBuffer("/audio_outputs/output_1");
+      auto o1 = motherboard.getDSPBuffer("/audio_outputs/output_1");
       ASSERT_TRUE(std::all_of(o1.begin(), o1.end(), [](auto s) { return s == 0; }));
 
       // testing writing full buffer
       JBox_SetDSPBufferData(output1Dsp, 0, DSP_BUFFER_SIZE, output1Buffer.data());
-      o1 = motherboard->getDSPBuffer("/audio_outputs/output_1");
+      o1 = motherboard.getDSPBuffer("/audio_outputs/output_1");
       ASSERT_TRUE(std::all_of(o1.begin(), o1.end(), [](auto s) { return s == 100; }));
 
       // testing writing partial buffer [x, y, z, ... ] -> [...., x, y, z, ...]
@@ -154,7 +224,7 @@ TEST(Jukebox, AudioSocket)
         output1Buffer[i] = i + 1;
       JBox_SetDSPBufferData(output1Dsp, 10, 20, output1Buffer.data());
 
-      o1 = motherboard->getDSPBuffer("/audio_outputs/output_1");
+      o1 = motherboard.getDSPBuffer("/audio_outputs/output_1");
       ASSERT_TRUE(std::all_of(o1.begin(), o1.begin() + 10, [](auto s) { return s == 100; }));
       for(int i = 0; i < 10; i++)
         ASSERT_FLOAT_EQ(o1[i + 10], output1Buffer[i]);

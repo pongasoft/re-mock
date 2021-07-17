@@ -65,20 +65,50 @@ public:
     };
 
   public:
-    void use(std::function<void (Motherboard *)> iCallback) { fImpl->use(std::move(iCallback)); }
+    inline void use(std::function<void (Motherboard &)> iCallback) { fImpl->use(std::move(iCallback)); }
     inline void use(std::function<void ()> iCallback) {
-      use([callback = std::move(iCallback)](auto motherboard) { callback(); });
+      use([callback = std::move(iCallback)](auto &motherboard) { callback(); });
     }
 
-    AudioOutSocket getAudioOutSocket(std::string const &iSocketName) const { return fImpl->getAudioOutSocket(iSocketName); }
-    AudioInSocket getAudioInSocket(std::string const &iSocketName) const { return fImpl->getAudioInSocket(iSocketName); }
-    CVOutSocket getCVOutSocket(std::string const &iSocketName) const { return fImpl->getCVOutSocket(iSocketName); }
-    CVInSocket getCVInSocket(std::string const &iSocketName) const { return fImpl->getCVInSocket(iSocketName); }
+    AudioOutSocket getAudioOutSocket(std::string const &iSocketName) const;
+    AudioInSocket getAudioInSocket(std::string const &iSocketName) const;
+    CVOutSocket getCVOutSocket(std::string const &iSocketName) const;
+    CVInSocket getCVInSocket(std::string const &iSocketName) const;
+
+    inline TJBox_Value getValue(std::string const &iPropertyPath) const { return motherboard().getValue(iPropertyPath); }
+    inline void setValue(std::string const &iPropertyPath, TJBox_Value const &iValue) { motherboard().setValue(iPropertyPath, iValue); }
+    inline bool getBool(std::string const &iPropertyPath) const { return motherboard().getBool(iPropertyPath); }
+    inline void setBool(std::string const &iPropertyPath, bool iValue) { motherboard().setBool(iPropertyPath, iValue); }
+
+    template<typename T = TJBox_Float64>
+    T getNum(std::string const &iPropertyPath) const { return motherboard().getNum<T>(iPropertyPath); }
+    template<typename T = TJBox_Float64>
+    void setNum(std::string const &iPropertyPath, T iValue) { motherboard().setNum<T>(iPropertyPath, iValue);}
+
+    inline TJBox_Float64 getCVSocketValue(std::string const &iSocketPath) const { return motherboard().getCVSocketValue(iSocketPath); }
+    inline void setCVSocketValue(std::string const &iSocketPath, TJBox_Float64 iValue) { motherboard().setCVSocketValue(iSocketPath, iValue); }
+    inline TJBox_Float64 getCVSocketValue(CVSocket const &iSocket) const { return motherboard().getCVSocketValue(iSocket.fSocketRef); }
+    inline void setCVSocketValue(CVSocket const &iSocket, TJBox_Float64 iValue) const { motherboard().setCVSocketValue(iSocket.fSocketRef, iValue); }
+
+    Motherboard::DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const { return motherboard().getDSPBuffer(iAudioSocketPath); }
+    void setDSPBuffer(std::string const &iAudioSocketPath, Motherboard::DSPBuffer iBuffer) { motherboard().setDSPBuffer(iAudioSocketPath, std::move(iBuffer)); }
+    Motherboard::DSPBuffer getDSPBuffer(AudioSocket const &iSocket) const { return motherboard().getDSPBuffer(iSocket.fSocketRef); }
+    void setDSPBuffer(AudioSocket const &iSocket, Motherboard::DSPBuffer iBuffer) { motherboard().setDSPBuffer(iSocket.fSocketRef, std::move(iBuffer)); }
 
     template<typename T>
-    inline T* getInstance() const;
+    inline T *getNativeObjectRW(std::string const &iPropertyPath) const { return motherboard().getNativeObjectRW<T>(iPropertyPath); }
+
+    template<typename T>
+    inline const T *getNativeObjectRO(std::string const &iPropertyPath) const { return motherboard().getNativeObjectRO<T>(iPropertyPath); }
+
+
+    template<typename T>
+    inline T* getInstance() const { return motherboard().getInstance<T>(); }
 
     friend class Rack;
+
+  protected:
+    Motherboard &motherboard() const { return *fImpl->fMotherboard.get(); }
 
   private:
     explicit Extension(std::shared_ptr<ExtensionImpl> iExtensionImpl) : fImpl{iExtensionImpl} {}
@@ -104,14 +134,10 @@ protected:
   class ExtensionImpl
   {
   public:
-    void use(std::function<void (Motherboard *)> iCallback);
-
-    Extension::AudioOutSocket getAudioOutSocket(std::string const &iSocketName) const;
-    Extension::AudioInSocket getAudioInSocket(std::string const &iSocketName) const;
-    Extension::CVOutSocket getCVOutSocket(std::string const &iSocketName) const;
-    Extension::CVInSocket getCVInSocket(std::string const &iSocketName) const;
+    void use(std::function<void (Motherboard &)> iCallback);
 
     friend class Rack;
+    friend class Rack::Extension;
 
   private:
     ExtensionImpl(int id, Rack *iRack, std::unique_ptr<Motherboard> iMotherboard) :
@@ -121,9 +147,6 @@ protected:
     void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
 
     inline std::set<int> const &getDependents() const { return fDependents; }
-
-    template<typename T>
-    inline T* getInstance() const { return fMotherboard->template getInstance<T>(); }
 
   private:
     int fId;
@@ -138,16 +161,12 @@ public:
   Rack(int iSampleRate = 44100);
 
   Extension newExtension(Config const &iConfig);
-  Extension newExtension(Config::callback_t iConfigCallback);
 
   template<typename Device>
   ExtensionDevice<Device> newDevice(Config const &iConfig);
 
   template<typename Device>
-  ExtensionDevice<Device> newDevice(Config::callback_t iConfigCallback);
-
-  template<typename Device>
-  ExtensionDevice<Device> newDeviceWithDefault(Config::callback_t iDefaultConfigCallback);
+  ExtensionDevice<Device> newDeviceByDefault(Config::callback_t iDefaultConfigCallback);
 
   void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
   void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
@@ -168,15 +187,6 @@ protected:
 };
 
 //------------------------------------------------------------------------
-// Rack::Extension::getInstance
-//------------------------------------------------------------------------
-template<typename T>
-T *Rack::Extension::getInstance() const
-{
-  return fImpl->template getInstance<T>();
-}
-
-//------------------------------------------------------------------------
 // Rack::newDevice
 //------------------------------------------------------------------------
 template<typename Device>
@@ -186,21 +196,12 @@ Rack::ExtensionDevice<Device> Rack::newDevice(Config const &iConfig)
 }
 
 //------------------------------------------------------------------------
-// Rack::newDevice
-//------------------------------------------------------------------------
-template<typename Device>
-Rack::ExtensionDevice<Device> Rack::newDevice(Config::callback_t iConfigCallback)
-{
-  return newDevice<Device>(Config::with(std::move(iConfigCallback)));
-}
-
-//------------------------------------------------------------------------
 // Rack::newDeviceWithDefault
 //------------------------------------------------------------------------
 template<typename Device>
-Rack::ExtensionDevice<Device> Rack::newDeviceWithDefault(Config::callback_t iDefaultConfigCallback)
+Rack::ExtensionDevice<Device> Rack::newDeviceByDefault(Config::callback_t iDefaultConfigCallback)
 {
-  return newDevice<Device>(Config::withDefault<Device>(std::move(iDefaultConfigCallback)));
+  return newDevice<Device>(Config::byDefault<Device>().extend(std::move(iDefaultConfigCallback)));
 }
 
 }

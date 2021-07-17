@@ -48,6 +48,12 @@ inline bool find_if(Container const &iContainer, Predicate iPredicate)
   return std::find_if(std::begin(iContainer), std::end(iContainer), iPredicate) != std::end(iContainer);
 }
 
+template<typename Container, typename Function>
+inline void for_each(Container &iContainer, Function &&iFunction)
+{
+  std::for_each(std::begin(iContainer), std::end(iContainer), std::forward<Function>(iFunction));
+}
+
 }
 
 #endif //__PongasoftCommon_re_mock_stl_h__

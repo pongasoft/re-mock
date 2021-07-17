@@ -152,14 +152,14 @@ TEST(Rack, CircularWiring)
   {
     MAUSrcCVDst(int iSampleRate) : MAUSrc(iSampleRate), MCVDst(iSampleRate){}
 
-    void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)
+    void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override
     {
       MAUSrc::renderBatch(iPropertyDiffs, iDiffCount);
       MCVDst::renderBatch(iPropertyDiffs, iDiffCount);
     }
   };
 
-  const auto MAUSrcCVDstConfig = Config::withDefault<MAUSrcCVDst>([](auto &def, auto &rtc, auto &rt) {
+  const auto MAUSrcCVDstConfig = Config::byDefault<MAUSrcCVDst>([](auto &def, auto &rtc, auto &rt) {
     // MAUSrcCVDst emits audio
     def.audio_outputs[MAUSrcCVDst::LEFT_SOCKET] = jbox.audio_output();
     def.audio_outputs[MAUSrcCVDst::RIGHT_SOCKET] = jbox.audio_output();
@@ -171,14 +171,14 @@ TEST(Rack, CircularWiring)
   struct MAUDstCVSrc : public MAUDst, MCVSrc
   {
     MAUDstCVSrc(int iSampleRate) : MAUDst(iSampleRate), MCVSrc(iSampleRate){}
-    void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)
+    void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override
     {
       MAUDst::renderBatch(iPropertyDiffs, iDiffCount);
       MCVSrc::renderBatch(iPropertyDiffs, iDiffCount);
     }
   };
 
-  const auto MAUDstCVSrcConfig = Config::withDefault<MAUDstCVSrc>([](auto &def, auto &rtc, auto &rt) {
+  const auto MAUDstCVSrcConfig = Config::byDefault<MAUDstCVSrc>([](auto &def, auto &rtc, auto &rt) {
     // MAUDstCVSrc receives audio
     def.audio_inputs[MAUDstCVSrc::LEFT_SOCKET] = jbox.audio_input();
     def.audio_inputs[MAUDstCVSrc::RIGHT_SOCKET] = jbox.audio_input();
@@ -242,7 +242,7 @@ TEST(Rack, SelfConnection)
 
   Rack rack{};
 
-  auto dev = rack.newDeviceWithDefault<SelfConnectedDevice>([](auto &def, auto &rtc, auto &rt) {
+  auto dev = rack.newDeviceByDefault<SelfConnectedDevice>([](auto &def, auto &rtc, auto &rt) {
     def.cv_inputs["I"] = jbox.cv_input();
     def.cv_outputs["O"] = jbox.cv_output();
   });

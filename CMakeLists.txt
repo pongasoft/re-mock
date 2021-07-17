@@ -60,6 +60,7 @@ set(TEST_CASE_SOURCES
     "${RE_COMMON_CPP_TST_DIR}/TestStaticString.cpp"
     "${RE_COMMON_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
     "${RE_COMMON_CPP_TST_DIR}/re/mock/TestRack.cpp"
+    "${RE_COMMON_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
     "${RE_COMMON_CPP_TST_DIR}/re/TestProperty.cpp"
     )
 

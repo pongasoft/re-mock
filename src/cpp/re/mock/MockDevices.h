@@ -25,11 +25,22 @@
 
 namespace re::mock {
 
+class MockDevice
+{
+public:
+  explicit MockDevice(int iSampleRate);
+  virtual ~MockDevice() = default; // allow for subclassing
+  virtual void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) {};
+
+public:
+  int fSampleRate;
+};
+
 //------------------------------------------------------------------------
 // Audio Devices
 //------------------------------------------------------------------------
 
-class MockAudioDevice
+class MockAudioDevice : public MockDevice
 {
 public:
   constexpr static auto LEFT_SOCKET = "L";
@@ -57,7 +68,6 @@ public:
 
 public:
   explicit MockAudioDevice(int iSampleRate);
-  virtual ~MockAudioDevice() = default; // allow for subclassing
   static void copyBuffer(StereoSocket const &iFromSocket, StereoBuffer &iToBuffer);
   static void copyBuffer(StereoBuffer const &iFromBuffer, StereoSocket const &iToSocket);
   static void copyBuffer(TJBox_ObjectRef const &iFromSocket, buffer_type &iToBuffer);
@@ -68,7 +78,6 @@ public:
   static void wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension);
 
 public:
-  int fSampleRate;
   StereoBuffer fBuffer{};
 };
 
@@ -78,11 +87,11 @@ class MAUSrc : public MockAudioDevice
 {
 public:
   explicit MAUSrc(int iSampleRate);
-  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const Config Config;
 
-private:
+protected:
   StereoSocket fOutSocket{};
 };
 
@@ -92,11 +101,11 @@ class MAUDst : public MockAudioDevice
 {
 public:
   explicit MAUDst(int iSampleRate);
-  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const Config Config;
 
-private:
+protected:
   StereoSocket fInSocket{};
 };
 
@@ -106,11 +115,11 @@ class MAUPst : public MockAudioDevice
 {
 public:
   explicit MAUPst(int iSampleRate);
-  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const Config Config;
 
-private:
+protected:
   StereoSocket fInSocket{};
   StereoSocket fOutSocket{};
 };
@@ -119,7 +128,7 @@ private:
 // CV Devices
 //------------------------------------------------------------------------
 
-class MockCVDevice
+class MockCVDevice : public MockDevice
 {
 public:
   constexpr static auto SOCKET = "C";
@@ -128,7 +137,6 @@ public:
 
 public:
   explicit MockCVDevice(int iSampleRate);
-  virtual ~MockCVDevice() = default; // allow for subclassing
   static void loadValue(TJBox_ObjectRef const &iFromSocket, TJBox_Float64 &oValue);
   static void storeValue(TJBox_Float64 iValue, TJBox_ObjectRef const &iToSocket);
   void loadValue(TJBox_ObjectRef const &iFromSocket);
@@ -147,11 +155,11 @@ class MCVSrc : public MockCVDevice
 {
 public:
   explicit MCVSrc(int iSampleRate);
-  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const Config Config;
 
-private:
+protected:
   TJBox_ObjectRef fOutSocket{};
 };
 
@@ -161,11 +169,11 @@ class MCVDst : public MockCVDevice
 {
 public:
   explicit MCVDst(int iSampleRate);
-  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const Config Config;
 
-private:
+protected:
   TJBox_ObjectRef fInSocket{};
 };
 
@@ -175,11 +183,11 @@ class MCVPst : public MockCVDevice
 {
 public:
   explicit MCVPst(int iSampleRate);
-  void renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const Config Config;
 
-private:
+protected:
   TJBox_ObjectRef fInSocket{};
   TJBox_ObjectRef fOutSocket{};
 };
