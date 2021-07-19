@@ -157,12 +157,12 @@ void JBox_TraceValues(
   const TJBox_Value iValues[],
   TJBox_Int32 iValueCount)
 {
-  throw re::mock::Error("JBox_TraceValues: Not implemented yet");
+  throw re::mock::Exception("JBox_TraceValues: Not implemented yet");
 }
 
 TJBox_UInt32 JBox_GetStringLength(TJBox_Value iValue)
 {
-  throw re::mock::Error("JBox_GetStringLength: Not implemented yet");
+  throw re::mock::Exception("JBox_GetStringLength: Not implemented yet");
 }
 
 void JBox_GetSubstring(
@@ -171,7 +171,7 @@ void JBox_GetSubstring(
   TJBox_SizeT iEnd,
   char oString[])
 {
-  throw re::mock::Error("JBox_GetSubstring: Not implemented yet");
+  throw re::mock::Exception("JBox_GetSubstring: Not implemented yet");
 }
 
 
@@ -187,12 +187,12 @@ void *JBox_GetNativeObjectRW(TJBox_Value iValue)
 
 TJBox_SampleInfo JBox_GetSampleInfo(TJBox_Value iValue)
 {
-  throw re::mock::Error("JBox_GetSampleInfo: Not implemented yet");
+  throw re::mock::Exception("JBox_GetSampleInfo: Not implemented yet");
 }
 
 TJBox_SampleMetaData JBox_GetSampleMetaData(TJBox_Value iValue)
 {
-  throw re::mock::Error("JBox_GetSampleMetaData: Not implemented yet");
+  throw re::mock::Exception("JBox_GetSampleMetaData: Not implemented yet");
 }
 
 void JBox_GetSampleData(
@@ -201,12 +201,12 @@ void JBox_GetSampleData(
   TJBox_AudioFramePos iEndFrame,
   TJBox_AudioSample oAudio[])
 {
-  throw re::mock::Error("JBox_GetSampleData: Not implemented yet");
+  throw re::mock::Exception("JBox_GetSampleData: Not implemented yet");
 }
 
 TJBox_BLOBInfo JBox_GetBLOBInfo(TJBox_Value iValue)
 {
-  throw re::mock::Error("JBox_GetBLOBInfo: Not implemented yet");
+  throw re::mock::Exception("JBox_GetBLOBInfo: Not implemented yet");
 }
 
 void JBox_GetBLOBData(
@@ -215,37 +215,37 @@ void JBox_GetBLOBData(
   TJBox_SizeT iEnd,
   TJBox_UInt8 oData[])
 {
-  throw re::mock::Error("JBox_GetBLOBData: Not implemented yet");
+  throw re::mock::Exception("JBox_GetBLOBData: Not implemented yet");
 }
 
 void JBox_SetRTStringData(TJBox_PropertyRef iProperty, TJBox_SizeT iSize, const TJBox_UInt8 iData[])
 {
-  throw re::mock::Error("JBox_SetRTStringData: Not implemented yet");
+  throw re::mock::Exception("JBox_SetRTStringData: Not implemented yet");
 }
 
 void JBox_OutputNoteEvent(TJBox_NoteEvent iNoteEvent)
 {
-  throw re::mock::Error("JBox_OutputNoteEvent: Not implemented yet");
+  throw re::mock::Exception("JBox_OutputNoteEvent: Not implemented yet");
 }
 
 TJBox_NoteEvent JBox_AsNoteEvent(const TJBox_PropertyDiff &iPropertyDiff)
 {
-  throw re::mock::Error("JBox_AsNoteEvent: Not implemented yet");
+  throw re::mock::Exception("JBox_AsNoteEvent: Not implemented yet");
 }
 
 TJBox_Int32 JBox_GetOptimalFFTAlignment()
 {
-  throw re::mock::Error("JBox_GetOptimalFFTAlignment: Not implemented yet");
+  throw re::mock::Exception("JBox_GetOptimalFFTAlignment: Not implemented yet");
 }
 
 void JBox_FFTRealForward(TJBox_Int32 iFFTSize, TJBox_Float32 ioData[])
 {
-  throw re::mock::Error("JBox_FFTRealForward: Not implemented yet");
+  throw re::mock::Exception("JBox_FFTRealForward: Not implemented yet");
 }
 
 void JBox_FFTRealInverse(TJBox_Int32 iFFTSize, TJBox_Float32 ioData[])
 {
-  throw re::mock::Error("JBox_FFTRealInverse: Not implemented yet");
+  throw re::mock::Exception("JBox_FFTRealInverse: Not implemented yet");
 }
 
 

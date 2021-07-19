@@ -20,6 +20,8 @@
 #ifndef __PongasoftCommon_re_mock_fmt_h__
 #define __PongasoftCommon_re_mock_fmt_h__
 
+#include <string>
+
 namespace re::mock::fmt {
 
 namespace impl {
@@ -31,6 +33,8 @@ constexpr auto printf_arg(T const &t) { return t; }
 template<>
 constexpr auto printf_arg<std::string>(std::string const &s) { return s.c_str(); }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-security"
 /*
  * Copied from https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf */
 template<typename ... Args>
@@ -43,6 +47,7 @@ std::string printf(const std::string& format, Args ... args )
   std::snprintf( buf.get(), size, format.c_str(), args ... );
   return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
 }
+#pragma clang diagnostic pop
 
 }
 

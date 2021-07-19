@@ -95,31 +95,78 @@ void MockAudioDevice::copyBuffer(MockAudioDevice::StereoBuffer const &iFromBuffe
   copyBuffer(iFromBuffer.fRight, iToBuffer.fRight);
 }
 
-
-//------------------------------------------------------------------------
-// MockAudioDevice::wire
-//------------------------------------------------------------------------
-void MockAudioDevice::wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension)
-{
-  iRack.wire(iFromExtension.getAudioOutSocket(LEFT_SOCKET), iToExtension.getAudioInSocket(LEFT_SOCKET));
-  iRack.wire(iFromExtension.getAudioOutSocket(RIGHT_SOCKET), iToExtension.getAudioInSocket(RIGHT_SOCKET));
-}
-
 //------------------------------------------------------------------------
 // MockAudioDevice::StereoBuffer::fill
 //------------------------------------------------------------------------
-void MockAudioDevice::StereoBuffer::fill(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample)
+MockAudioDevice::StereoBuffer &MockAudioDevice::StereoBuffer::fill(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample)
 {
   fLeft.fill(iLeftSample);
   fRight.fill(iRightSample);
+  return *this;
 }
 
 //------------------------------------------------------------------------
-// MockAudioDevice::StereoBuffer::check
+// MockAudioDevice::StereoBuffer::operator<<
 //------------------------------------------------------------------------
-bool MockAudioDevice::StereoBuffer::check(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample) const
+std::ostream &operator<<(std::ostream &os, MockAudioDevice::StereoBuffer const &iBuffer)
 {
-  return stl::all_item(fLeft, iLeftSample) && stl::all_item(fRight, iRightSample);
+  return os << "{.fLeft=[" << stl::Join(iBuffer.fLeft, ", ")
+            << "],.fRight=[" << stl::Join(iBuffer.fRight, ", ") << "]}";
+}
+
+//------------------------------------------------------------------------
+// operator==(MockAudioDevice::StereoBuffer)
+//------------------------------------------------------------------------
+bool operator==(MockAudioDevice::StereoBuffer const &lhs, MockAudioDevice::StereoBuffer const &rhs)
+{
+  return MockAudioDevice::eq(lhs, rhs);
+}
+
+//------------------------------------------------------------------------
+// operator!=(MockAudioDevice::StereoBuffer)
+//------------------------------------------------------------------------
+bool operator!=(MockAudioDevice::StereoBuffer const &lhs, MockAudioDevice::StereoBuffer const &rhs)
+{
+  return !(rhs == lhs);
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::eq
+//------------------------------------------------------------------------
+bool MockAudioDevice::eq(TJBox_AudioSample iSample1, TJBox_AudioSample iSample2)
+{
+  return stl::almost_equal<TJBox_AudioSample>(iSample1, iSample2);
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::eq
+//------------------------------------------------------------------------
+bool MockAudioDevice::eq(buffer_type const &iBuffer1, buffer_type const &iBuffer2)
+{
+  for(int i = 0; i < NUM_SAMPLES_PER_FRAME; i++)
+  {
+    if(!eq(iBuffer1[i], iBuffer2[i]))
+      return false;
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::eq
+//------------------------------------------------------------------------
+bool MockAudioDevice::eq(MockAudioDevice::StereoBuffer const &iBuffer1,
+                         MockAudioDevice::StereoBuffer const &iBuffer2)
+{
+  return eq(iBuffer1.fLeft, iBuffer2.fLeft) && eq(iBuffer1.fRight, iBuffer2.fRight);
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::buffer
+//------------------------------------------------------------------------
+MockAudioDevice::StereoBuffer MockAudioDevice::buffer(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample)
+{
+  return MockAudioDevice::StereoBuffer().fill(iLeftSample, iRightSample);
 }
 
 //------------------------------------------------------------------------
@@ -263,11 +310,11 @@ void MockCVDevice::storeValue(TJBox_ObjectRef const &iToSocket)
 }
 
 //------------------------------------------------------------------------
-// MockCVDevice::wire
+// MockCVDevice::eq
 //------------------------------------------------------------------------
-void MockCVDevice::wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension)
+bool MockCVDevice::eq(TJBox_Float64 iCV1, TJBox_Float64 iCV2)
 {
-  iRack.wire(iFromExtension.getCVOutSocket(SOCKET), iToExtension.getCVInSocket(SOCKET));
+  return stl::almost_equal<TJBox_Float64>(iCV1, iCV2);
 }
 
 //------------------------------------------------------------------------

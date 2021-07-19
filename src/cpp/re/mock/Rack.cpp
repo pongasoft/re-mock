@@ -28,7 +28,7 @@ static thread_local Motherboard *sThreadLocalInstance{};
 void loguru_fatal_handler(const loguru::Message& message)
 {
   LOG_F(ERROR, "Fatal Error at %s:%d | %s", message.filename, message.line, message.message);
-  throw Error(message.message);
+  throw Exception(message.message);
 }
 
 //------------------------------------------------------------------------
@@ -159,6 +159,15 @@ void Rack::wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInS
 //------------------------------------------------------------------------
 // Rack::wire
 //------------------------------------------------------------------------
+void Rack::wire(Extension::StereoAudioOutSocket const &iOutSocket, Extension::StereoAudioInSocket const &iInSocket)
+{
+  wire(iOutSocket.fLeft, iInSocket.fLeft);
+  wire(iOutSocket.fRight, iInSocket.fRight);
+}
+
+//------------------------------------------------------------------------
+// Rack::wire
+//------------------------------------------------------------------------
 void Rack::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket)
 {
   auto extension = fExtensions.get(iInSocket.fExtensionId);
@@ -174,7 +183,6 @@ void Rack::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket 
     extension->wire(iOutSocket, iInSocket);
   }
 }
-
 
 //------------------------------------------------------------------------
 // InternalThreadLocalRAII - to add/remove the "current" motherboard
@@ -228,6 +236,24 @@ Rack::Extension::CVOutSocket Rack::Extension::getCVOutSocket(std::string const &
 Rack::Extension::CVInSocket Rack::Extension::getCVInSocket(std::string const &iSocketName) const
 {
   return {{{fImpl->fId, motherboard().getObjectRef(fmt::printf("/cv_inputs/%s", iSocketName))}}};
+}
+
+//------------------------------------------------------------------------
+// Rack::Extension::getStereoAudioOutSocket
+//------------------------------------------------------------------------
+Rack::Extension::StereoAudioOutSocket Rack::Extension::getStereoAudioOutSocket(std::string const &iLeftSocketName,
+                                                                               std::string const &iRightSocketName) const
+{
+  return {.fLeft = getAudioOutSocket(iLeftSocketName), .fRight = getAudioOutSocket(iRightSocketName) };
+}
+
+//------------------------------------------------------------------------
+// Rack::Extension::getStereoAudioInSocket
+//------------------------------------------------------------------------
+Rack::Extension::StereoAudioInSocket Rack::Extension::getStereoAudioInSocket(std::string const &iLeftSocketName,
+                                                                               std::string const &iRightSocketName) const
+{
+  return {.fLeft = getAudioInSocket(iLeftSocketName), .fRight = getAudioInSocket(iRightSocketName) };
 }
 
 //------------------------------------------------------------------------

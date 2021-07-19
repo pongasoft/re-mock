@@ -27,7 +27,6 @@
 #include <functional>
 #include <map>
 #include <string>
-#include <stdexcept>
 #include <vector>
 #include <set>
 #include <array>
@@ -100,6 +99,11 @@ public: // used by regular code
     return getNativeObjectRW<T>("/custom_properties/instance");
   }
 
+  std::string toString(TJBox_Value const &iValue) const;
+  std::string toString(std::string const &iPropertyPath) const { return toString(getValue(iPropertyPath)); }
+  std::string toString(TJBox_PropertyRef const &iPropertyRef) const;
+  std::string getObjectPath(TJBox_ObjectRef iObjectRef) const;
+
 public: // used by Jukebox.cpp (need to be public)
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
   TJBox_Tag getPropertyTag(TJBox_PropertyRef const &iPropertyRef) const;
@@ -113,8 +117,8 @@ public: // used by Jukebox.cpp (need to be public)
   TJBox_DSPBufferInfo getDSPBufferInfo(TJBox_Value const &iValue) const;
   TJBox_Value makeNativeObjectRW(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
   TJBox_Value makeNativeObjectRO(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
-  const void *getNativeObjectRO(TJBox_Value iValue) const;
-  void *getNativeObjectRW(TJBox_Value iValue) const;
+  const void *getNativeObjectRO(TJBox_Value const &iValue) const;
+  void *getNativeObjectRW(TJBox_Value const &iValue) const;
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
@@ -167,7 +171,7 @@ protected:
   static bool compare(TJBox_PropertyRef const &l, TJBox_PropertyRef const &r)
   {
     if(l.fObject == r.fObject)
-      return strncmp(l.fKey, r.fKey, kJBox_MaxPropertyNameLen + 1);
+      return strncmp(l.fKey, r.fKey, kJBox_MaxPropertyNameLen + 1) < 0;
     else
       return l.fObject < r.fObject;
   }
@@ -186,13 +190,6 @@ protected:
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, RTCCallback, ComparePropertyRef> fRTCBindings{compare};
 };
-
-// Error handling
-struct Error : public std::logic_error {
-  Error(std::string s) : std::logic_error(s.c_str()) {}
-  Error(char const *s) : std::logic_error(s) {}
-};
-
 
 }
 

@@ -45,16 +45,20 @@ class MockAudioDevice : public MockDevice
 public:
   constexpr static auto LEFT_SOCKET = "L";
   constexpr static auto RIGHT_SOCKET = "R";
+  constexpr static auto NUM_SAMPLES_PER_FRAME = 64;
 
-  using buffer_type = std::array<TJBox_AudioSample, 64>;
+  using buffer_type = std::array<TJBox_AudioSample, NUM_SAMPLES_PER_FRAME>;
 
   struct StereoBuffer
   {
     buffer_type fLeft{};
     buffer_type fRight{};
 
-    void fill(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample);
-    bool check(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample) const;
+    StereoBuffer &fill(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample);
+
+    friend std::ostream& operator<<(std::ostream& os, const StereoBuffer& iBuffer);
+    friend bool operator==(StereoBuffer const &lhs, StereoBuffer const &rhs);
+    friend bool operator!=(StereoBuffer const &lhs, StereoBuffer const &rhs);
   };
 
   struct StereoSocket
@@ -66,6 +70,12 @@ public:
     static StereoSocket output();
   };
 
+  static StereoBuffer buffer(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample);
+
+  static bool eq(TJBox_AudioSample iSample1, TJBox_AudioSample iSample2);
+  static bool eq(StereoBuffer const &iBuffer1, StereoBuffer const &iBuffer2);
+  static bool eq(buffer_type const &iBuffer1, buffer_type const &iBuffer2);
+
 public:
   explicit MockAudioDevice(int iSampleRate);
   static void copyBuffer(StereoSocket const &iFromSocket, StereoBuffer &iToBuffer);
@@ -75,7 +85,12 @@ public:
   static void copyBuffer(StereoBuffer const &iFromBuffer, StereoBuffer &iToBuffer);
   static void copyBuffer(buffer_type const &iFromBuffer, buffer_type &iToBuffer);
 
-  static void wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension);
+  template<typename From, typename To>
+  static void wire(Rack &iRack, Rack::ExtensionDevice<From> const &iFromExtension, Rack::ExtensionDevice<To> const &iToExtension);
+  template<typename From>
+  static void wire(Rack &iRack, Rack::ExtensionDevice<From> const &iFromExtension, Rack::Extension::StereoAudioInSocket const &iToSockets);
+  template<typename To>
+  static void wire(Rack &iRack, Rack::Extension::StereoAudioOutSocket const &iFromSockets, Rack::ExtensionDevice<To> const &iToExtension);
 
 public:
   StereoBuffer fBuffer{};
@@ -142,7 +157,14 @@ public:
   void loadValue(TJBox_ObjectRef const &iFromSocket);
   void storeValue(TJBox_ObjectRef const &iToSocket);
 
-  static void wire(Rack &iRack, Rack::Extension &iFromExtension, Rack::Extension &iToExtension);
+  template<typename From, typename To>
+  static void wire(Rack &iRack, Rack::ExtensionDevice<From> const &iFromExtension, Rack::ExtensionDevice<To> const &iToExtension);
+  template<typename From>
+  static void wire(Rack &iRack, Rack::ExtensionDevice<From> const &iFromExtension, Rack::Extension::CVInSocket const &iToSocket);
+  template<typename To>
+  static void wire(Rack &iRack, Rack::Extension::CVInSocket const &iFromSocket, Rack::ExtensionDevice<To> const &iToExtension);
+
+  static bool eq(TJBox_Float64 iCV1, TJBox_Float64 iCV2);
 
 public:
   int fSampleRate;
@@ -191,6 +213,80 @@ protected:
   TJBox_ObjectRef fInSocket{};
   TJBox_ObjectRef fOutSocket{};
 };
+
+//------------------------------------------------------------------------
+// MockAudioDevice::wire
+//------------------------------------------------------------------------
+template<typename From, typename To>
+void MockAudioDevice::wire(Rack &iRack,
+                           Rack::ExtensionDevice<From> const &iFromExtension,
+                           Rack::ExtensionDevice<To> const &iToExtension)
+{
+  static_assert(std::is_convertible<From*, MockAudioDevice*>::value, "From must be a subclass of MockAudioDevice");
+  static_assert(std::is_convertible<To*, MockAudioDevice*>::value, "To must be a subclass of MockAudioDevice");
+  iRack.wire(iFromExtension.getStereoAudioOutSocket(LEFT_SOCKET, RIGHT_SOCKET),
+             iToExtension.getStereoAudioInSocket(LEFT_SOCKET, RIGHT_SOCKET));
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::wire
+//------------------------------------------------------------------------
+template<typename From>
+void MockAudioDevice::wire(Rack &iRack,
+                           Rack::ExtensionDevice<From> const &iFromExtension,
+                           Rack::Extension::StereoAudioInSocket const &iToSockets)
+{
+  static_assert(std::is_convertible<From*, MockAudioDevice*>::value, "From must be a subclass of MockAudioDevice");
+  iRack.wire(iFromExtension.getStereoAudioOutSocket(LEFT_SOCKET, RIGHT_SOCKET), iToSockets);
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::wire
+//------------------------------------------------------------------------
+template<typename To>
+void MockAudioDevice::wire(Rack &iRack,
+                           Rack::Extension::StereoAudioOutSocket const &iFromSockets,
+                           Rack::ExtensionDevice<To> const &iToExtension)
+{
+  static_assert(std::is_convertible<To*, MockAudioDevice*>::value, "To must be a subclass of MockAudioDevice");
+  iRack.wire(iFromSockets, iToExtension.getStereoAudioInSocket(LEFT_SOCKET, RIGHT_SOCKET));
+}
+
+//------------------------------------------------------------------------
+// MockCVDevice::wire
+//------------------------------------------------------------------------
+template<typename From, typename To>
+void MockCVDevice::wire(Rack &iRack,
+                        Rack::ExtensionDevice<From> const &iFromExtension,
+                        Rack::ExtensionDevice<To> const &iToExtension)
+{
+  static_assert(std::is_convertible<From*, MockCVDevice*>::value, "From must be a subclass of MockCVDevice");
+  static_assert(std::is_convertible<To*, MockCVDevice*>::value, "To must be a subclass of MockCVDevice");
+  iRack.wire(iFromExtension.getCVOutSocket(SOCKET), iToExtension.getCVInSocket(SOCKET));
+}
+
+//------------------------------------------------------------------------
+// MockCVDevice::wire
+//------------------------------------------------------------------------
+template<typename From>
+void MockCVDevice::wire(Rack &iRack,
+                        Rack::ExtensionDevice <From> const &iFromExtension,
+                        Rack::Extension::CVInSocket const &iToSocket)
+{
+  static_assert(std::is_convertible<From*, MockCVDevice*>::value, "From must be a subclass of MockCVDevice");
+  iRack.wire(iFromExtension.getCVOutSocket(SOCKET), iToSocket);
+}
+
+//------------------------------------------------------------------------
+// MockCVDevice::wire
+//------------------------------------------------------------------------
+template<typename To>
+void MockCVDevice::wire(Rack &iRack, Rack::Extension::CVInSocket const &iFromSocket,
+                        Rack::ExtensionDevice <To> const &iToExtension)
+{
+  static_assert(std::is_convertible<To*, MockCVDevice*>::value, "To must be a subclass of MockCVDevice");
+  iRack.wire(iFromSocket, iToExtension.getCVInSocket(SOCKET));
+}
 
 }
 

@@ -230,7 +230,7 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 void Motherboard::registerRTCNotify(std::string const &iPropertyPath)
 {
   if(iPropertyPath.find_last_of('*') != std::string::npos)
-    throw Error(fmt::printf("wildcard properties not implemented yet: [%s]", iPropertyPath));
+    throw Exception(fmt::printf("wildcard properties not implemented yet: [%s]", iPropertyPath));
 
   auto ref = getPropertyRef(iPropertyPath);
   fCurrentFramePropertyDiffs.emplace_back(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
@@ -480,7 +480,7 @@ TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::
 //------------------------------------------------------------------------
 // Motherboard::getNativeObjectRO
 //------------------------------------------------------------------------
-const void *Motherboard::getNativeObjectRO(TJBox_Value iValue) const
+const void *Motherboard::getNativeObjectRO(TJBox_Value const &iValue) const
 {
   if(JBox_GetType(iValue) == kJBox_Nil)
     return nullptr;
@@ -491,7 +491,7 @@ const void *Motherboard::getNativeObjectRO(TJBox_Value iValue) const
 //------------------------------------------------------------------------
 // Motherboard::getNativeObjectRW
 //------------------------------------------------------------------------
-void *Motherboard::getNativeObjectRW(TJBox_Value iValue) const
+void *Motherboard::getNativeObjectRW(TJBox_Value const &iValue) const
 {
   if(JBox_GetType(iValue) == kJBox_Nil)
     return nullptr;
@@ -508,7 +508,7 @@ void *Motherboard::getNativeObjectRW(TJBox_Value iValue) const
 //------------------------------------------------------------------------
 void Motherboard::connectSocket(TJBox_ObjectRef iSocket)
 {
-  fJboxObjects.get(iSocket)->storeValue("connected", JBox_MakeBoolean(true));
+  storeProperty(JBox_MakePropertyRef(iSocket, "connected"), JBox_MakeBoolean(true));
 }
 
 //------------------------------------------------------------------------
@@ -524,8 +524,63 @@ TJBox_Float64 Motherboard::getCVSocketValue(TJBox_ObjectRef iCVSocket) const
 //------------------------------------------------------------------------
 void Motherboard::setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iValue)
 {
-  fJboxObjects.get(iCVSocket)->storeValue("value", JBox_MakeNumber(iValue));
+  storeProperty(JBox_MakePropertyRef(iCVSocket, "value"), JBox_MakeNumber(iValue));
 }
+
+//------------------------------------------------------------------------
+// Motherboard::toString
+//------------------------------------------------------------------------
+std::string Motherboard::toString(TJBox_Value const &iValue) const
+{
+  switch(iValue.fSecret[0])
+  {
+    case kJBox_Nil:
+      return "Nil";
+
+    case kJBox_Number:
+      return fmt::printf("%f", JBox_GetNumber(iValue));
+
+    case kJBox_Boolean:
+      return fmt::printf("%s", JBox_GetBoolean(iValue) ? "true" : "false");
+
+    case kJBox_DSPBuffer:
+      return fmt::printf("DSPBuffer[%d]", jbox_get_dsp_id(iValue));
+
+    case kJBox_NativeObject:
+    {
+      auto const id = jbox_get_native_object_id(iValue);
+      auto &no = fNativeObjects.get(id);
+      return fmt::printf("R%sNativeObject[%d]",
+                         no->fAccessMode == impl::NativeObject::kReadWrite ? "W" : "O", id);
+    }
+
+    case kJBox_Incompatible:
+      return "<incompatible>";
+
+    case kJBox_String:
+    case kJBox_Sample:
+    case kJBox_BLOB:
+    default:
+      return "<TBD>";
+  }
+}
+
+//------------------------------------------------------------------------
+// Motherboard::toString
+//------------------------------------------------------------------------
+std::string Motherboard::toString(TJBox_PropertyRef const &iPropertyRef) const
+{
+  return fmt::printf("%s/%s", getObjectPath(iPropertyRef.fObject), iPropertyRef.fKey);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getPath
+//------------------------------------------------------------------------
+std::string Motherboard::getObjectPath(TJBox_ObjectRef iObjectRef) const
+{
+  return getObject(iObjectRef)->fObjectPath;
+}
+
 
 //------------------------------------------------------------------------
 // JboxObject::JboxObject

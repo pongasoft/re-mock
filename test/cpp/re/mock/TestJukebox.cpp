@@ -125,7 +125,7 @@ TEST(Jukebox, Basic)
     {
       auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))));
       ASSERT_FLOAT_EQ(0.8, gain->fVolume);
-      ASSERT_THROW(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))), Error);
+      ASSERT_THROW(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))), Exception);
     }
 
     {
@@ -139,16 +139,16 @@ TEST(Jukebox, Basic)
     }
 
 
-    ASSERT_THROW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "invalid")), Error);
-    ASSERT_THROW(JBox_LoadMOMPropertyByTag(customProperties, 200), Error);
-    ASSERT_THROW(JBox_LoadMOMPropertyAsNumber(customProperties, 200), Error);
+    ASSERT_THROW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "invalid")), Exception);
+    ASSERT_THROW(JBox_LoadMOMPropertyByTag(customProperties, 200), Exception);
+    ASSERT_THROW(JBox_LoadMOMPropertyAsNumber(customProperties, 200), Exception);
 
-    ASSERT_THROW(JBox_StoreMOMProperty(JBox_MakePropertyRef(customProperties, "invalid"), JBox_MakeNumber(0.87)), Error);
-    ASSERT_THROW(JBox_StoreMOMPropertyByTag(customProperties, 200, JBox_MakeNumber(0.87)), Error);
-    ASSERT_THROW(JBox_StoreMOMPropertyAsNumber(customProperties, 200, 0.87), Error);
+    ASSERT_THROW(JBox_StoreMOMProperty(JBox_MakePropertyRef(customProperties, "invalid"), JBox_MakeNumber(0.87)), Exception);
+    ASSERT_THROW(JBox_StoreMOMPropertyByTag(customProperties, 200, JBox_MakeNumber(0.87)), Exception);
+    ASSERT_THROW(JBox_StoreMOMPropertyAsNumber(customProperties, 200, 0.87), Exception);
 
-    ASSERT_THROW(JBox_GetPropertyTag(JBox_MakePropertyRef(customProperties, "invalid")), Error);
-    ASSERT_THROW(JBox_FindPropertyByTag(customProperties, 200), Error);
+    ASSERT_THROW(JBox_GetPropertyTag(JBox_MakePropertyRef(customProperties, "invalid")), Exception);
+    ASSERT_THROW(JBox_FindPropertyByTag(customProperties, 200), Exception);
   });
 }
 

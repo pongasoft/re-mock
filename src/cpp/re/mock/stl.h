@@ -21,6 +21,9 @@
 #define __PongasoftCommon_re_mock_stl_h__
 
 #include <algorithm>
+#include <cmath>
+#include <sstream>
+#include <ostream>
 
 namespace re::mock::stl {
 
@@ -33,7 +36,7 @@ inline bool all_of(Container const &iContainer, Predicate iPredicate)
 template<typename Container, typename T>
 inline bool all_item(Container const &iContainer, T const &iItem)
 {
-  return all_of(iContainer, [&iItem](auto &item) {return item == iItem; });
+  return all_of(iContainer, [&iItem](auto &item) { return item == iItem; });
 }
 
 template<typename Container, typename T>
@@ -52,6 +55,79 @@ template<typename Container, typename Function>
 inline void for_each(Container &iContainer, Function &&iFunction)
 {
   std::for_each(std::begin(iContainer), std::end(iContainer), std::forward<Function>(iFunction));
+}
+
+template<typename Container, typename Function>
+inline void for_each(Container const &iContainer, Function &&iFunction)
+{
+  std::for_each(std::begin(iContainer), std::end(iContainer), std::forward<Function>(iFunction));
+}
+
+template<typename T>
+inline typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
+almost_equal(T f1, T f2)
+{
+  if(std::isnan(f1) || std::isnan(f2))
+    return false;
+
+  return (std::fabs(f1 - f2) <= std::numeric_limits<T>::epsilon() * std::fmax(std::fabs(f1), std::fabs(f2)));
+}
+
+template<typename InputIterator, typename Function>
+Function for_each_indexed(InputIterator iFirst, InputIterator iLast, Function iFunction)
+{
+  for(auto i = 0; iFirst != iLast; ++iFirst, ++i)
+    iFunction(i, *iFirst);
+  return iFunction;
+}
+
+template<typename Container, typename Function>
+Function for_each_indexed(Container &iContainer, Function &&iFunction)
+{
+  return for_each_indexed(std::begin(iContainer), std::end(iContainer), std::forward<Function>(iFunction));
+}
+
+template<typename Container, typename Function>
+Function for_each_indexed(Container const &iContainer, Function &&iFunction)
+{
+  return for_each_indexed(std::begin(iContainer), std::end(iContainer), std::forward<Function>(iFunction));
+}
+
+template<typename InputIterator, typename Stream, typename Separator = std::string>
+inline Stream &join(InputIterator iFirst, InputIterator iLast, Stream &os, Separator iSeparator = {})
+{
+  for_each_indexed(iFirst, iLast, [&os, &iSeparator](auto i, auto &item) {
+    if(i > 0)
+      os << iSeparator;
+    os << item;
+  });
+  return os;
+}
+
+template<typename Container, typename Stream, typename Separator = std::string>
+inline Stream &join(Container const &iContainer, Stream &os, Separator iSeparator = {})
+{
+  return join(std::begin(iContainer), std::end(iContainer), os, iSeparator);
+}
+
+template<typename Container, typename Separator>
+class Join
+{
+public:
+  Join(Container const &iContainer, Separator iSeparator) : fContainer{iContainer}, fSeparator{iSeparator} {}
+  friend std::ostream &operator<<(std::ostream &os, Join const &iJoin) { return join(iJoin.fContainer, os, iJoin.fSeparator); }
+
+private:
+  Container const &fContainer;
+  Separator fSeparator;
+};
+
+template<typename Container>
+inline std::string join_to_string(Container const &iContainer, std::string iSeparator = ", ")
+{
+  std::ostringstream os{};
+  os << Join(iContainer, iSeparator);
+  return os.str();
 }
 
 }

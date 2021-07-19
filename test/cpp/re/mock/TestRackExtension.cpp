@@ -153,7 +153,7 @@ TEST(RackExtension, Motherboard)
   ASSERT_FLOAT_EQ(0.8, re->fFloat);
   ASSERT_EQ(4, re->fInt);
   ASSERT_TRUE(re->fBool);
-  ASSERT_TRUE(re->fBuffer.check(4.0, 6.0));
+  ASSERT_EQ(re->fBuffer, MockAudioDevice::buffer(4.0, 6.0));
   ASSERT_FLOAT_EQ(12.0, re->fValue);
 
   // check the motherboard apis - get
@@ -166,14 +166,14 @@ TEST(RackExtension, Motherboard)
       .fLeft = re.getDSPBuffer("/audio_inputs/L"),
       .fRight = re.getDSPBuffer(re.getAudioInSocket("R"))
     };
-    ASSERT_TRUE(buffer.check(1.0, 2.0));
+    ASSERT_EQ(buffer, MockAudioDevice::buffer(1.0, 2.0));
   }
   {
     auto buffer = MockAudioDevice::StereoBuffer{
       .fLeft = re.getDSPBuffer("/audio_outputs/L"),
       .fRight = re.getDSPBuffer(re.getAudioOutSocket("R"))
     };
-    ASSERT_TRUE(buffer.check(4.0, 6.0));
+    ASSERT_EQ(buffer, MockAudioDevice::buffer(4.0, 6.0));
   }
 
   ASSERT_FLOAT_EQ(5.0, re.getCVSocketValue("/cv_inputs/C"));
@@ -182,7 +182,7 @@ TEST(RackExtension, Motherboard)
   ASSERT_FLOAT_EQ(12.0, re.getCVSocketValue(re.getCVOutSocket("C")));
 
   ASSERT_FLOAT_EQ(0.7, re.getNativeObjectRO<Gain>("/custom_properties/gain_ro")->fVolume);
-  ASSERT_THROW(re.getNativeObjectRW<Gain>("/custom_properties/gain_ro"), Error);
+  ASSERT_THROW(re.getNativeObjectRW<Gain>("/custom_properties/gain_ro"), Exception);
   ASSERT_FLOAT_EQ(0.75, re.getNativeObjectRO<Gain>("/custom_properties/gain_rw")->fVolume);
   ASSERT_FLOAT_EQ(0.75, re.getNativeObjectRW<Gain>("/custom_properties/gain_rw")->fVolume);
 
@@ -197,15 +197,14 @@ TEST(RackExtension, Motherboard)
   ASSERT_FALSE(re.getBool("/custom_properties/prop_bool"));
 
   {
-    auto buffer = MockAudioDevice::StereoBuffer{};
-    buffer.fill(101.0, 102.0);
+    auto buffer = MockAudioDevice::buffer(101.0, 102.0);
     re.setDSPBuffer("/audio_outputs/L", buffer.fLeft);
     re.setDSPBuffer(re.getAudioOutSocket("R"), buffer.fRight);
     buffer = MockAudioDevice::StereoBuffer{
       .fLeft = re.getDSPBuffer("/audio_outputs/L"),
       .fRight = re.getDSPBuffer(re.getAudioOutSocket("R"))
     };
-    ASSERT_TRUE(buffer.check(101.0, 102.0));
+    ASSERT_EQ(buffer, MockAudioDevice::buffer(101.0, 102.0));
   }
 
   re.setCVSocketValue("/cv_inputs/C", 105.0);

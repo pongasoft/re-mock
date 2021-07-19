@@ -31,7 +31,7 @@ TEST(Rack, Basic)
 
   auto re = rack.newExtension(Config{});
 
-  ASSERT_THROW(JBox_GetMotherboardObjectRef("/custom_properties"), Error);
+  ASSERT_THROW(JBox_GetMotherboardObjectRef("/custom_properties"), Exception);
 
   re.use([]() {
     // now this works
@@ -46,48 +46,74 @@ TEST(Rack, AudioWiring) {
 
   auto src = rack.newDevice<MAUSrc>(MAUSrc::Config);
 
-  ASSERT_TRUE(src->fBuffer.check(0, 0));
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(0, 0));
 
   auto dst = rack.newDevice<MAUDst>(MAUDst::Config);
 
-  ASSERT_TRUE(dst->fBuffer.check(0, 0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
 
   auto pst = rack.newDevice<MAUPst>(MAUPst::Config);
 
-  ASSERT_TRUE(pst->fBuffer.check(0, 0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(0, 0));
 
   MockAudioDevice::wire(rack, src, pst);
   MockAudioDevice::wire(rack, pst, dst);
 
-  ASSERT_TRUE(src->fBuffer.check(0, 0));
-  ASSERT_TRUE(dst->fBuffer.check(0, 0));
-  ASSERT_TRUE(pst->fBuffer.check(0, 0));
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(0, 0));
 
   rack.nextFrame();
 
-  ASSERT_TRUE(src->fBuffer.check(0, 0));
-  ASSERT_TRUE(dst->fBuffer.check(0, 0));
-  ASSERT_TRUE(pst->fBuffer.check(0, 0));
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(0, 0));
 
   src->fBuffer.fill(2.0, 3.0);
 
-  ASSERT_TRUE(src->fBuffer.check(2.0, 3.0));
-  ASSERT_TRUE(dst->fBuffer.check(0, 0));
-  ASSERT_TRUE(pst->fBuffer.check(0, 0));
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(0, 0));
 
   rack.nextFrame();
 
   src->fBuffer.fill(4.0, 5.0);
 
-  ASSERT_TRUE(src->fBuffer.check(4.0, 5.0));
-  ASSERT_TRUE(dst->fBuffer.check(2.0, 3.0));
-  ASSERT_TRUE(pst->fBuffer.check(2.0, 3.0));
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
+
+ rack.nextFrame();
+
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+}
+
+// Rack.AudioWiring2 (different wiring api)
+TEST(Rack, AudioWiring2) {
+  Rack rack{};
+
+  auto src = rack.newDevice<MAUSrc>(MAUSrc::Config);
+  auto dst = rack.newDevice<MAUDst>(MAUDst::Config);
+  auto pst = rack.newDevice<MAUPst>(MAUPst::Config);
+
+  MockAudioDevice::wire(rack, src, pst.getStereoAudioInSocket(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET));
+  MockAudioDevice::wire(rack, pst.getStereoAudioOutSocket(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET), dst);
+
+  src->fBuffer.fill(2.0, 3.0);
+
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(0, 0));
 
   rack.nextFrame();
 
-  ASSERT_TRUE(src->fBuffer.check(4.0, 5.0));
-  ASSERT_TRUE(dst->fBuffer.check(4.0, 5.0));
-  ASSERT_TRUE(pst->fBuffer.check(4.0, 5.0));
+  src->fBuffer.fill(4.0, 5.0);
+
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
 }
 
 // Rack.CVWiring
@@ -207,13 +233,13 @@ TEST(Rack, CircularWiring)
 
   // due to circular dependency, and the fact that devices are processed in order of id, ex2 out will be processed
   // first so the CV dev->fValue will make in this frame while the audio buffer will make it in the next
-  ASSERT_TRUE(ex2->fBuffer.check(0.0, 0));
+  ASSERT_EQ(ex2->fBuffer, MockAudioDevice::buffer(0, 0));
   ASSERT_FLOAT_EQ(3.0, ex1->fValue);
 
   rack.nextFrame();
 
   // now the audio buffer has caught up
-  ASSERT_TRUE(ex2->fBuffer.check(2.0, 0));
+  ASSERT_EQ(ex2->fBuffer, MockAudioDevice::buffer(2.0, 0));
   ASSERT_FLOAT_EQ(3.0, ex1->fValue);
 }
 
@@ -261,5 +287,138 @@ TEST(Rack, SelfConnection)
 
   ASSERT_FLOAT_EQ(3.0, dev->fValue);
 }
+
+// Rack.toString
+TEST(Rack, toString)
+{
+  Rack rack{};
+
+  struct Gain
+  {
+    TJBox_Float64 fVolume{};
+  };
+
+  Config c([](auto &def, auto &rtc, auto &rt) {
+    def.audio_outputs["output_1"] = jbox.audio_output();
+
+    def.document_owner.properties["prop_volume_ro"]       = jbox.number<float>(0.8);
+    def.document_owner.properties["prop_volume_rw"]       = jbox.number<float>(0.9);
+    def.rt_owner.properties["prop_gain_ro"]               = jbox.native_object();
+    def.rt_owner.properties["prop_gain_rw"]               = jbox.native_object();
+
+    rtc.rtc_bindings["/custom_properties/prop_volume_ro"]   = "/global_rtc/new_gain_ro";
+    rtc.rtc_bindings["/custom_properties/prop_volume_rw"]   = "/global_rtc/new_gain_rw";
+
+    rtc.rtc_bindings["/custom_properties/prop_volume_ro"]   = "/global_rtc/new_gain_ro";
+    rtc.rtc_bindings["/custom_properties/prop_volume_rw"]   = "/global_rtc/new_gain_rw";
+
+    rtc.global_rtc["new_gain_ro"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+      auto new_no = jbox.make_native_object_ro("Gain", { iNewValue });
+      jbox.store_property("/custom_properties/prop_gain_ro", new_no);
+    };
+
+    rtc.global_rtc["new_gain_rw"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+      auto new_no = jbox.make_native_object_rw("Gain", { iNewValue });
+      jbox.store_property("/custom_properties/prop_gain_rw", new_no);
+    };
+
+    rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
+      if(std::strcmp(iOperation, "Gain") == 0)
+        return new Gain{JBox_GetNumber(iParams[0])};
+
+      return nullptr;
+    };
+
+    rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
+      if(std::strcmp(iOperation, "Gain") == 0)
+      {
+        delete reinterpret_cast<Gain *>(iNativeObject);
+      }
+    };
+  });
+
+  auto re = rack.newExtension(c);
+  ASSERT_STREQ("Nil", re.toString(JBox_MakeNil()).c_str());
+  ASSERT_STREQ("true", re.toString(JBox_MakeBoolean(true)).c_str());
+  ASSERT_STREQ("false", re.toString(JBox_MakeBoolean(false)).c_str());
+  ASSERT_STREQ("false", re.toString("/audio_outputs/output_1/connected").c_str());
+  ASSERT_STREQ("0.800000", re.toString("/custom_properties/prop_volume_ro").c_str());
+  ASSERT_STREQ("DSPBuffer[1]", re.toString("/audio_outputs/output_1/buffer").c_str());
+  ASSERT_STREQ("RONativeObject[1]", re.toString("/custom_properties/prop_gain_ro").c_str());
+  ASSERT_STREQ("RWNativeObject[2]", re.toString("/custom_properties/prop_gain_rw").c_str());
+
+  re.use([&re]{
+    auto o1 = JBox_GetMotherboardObjectRef("/audio_outputs/output_1");
+    ASSERT_STREQ("/audio_outputs/output_1", re.getObjectPath(o1).c_str());
+    ASSERT_STREQ("/audio_outputs/output_1/buffer", re.toString(JBox_MakePropertyRef(o1, "buffer")).c_str());
+  });
+}
+
+// Rack.Diff
+TEST(Rack, Diff)
+{
+  Rack rack{};
+
+  struct Device : public MockDevice
+  {
+    Device(int iSampleRate) : MockDevice(iSampleRate) {}
+
+    void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
+    {
+      fDiffs.clear();
+
+      for(int i = 0; i < iDiffCount; i++)
+        fDiffs.emplace_back(iPropertyDiffs[i]);
+    }
+
+    std::vector<TJBox_PropertyDiff> fDiffs{};
+  };
+
+  auto c = Config::byDefault<Device>([](auto &def, auto &rtc, auto &rt) {
+    def.audio_inputs["input"] = jbox.audio_input();
+    def.cv_inputs["cv"] = jbox.cv_input();
+
+    def.document_owner.properties["prop_float"]       = jbox.number<float>(0.8);
+    def.document_owner.properties["prop_bool"]        = jbox.boolean();
+    def.document_owner.properties["prop_untracked"]   = jbox.boolean();
+
+    // realtime_controller.lua
+    rtc.rt_input_setup.notify = {
+      "/cv_inputs/cv/connected",
+      "/cv_inputs/cv/value",
+
+      "/audio_inputs/input/connected",
+
+      "/custom_properties/prop_float",
+      "/custom_properties/prop_bool",
+    };
+  });
+
+  auto src = rack.newDevice<MAUSrc>(MAUSrc::Config);
+  auto re = rack.newDevice<Device>(c);
+
+  rack.wire(src.getAudioOutSocket(MAUSrc::LEFT_SOCKET), re.getAudioInSocket("input"));
+
+  rack.nextFrame();
+
+  // there are 6 diffs because /audio_inputs/input/connected gets "initialized" with false
+  // then get updated with true when wiring happens => 2 updates
+  ASSERT_EQ(6, re->fDiffs.size());
+
+  std::map<std::string, std::string> diffMap{};
+
+  for(auto &diff: re->fDiffs)
+    diffMap[re.toString(diff.fPropertyRef)] = re.toString(diff.fCurrentValue);
+
+  std::map<std::string, std::string> expected{};
+  expected["/audio_inputs/input/connected"] = "true";
+  expected["/custom_properties/prop_bool"] = "false";
+  expected["/custom_properties/prop_float"] = "0.800000";
+  expected["/cv_inputs/cv/connected"] = "false";
+  expected["/cv_inputs/cv/value"] = "0.000000";
+
+  ASSERT_EQ(expected, diffMap);
+}
+
 
 }

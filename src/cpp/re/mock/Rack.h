@@ -46,6 +46,9 @@ public:
     struct AudioSocket : public Socket {};
     struct AudioOutSocket : public AudioSocket {};
     struct AudioInSocket : public AudioSocket {};
+    struct StereoAudioOutSocket { AudioOutSocket fLeft; AudioOutSocket fRight; };
+    struct StereoAudioInSocket { AudioInSocket fLeft; AudioInSocket fRight; };
+
     struct CVSocket : public Socket {};
     struct CVOutSocket : public CVSocket {};
     struct CVInSocket : public CVSocket {};
@@ -71,7 +74,9 @@ public:
     }
 
     AudioOutSocket getAudioOutSocket(std::string const &iSocketName) const;
+    StereoAudioOutSocket getStereoAudioOutSocket(std::string const &iLeftSocketName, std::string const &iRightSocketName) const;
     AudioInSocket getAudioInSocket(std::string const &iSocketName) const;
+    StereoAudioInSocket getStereoAudioInSocket(std::string const &iLeftSocketName, std::string const &iRightSocketName) const;
     CVOutSocket getCVOutSocket(std::string const &iSocketName) const;
     CVInSocket getCVInSocket(std::string const &iSocketName) const;
 
@@ -79,6 +84,11 @@ public:
     inline void setValue(std::string const &iPropertyPath, TJBox_Value const &iValue) { motherboard().setValue(iPropertyPath, iValue); }
     inline bool getBool(std::string const &iPropertyPath) const { return motherboard().getBool(iPropertyPath); }
     inline void setBool(std::string const &iPropertyPath, bool iValue) { motherboard().setBool(iPropertyPath, iValue); }
+
+    inline std::string toString(TJBox_Value const &iValue) { return motherboard().toString(iValue); }
+    inline std::string toString(std::string const &iPropertyPath) { return motherboard().toString(iPropertyPath); }
+    inline std::string toString(TJBox_PropertyRef const &iPropertyRef) const { return motherboard().toString(iPropertyRef); }
+    inline std::string getObjectPath(TJBox_ObjectRef iObjectRef) const { return motherboard().getObjectPath(iObjectRef); }
 
     template<typename T = TJBox_Float64>
     T getNum(std::string const &iPropertyPath) const { return motherboard().getNum<T>(iPropertyPath); }
@@ -169,6 +179,7 @@ public:
   ExtensionDevice<Device> newDeviceByDefault(Config::callback_t iDefaultConfigCallback);
 
   void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
+  void wire(Extension::StereoAudioOutSocket const &iOutSocket, Extension::StereoAudioInSocket const &iInSocket);
   void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
 
   void nextFrame();
