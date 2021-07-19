@@ -430,5 +430,40 @@ TEST(Rack, Diff)
   ASSERT_EQ(expected, diffMap);
 }
 
+// Rack.InstanceID
+TEST(Rack, InstanceID)
+{
+  Rack rack{};
 
+  struct Device
+  {
+    Device(int instanceID) : fInstanceID{instanceID} {}
+
+    void renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
+    {
+    }
+
+    int fInstanceID;
+
+    std::vector<TJBox_PropertyDiff> fDiffs{};
+  };
+
+  auto c = Config([](auto &def, auto &rtc, auto &rt) {
+
+    rtc.rtc_bindings["/environment/instance_id"] = "/global_rtc/init_instance";
+
+    rtc.global_rtc["init_instance"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+      auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
+      jbox.store_property("/custom_properties/instance", new_no);
+    };
+
+    rt = Realtime::byDefault<Device>();
+  });
+
+  auto re = rack.newDevice<Device>(c);
+
+  ASSERT_TRUE(re.getInstance<Device>() != nullptr);
+  ASSERT_EQ(1, re->fInstanceID);
+
+}
 }

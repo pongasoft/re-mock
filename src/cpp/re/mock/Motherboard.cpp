@@ -144,15 +144,20 @@ void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iP
 //------------------------------------------------------------------------
 // Motherboard::create
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::create(int iSampleRate, Config const &iConfig)
+std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRate, Config const &iConfig)
 {
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
   // rt
   res->fRealtime = iConfig.rt;
 
-  // /environment/system_sample_rate
   auto environment = res->addObject("/environment");
+
+  // /environment/instance_id
+  res->addProperty(environment->fObjectRef, "instance_id", PropertyOwner::kHostOwner,
+                   { .property_tag = kJBox_EnvironmentInstanceID, .default_value = JBox_MakeNumber(iInstanceId) });
+
+  // /environment/system_sample_rate
   res->addProperty(environment->fObjectRef, "system_sample_rate", PropertyOwner::kHostOwner,
                    { .property_tag = kJBox_EnvironmentSystemSampleRate, .default_value = JBox_MakeNumber(iSampleRate) });
 

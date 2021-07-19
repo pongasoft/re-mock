@@ -55,7 +55,7 @@ Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}
 Rack::Extension Rack::newExtension(Config const &iConfig)
 {
   auto id = fExtensions.add([this, &iConfig](int id) {
-    auto motherboard = Motherboard::create(fSampleRate, iConfig);
+    auto motherboard = Motherboard::create(id, fSampleRate, iConfig);
     return std::shared_ptr<ExtensionImpl>(new ExtensionImpl(id, this, std::move(motherboard)));
   });
 
@@ -336,23 +336,6 @@ bool operator==(Rack::Extension::CVInSocket const &lhs, Rack::Extension::CVInSoc
 bool Rack::Extension::CVWire::overlap(CVWire const &iWire1, CVWire const &iWire2)
 {
   return iWire1.fFromSocket == iWire2.fFromSocket || iWire1.fToSocket == iWire2.fToSocket;
-}
-
-//------------------------------------------------------------------------
-// RealtimeController::defaultBindings - defined here because depends on jbox
-//------------------------------------------------------------------------
-RealtimeController RealtimeController::byDefault()
-{
-  RealtimeController rtc{};
-
-  rtc.rtc_bindings["/environment/system_sample_rate"] = "/global_rtc/init_instance";
-
-  rtc.global_rtc["init_instance"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
-    auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
-    jbox.store_property("/custom_properties/instance", new_no);
-  };
-
-  return rtc;
 }
 
 }

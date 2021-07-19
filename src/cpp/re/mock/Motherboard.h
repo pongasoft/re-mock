@@ -127,7 +127,7 @@ public: // used by Jukebox.cpp (need to be public)
 
 protected:
 
-  static std::unique_ptr<Motherboard> create(int iSampleRate, Config const &iConfig);
+  static std::unique_ptr<Motherboard> create(int iInstanceId, int iSampleRate, Config const &iConfig);
 
   Motherboard();
 

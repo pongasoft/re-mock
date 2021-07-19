@@ -392,4 +392,21 @@ void MCVPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
   storeValue(fOutSocket);
 }
 
+//------------------------------------------------------------------------
+// RealtimeController::defaultBindings - defined here because depends on jbox
+//------------------------------------------------------------------------
+RealtimeController RealtimeController::byDefault()
+{
+  RealtimeController rtc{};
+
+  rtc.rtc_bindings["/environment/system_sample_rate"] = "/global_rtc/init_instance";
+
+  rtc.global_rtc["init_instance"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
+    jbox.store_property("/custom_properties/instance", new_no);
+  };
+
+  return rtc;
+}
+
 }
