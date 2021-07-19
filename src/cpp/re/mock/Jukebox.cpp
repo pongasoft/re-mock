@@ -157,7 +157,13 @@ void JBox_TraceValues(
   const TJBox_Value iValues[],
   TJBox_Int32 iValueCount)
 {
-  throw re::mock::Exception("JBox_TraceValues: Not implemented yet");
+  std::vector<std::string> values{};
+  auto const &motherboard = re::mock::Rack::currentMotherboard();
+  for(int i = 0; i < iValueCount; i++)
+    values.emplace_back(motherboard.toString(iValues[i]));
+  char buf[1024];
+  re::mock::fmt::impl::printf(std::begin(buf), std::end(buf), iTemplate, values);
+  JBox_Trace(iFile, iLine, buf);
 }
 
 TJBox_UInt32 JBox_GetStringLength(TJBox_Value iValue)

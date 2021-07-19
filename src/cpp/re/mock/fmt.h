@@ -49,8 +49,77 @@ std::string printf(const std::string& format, Args ... args )
 }
 #pragma clang diagnostic pop
 
+/**
+ * Appends the content of the c-style, null terminated string, to `first` (but not beyond `last`).
+ * @return the last value of `first` (for continue processing) */
+template<typename Iter>
+Iter to_chars(char const *iValue, Iter first, Iter last)
+{
+  auto input = iValue;
+  char c;
+
+  while(first != last && (c = *input++) != 0)
+    *first++ = c;
+
+  return first;
 }
 
+//------------------------------------------------------------------------
+// printf using Jukebox format (^0, ... )
+//------------------------------------------------------------------------
+template<typename Iter>
+Iter printf(Iter first, Iter last, char const *iFormat, std::vector<std::string> const &iParams)
+{
+  auto input = iFormat;
+  char c;
+
+  while(first != last && (c = *input++) != 0)
+  {
+    if(c == '^')
+    {
+      auto n = *input++;
+
+      // we reached the end
+      if(n == 0)
+      {
+        *first++ = '^';
+        break; // out of while
+      }
+
+      switch(n)
+      {
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+          first = to_chars(iParams[n - '0'].c_str(), first, last);
+          break;
+
+        default:
+          *first++ = c;
+          break;
+      }
+    }
+    else
+    {
+      *first++ = c;
+    }
+  }
+
+  return first;
+}
+
+}
+
+//------------------------------------------------------------------------
+// printf -> std::string
+//------------------------------------------------------------------------
 template<typename ... Args>
 std::string printf(const std::string& format, Args ... args )
 {

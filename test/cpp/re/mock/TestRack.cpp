@@ -351,6 +351,16 @@ TEST(Rack, toString)
     auto o1 = JBox_GetMotherboardObjectRef("/audio_outputs/output_1");
     ASSERT_STREQ("/audio_outputs/output_1", re.getObjectPath(o1).c_str());
     ASSERT_STREQ("/audio_outputs/output_1/buffer", re.toString(JBox_MakePropertyRef(o1, "buffer")).c_str());
+
+    TJBox_Value values[] = { JBox_MakeNil(),
+                             re.getValue("/audio_outputs/output_1/connected"),
+                             re.getValue("/audio_outputs/output_1/buffer"),
+                             re.getValue("/custom_properties/prop_volume_ro"),
+                             re.getValue("/custom_properties/prop_gain_ro"),
+                             re.getValue("/custom_properties/prop_gain_rw"),
+                             };
+
+    JBOX_TRACEVALUES("Nil=^0, connected=^1, buffer=^2, prop_volume_ro=^3, prop_gain_ro=^4, prop_gain_rw=^5, Nil=^0", values, 6);
   });
 }
 
