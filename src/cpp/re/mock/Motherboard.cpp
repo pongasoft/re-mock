@@ -514,6 +514,14 @@ void Motherboard::connectSocket(TJBox_ObjectRef iSocket)
 }
 
 //------------------------------------------------------------------------
+// Motherboard::disconnectSocket
+//------------------------------------------------------------------------
+void Motherboard::disconnectSocket(TJBox_ObjectRef iSocket)
+{
+  storeProperty(JBox_MakePropertyRef(iSocket, "connected"), JBox_MakeBoolean(false));
+}
+
+//------------------------------------------------------------------------
 // Motherboard::getCVSocketValue
 //------------------------------------------------------------------------
 TJBox_Float64 Motherboard::getCVSocketValue(TJBox_ObjectRef iCVSocket) const

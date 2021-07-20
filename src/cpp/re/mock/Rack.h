@@ -155,16 +155,22 @@ protected:
 
     void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
     void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
+    std::optional<Extension::AudioInSocket> unwire(Extension::AudioOutSocket const &iOutSocket);
+    std::optional<Extension::AudioOutSocket> unwire(Extension::AudioInSocket const &iInSocket);
+    std::optional<Extension::CVInSocket> unwire(Extension::CVOutSocket const &iOutSocket);
+    std::optional<Extension::CVOutSocket> unwire(Extension::CVInSocket const &iInSocket);
 
-    inline std::set<int> const &getDependents() const { return fDependents; }
+    std::set<int> const &getDependents() const;
 
   private:
     int fId;
     [[maybe_unused]] Rack *fRack; // unused at this time...
     std::unique_ptr<Motherboard> fMotherboard;
-    std::vector<Extension::AudioWire> fAudioWires{};
-    std::vector<Extension::CVWire> fCVWires{};
-    std::set<int> fDependents{};
+    std::vector<Extension::AudioWire> fAudioOutWires{};
+    std::vector<Extension::AudioWire> fAudioInWires{};
+    std::vector<Extension::CVWire> fCVOutWires{};
+    std::vector<Extension::CVWire> fCVInWires{};
+    mutable std::optional<std::set<int>> fDependents{};
   };
 
 public:
@@ -179,8 +185,11 @@ public:
   ExtensionDevice<Device> newDeviceByDefault(Config::callback_t iDefaultConfigCallback);
 
   void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
+  void unwire(Extension::AudioOutSocket const &iOutSocket);
   void wire(Extension::StereoAudioOutSocket const &iOutSocket, Extension::StereoAudioInSocket const &iInSocket);
+  void unwire(Extension::StereoAudioOutSocket const &iOutSocket);
   void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
+  void unwire(Extension::CVOutSocket const &iOutSocket);
 
   void nextFrame();
 

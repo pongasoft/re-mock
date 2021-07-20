@@ -156,6 +156,7 @@ protected:
   void setDSPBuffer(TJBox_ObjectRef iAudioSocket, DSPBuffer iBuffer);
 
   void connectSocket(TJBox_ObjectRef iSocket);
+  void disconnectSocket(TJBox_ObjectRef iSocket);
 
   TJBox_Float64 getCVSocketValue(TJBox_ObjectRef iCVSocket) const;
   void setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iValue);

@@ -106,10 +106,10 @@ void Rack::nextFrame(ExtensionImpl &iExtension)
 {
   iExtension.use([](Motherboard &m) { m.nextFrame(); });
 
-  for(auto &wire: iExtension.fAudioWires)
+  for(auto &wire: iExtension.fAudioOutWires)
     copyAudioBuffers(wire);
 
-  for(auto &wire: iExtension.fCVWires)
+  for(auto &wire: iExtension.fCVOutWires)
     copyCVValue(wire);
 }
 
@@ -142,17 +142,32 @@ void Rack::copyCVValue(Extension::CVWire const &iWire)
 //------------------------------------------------------------------------
 void Rack::wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket)
 {
-  auto extension = fExtensions.get(iInSocket.fExtensionId);
-  extension->fMotherboard->connectSocket(iInSocket.fSocketRef);
-  extension->wire(iOutSocket, iInSocket);
+  auto inExtension = fExtensions.get(iInSocket.fExtensionId);
+  inExtension->wire(iOutSocket, iInSocket);
 
-  extension = fExtensions.get(iOutSocket.fExtensionId);
-  extension->fMotherboard->connectSocket(iOutSocket.fSocketRef);
-
-  // case when an extension is connected to itself
+  auto outExtension = fExtensions.get(iOutSocket.fExtensionId);
+  // if the device is self connected, the connection was already established
+  // with inExtension->wire(iOutSocket, iInSocket);
   if(iInSocket.fExtensionId != iOutSocket.fExtensionId)
+    outExtension->wire(iOutSocket, iInSocket);
+
+  inExtension->fMotherboard->connectSocket(iInSocket.fSocketRef);
+  outExtension->fMotherboard->connectSocket(iOutSocket.fSocketRef);
+}
+
+//------------------------------------------------------------------------
+// Rack::unwire
+//------------------------------------------------------------------------
+void Rack::unwire(Rack::Extension::AudioOutSocket const &iOutSocket)
+{
+  auto outExtension = fExtensions.get(iOutSocket.fExtensionId);
+  auto inSocket = outExtension->unwire(iOutSocket);
+  if(inSocket)
   {
-    extension->wire(iOutSocket, iInSocket);
+    outExtension->fMotherboard->disconnectSocket(iOutSocket.fSocketRef);
+    auto inExtension = fExtensions.get(inSocket->fExtensionId);
+    inExtension->unwire(*inSocket);
+    inExtension->fMotherboard->disconnectSocket(inSocket->fSocketRef);
   }
 }
 
@@ -166,21 +181,45 @@ void Rack::wire(Extension::StereoAudioOutSocket const &iOutSocket, Extension::St
 }
 
 //------------------------------------------------------------------------
+// Rack::unwire
+//------------------------------------------------------------------------
+void Rack::unwire(Extension::StereoAudioOutSocket const &iOutSocket)
+{
+  unwire(iOutSocket.fLeft);
+  unwire(iOutSocket.fRight);
+}
+
+//------------------------------------------------------------------------
 // Rack::wire
 //------------------------------------------------------------------------
 void Rack::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket)
 {
-  auto extension = fExtensions.get(iInSocket.fExtensionId);
-  extension->fMotherboard->connectSocket(iInSocket.fSocketRef);
-  extension->wire(iOutSocket, iInSocket);
+  auto inExtension = fExtensions.get(iInSocket.fExtensionId);
+  inExtension->wire(iOutSocket, iInSocket);
 
-  extension = fExtensions.get(iOutSocket.fExtensionId);
-  extension->fMotherboard->connectSocket(iOutSocket.fSocketRef);
-
-  // case when an extension is connected to itself
+  auto outExtension = fExtensions.get(iOutSocket.fExtensionId);
+  // if the device is self connected, the connection was already established
+  // with inExtension->wire(iOutSocket, iInSocket);
   if(iInSocket.fExtensionId != iOutSocket.fExtensionId)
+    outExtension->wire(iOutSocket, iInSocket);
+
+  inExtension->fMotherboard->connectSocket(iInSocket.fSocketRef);
+  outExtension->fMotherboard->connectSocket(iOutSocket.fSocketRef);
+}
+
+//------------------------------------------------------------------------
+// Rack::unwire
+//------------------------------------------------------------------------
+void Rack::unwire(Rack::Extension::CVOutSocket const &iOutSocket)
+{
+  auto outExtension = fExtensions.get(iOutSocket.fExtensionId);
+  auto inSocket = outExtension->unwire(iOutSocket);
+  if(inSocket)
   {
-    extension->wire(iOutSocket, iInSocket);
+    outExtension->fMotherboard->disconnectSocket(iOutSocket.fSocketRef);
+    auto inExtension = fExtensions.get(inSocket->fExtensionId);
+    inExtension->unwire(*inSocket);
+    inExtension->fMotherboard->disconnectSocket(inSocket->fSocketRef);
   }
 }
 
@@ -265,13 +304,77 @@ void Rack::ExtensionImpl::wire(Extension::AudioOutSocket const &iOutSocket, Exte
   auto newWire = Extension::AudioWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
 
   // check for duplicate
-  CHECK_F(!stl::find_if(fAudioWires, [&newWire](auto &wire) { return Rack::Extension::AudioWire::overlap(wire, newWire); }), "Audio socket in use");
+  CHECK_F(!stl::find_if(fAudioOutWires, [&newWire](auto &wire) { return Rack::Extension::AudioWire::overlap(wire, newWire); }), "Audio socket in use");
 
   if(iOutSocket.fExtensionId == fId)
-    fAudioWires.emplace_back(newWire);
+    fAudioOutWires.emplace_back(newWire);
+
   if(iOutSocket.fExtensionId != fId)
-    fDependents.emplace(iOutSocket.fExtensionId);
+  {
+    fAudioInWires.emplace_back(newWire);
+    fDependents = std::nullopt;
+  }
 }
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::unwire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::AudioInSocket> Rack::ExtensionImpl::unwire(Extension::AudioOutSocket const &iOutSocket)
+{
+  CHECK_F(iOutSocket.fExtensionId == fId); // sanity check...
+
+  auto iter =
+    std::find_if(fAudioOutWires.begin(), fAudioOutWires.end(), [&iOutSocket](auto &wire) { return wire.fFromSocket == iOutSocket; });
+
+  if(iter != fAudioOutWires.end())
+  {
+    auto wire = *iter;
+    fAudioOutWires.erase(iter);
+    return wire.fToSocket;
+  }
+
+  return std::nullopt;
+}
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::unwire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::AudioOutSocket> Rack::ExtensionImpl::unwire(Extension::AudioInSocket const &iInSocket)
+{
+  CHECK_F(iInSocket.fExtensionId == fId); // sanity check...
+
+  auto iter =
+    std::find_if(fAudioInWires.begin(), fAudioOutWires.end(), [&iInSocket](auto &wire) { return wire.fToSocket == iInSocket; });
+
+  if(iter != fAudioInWires.end())
+  {
+    auto wire = *iter;
+    fAudioInWires.erase(iter);
+    fDependents = std::nullopt;
+    return wire.fFromSocket;
+  }
+
+  return std::nullopt;
+}
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::getDependents
+//------------------------------------------------------------------------
+std::set<int> const &Rack::ExtensionImpl::getDependents() const
+{
+  if(!fDependents)
+  {
+    std::set<int> s{};
+    for(auto &w: fAudioInWires)
+      s.emplace(w.fFromSocket.fExtensionId);
+    for(auto &w: fCVInWires)
+      s.emplace(w.fFromSocket.fExtensionId);
+    fDependents = s;
+  }
+
+  return *fDependents;
+}
+
 
 //------------------------------------------------------------------------
 // Rack::Extension::AudioOutSocket ==
@@ -298,23 +401,6 @@ bool Rack::Extension::AudioWire::overlap(AudioWire const &iWire1, AudioWire cons
 }
 
 //------------------------------------------------------------------------
-// Rack::ExtensionImpl::wire
-//------------------------------------------------------------------------
-void Rack::ExtensionImpl::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket)
-{
-  CHECK_F(iInSocket.fExtensionId == fId || iOutSocket.fExtensionId == fId); // sanity check...
-  auto newWire = Extension::CVWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
-
-  // check for duplicate
-  CHECK_F(!stl::find_if(fCVWires, [&newWire](auto &wire) { return Rack::Extension::CVWire::overlap(wire, newWire); }), "CV socket in use");
-
-  if(iOutSocket.fExtensionId == fId)
-    fCVWires.emplace_back(newWire);
-  if(iOutSocket.fExtensionId != fId)
-    fDependents.emplace(iOutSocket.fExtensionId);
-}
-
-//------------------------------------------------------------------------
 // Rack::Extension::CVOutSocket ==
 //------------------------------------------------------------------------
 bool operator==(Rack::Extension::CVOutSocket const &lhs, Rack::Extension::CVOutSocket const &rhs)
@@ -336,6 +422,68 @@ bool operator==(Rack::Extension::CVInSocket const &lhs, Rack::Extension::CVInSoc
 bool Rack::Extension::CVWire::overlap(CVWire const &iWire1, CVWire const &iWire2)
 {
   return iWire1.fFromSocket == iWire2.fFromSocket || iWire1.fToSocket == iWire2.fToSocket;
+}
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::wire
+//------------------------------------------------------------------------
+void Rack::ExtensionImpl::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket)
+{
+  CHECK_F(iInSocket.fExtensionId == fId || iOutSocket.fExtensionId == fId); // sanity check...
+  auto newWire = Extension::CVWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
+
+  // check for duplicate
+  CHECK_F(!stl::find_if(fCVOutWires, [&newWire](auto &wire) { return Rack::Extension::CVWire::overlap(wire, newWire); }), "CV socket in use");
+
+  if(iOutSocket.fExtensionId == fId)
+    fCVOutWires.emplace_back(newWire);
+
+  if(iOutSocket.fExtensionId != fId)
+  {
+    fCVInWires.emplace_back(newWire);
+    fDependents = std::nullopt;
+  }
+}
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::unwire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::CVInSocket> Rack::ExtensionImpl::unwire(Extension::CVOutSocket const &iOutSocket)
+{
+  CHECK_F(iOutSocket.fExtensionId == fId); // sanity check...
+
+  auto iter =
+    std::find_if(fCVOutWires.begin(), fCVOutWires.end(), [&iOutSocket](auto &wire) { return wire.fFromSocket == iOutSocket; });
+
+  if(iter != fCVOutWires.end())
+  {
+    auto wire = *iter;
+    fCVOutWires.erase(iter);
+    return wire.fToSocket;
+  }
+
+  return std::nullopt;
+}
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::unwire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::CVOutSocket> Rack::ExtensionImpl::unwire(Extension::CVInSocket const &iInSocket)
+{
+  CHECK_F(iInSocket.fExtensionId == fId); // sanity check...
+
+  auto iter =
+    std::find_if(fCVInWires.begin(), fCVInWires.end(), [&iInSocket](auto &wire) { return wire.fToSocket == iInSocket; });
+
+  if(iter != fCVInWires.end())
+  {
+    auto wire = *iter;
+    fCVInWires.erase(iter);
+    fDependents = std::nullopt;
+    return wire.fFromSocket;
+  }
+
+  return std::nullopt;
 }
 
 }

@@ -90,6 +90,47 @@ TEST(Rack, AudioWiring) {
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
 }
 
+// Rack.AudioUnwiring
+TEST(Rack, AudioUnwiring) {
+  Rack rack{};
+
+  auto pst = rack.newDevice<MAUPst>(MAUPst::Config);
+  auto src = rack.newDevice<MAUSrc>(MAUSrc::Config);
+  auto dst = rack.newDevice<MAUDst>(MAUDst::Config);
+
+  MockAudioDevice::wire(rack, src, pst);
+  MockAudioDevice::wire(rack, pst, dst);
+
+  src->fBuffer.fill(2.0, 3.0);
+
+  rack.nextFrame();
+
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
+
+  // disconnecting LEFT socket
+  rack.unwire(src.getAudioOutSocket(MAUSrc::LEFT_SOCKET));
+
+  src->fBuffer.fill(4.0, 5.0);
+
+  rack.nextFrame();
+
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 5.0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(2.0, 5.0));
+
+  // disconnecting LEFT & RIGHT socket (LEFT was already disconnected so it's ok)
+  rack.unwire(src.getStereoAudioOutSocket(MAUSrc::LEFT_SOCKET, MAUSrc::RIGHT_SOCKET));
+
+  src->fBuffer.fill(6.0, 7.0);
+
+  rack.nextFrame();
+
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(6.0, 7.0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 5.0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(2.0, 5.0));
+}
+
 // Rack.AudioWiring2 (different wiring api)
 TEST(Rack, AudioWiring2) {
   Rack rack{};
@@ -164,6 +205,34 @@ TEST(Rack, CVWiring) {
   ASSERT_FLOAT_EQ(4.0, src->fValue);
   ASSERT_FLOAT_EQ(4.0, dst->fValue);
   ASSERT_FLOAT_EQ(4.0, pst->fValue);
+}
+
+// Rack.CVUnWiring
+TEST(Rack, CVUnWiring) {
+  Rack rack{};
+
+  auto src = rack.newDevice<MCVSrc>(MCVSrc::Config);
+  auto dst = rack.newDevice<MCVDst>(MCVDst::Config);
+  auto pst = rack.newDevice<MCVPst>(MCVPst::Config);
+  MockCVDevice::wire(rack, src, pst);
+  MockCVDevice::wire(rack, pst, dst);
+
+  src->fValue = 2.0;
+
+  rack.nextFrame();
+
+  ASSERT_FLOAT_EQ(2.0, src->fValue);
+  ASSERT_FLOAT_EQ(2.0, pst->fValue);
+  ASSERT_FLOAT_EQ(2.0, dst->fValue);
+
+  rack.unwire(pst.getCVOutSocket(MCVDst::SOCKET));
+  src->fValue = 4.0;
+
+  rack.nextFrame();
+
+  ASSERT_FLOAT_EQ(4.0, src->fValue);
+  ASSERT_FLOAT_EQ(4.0, pst->fValue);
+  ASSERT_FLOAT_EQ(2.0, dst->fValue);
 }
 
 // Rack.CircularWiring
