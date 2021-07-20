@@ -17,15 +17,16 @@
  */
 
 #include "LuaJBox.h"
-#include "Rack.h"
 #include "Motherboard.h"
 
 namespace re::mock {
 
 //------------------------------------------------------------------------
-// jbox instance to be accessible from all code
+// LuaJbox::LuaJbox
 //------------------------------------------------------------------------
-LuaJbox jbox{};
+LuaJbox::LuaJbox(Motherboard *iMotherboard) : fMotherboard{iMotherboard}
+{
+}
 
 //------------------------------------------------------------------------
 // LuaJbox::native_object
@@ -48,7 +49,7 @@ std::unique_ptr<jbox_property> LuaJbox::native_object(jbox_native_object iNative
 //------------------------------------------------------------------------
 TJBox_Value LuaJbox::load_property(std::string const &iPropertyPath)
 {
-  return re::mock::Rack::currentMotherboard().getValue(iPropertyPath);
+  return fMotherboard->getValue(iPropertyPath);
 }
 
 //------------------------------------------------------------------------
@@ -56,7 +57,7 @@ TJBox_Value LuaJbox::load_property(std::string const &iPropertyPath)
 //------------------------------------------------------------------------
 TJBox_Value LuaJbox::make_native_object_rw(std::string const &iOperation, std::vector<TJBox_Value> const &iParams)
 {
-  return re::mock::Rack::currentMotherboard().makeNativeObjectRW(iOperation, iParams);
+  return fMotherboard->makeNativeObjectRW(iOperation, iParams);
 }
 
 //------------------------------------------------------------------------
@@ -64,7 +65,7 @@ TJBox_Value LuaJbox::make_native_object_rw(std::string const &iOperation, std::v
 //------------------------------------------------------------------------
 TJBox_Value LuaJbox::make_native_object_ro(std::string const &iOperation, std::vector<TJBox_Value> const &iParams)
 {
-  return re::mock::Rack::currentMotherboard().makeNativeObjectRO(iOperation, iParams);
+  return fMotherboard->makeNativeObjectRO(iOperation, iParams);
 }
 
 //------------------------------------------------------------------------
@@ -72,7 +73,7 @@ TJBox_Value LuaJbox::make_native_object_ro(std::string const &iOperation, std::v
 //------------------------------------------------------------------------
 void LuaJbox::store_property(std::string const &iPropertyPath, TJBox_Value const &iValue)
 {
-  return re::mock::Rack::currentMotherboard().setValue(iPropertyPath, iValue);
+  return fMotherboard->setValue(iPropertyPath, iValue);
 }
 
 }

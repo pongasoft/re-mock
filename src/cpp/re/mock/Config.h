@@ -53,7 +53,7 @@ struct RealtimeController
   std::map<std::string, RTCCallback> global_rtc{};
   struct { std::set<std::string> notify{}; } rt_input_setup;
 
-  static RealtimeController byDefault();
+  static RealtimeController byDefault(LuaJbox &jbox);
 };
 
 struct Realtime
@@ -72,36 +72,39 @@ struct Realtime
 
 struct Config
 {
-  using callback_t = std::function<void (MotherboardDef &def, RealtimeController &rtc, Realtime &rt)>;
+  using callback_t = std::function<void (LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt)>;
 
-  MotherboardDef def{};
-  RealtimeController rtc{};
-  Realtime rt{};
+  Config(): fCallback{} {};
 
-  Config() = default;
-
-  explicit Config(callback_t iCallback)
-  {
-    extend(iCallback);
-  }
+  explicit Config(callback_t iCallback) : fCallback(std::move(iCallback)) {}
 
   Config &extend(callback_t iCallback)
   {
     if(iCallback)
-      iCallback(def, rtc, rt);
+    {
+      auto previousCallback = fCallback;
+      fCallback = [previousCallback, iCallback](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
+        previousCallback(jbox, def, rtc, rt);
+        iCallback(jbox, def, rtc, rt);
+      };
+    }
     return *this;
-  }
-
-  Config extendNew(callback_t iCallback) const
-  {
-    return Config{*this}.extend(iCallback);
   }
 
   template<typename T>
   static Config byDefault();
 
-  template<typename T>
+    template<typename T>
   static Config byDefault(callback_t iCallback) { return byDefault<T>().extend(std::move(iCallback)); }
+
+  void operator()(LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) const
+  {
+    if(fCallback)
+      fCallback(jbox, def, rtc, rt);
+  }
+
+private:
+  callback_t fCallback;
 };
 
 //------------------------------------------------------------------------
@@ -148,10 +151,10 @@ Realtime Realtime::byDefault()
 template<typename T>
 Config Config::byDefault()
 {
-  Config c{};
-  c.rtc = RealtimeController::byDefault();
-  c.rt = Realtime::byDefault<T>();
-  return c;
+  return Config({[](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
+    rtc = RealtimeController::byDefault(jbox);
+    rt = Realtime::byDefault<T>();
+  }});
 }
 
 // Error handling

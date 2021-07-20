@@ -102,8 +102,11 @@ struct LuaJbox {
   TJBox_Value make_native_object_rw(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
   TJBox_Value make_native_object_ro(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
   void store_property(std::string const &iPropertyPath, TJBox_Value const &iValue);
+  friend class Motherboard;
 
 private:
+  LuaJbox(Motherboard *iMotherboard);
+
   template<typename P>
   std::unique_ptr<jbox_property> createProperty(P const &iProperty)
   {
@@ -112,6 +115,9 @@ private:
     p->default_value = iProperty.getDefaultValue();
     return p;
   }
+
+private:
+  Motherboard *fMotherboard;
 };
 
 }

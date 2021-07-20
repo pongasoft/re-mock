@@ -54,13 +54,13 @@ Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}
 //------------------------------------------------------------------------
 Rack::Extension Rack::newExtension(Config const &iConfig)
 {
-  auto id = fExtensions.add([this, &iConfig](int id) {
-    auto motherboard = Motherboard::create(id, fSampleRate, iConfig);
+  auto id = fExtensions.add([this](int id) {
+    auto motherboard = Motherboard::create(id, fSampleRate);
     return std::shared_ptr<ExtensionImpl>(new ExtensionImpl(id, this, std::move(motherboard)));
   });
 
   auto res = fExtensions.get(id);
-  res->use([](Motherboard &m) { m.init(); });
+  res->use([&iConfig](Motherboard &m) { m.init(iConfig); });
   return Rack::Extension{res};
 }
 

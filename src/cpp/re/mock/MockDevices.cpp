@@ -194,7 +194,8 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 //------------------------------------------------------------------------
 // MAUSrc::Config
 //------------------------------------------------------------------------
-const auto MAUSrc::Config = Config::byDefault<MAUSrc>([](auto &def, auto &rtc, auto &rt) {
+const auto MAUSrc::Config =
+  Config::byDefault<MAUSrc>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
   // It is a source so it only produces audio
   def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
   def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
@@ -219,7 +220,8 @@ void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUDst::Config
 //------------------------------------------------------------------------
-const auto MAUDst::Config = Config::byDefault<MAUDst>([](auto &def, auto &rtc, auto &rt) {
+const auto MAUDst::Config =
+  Config::byDefault<MAUDst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
   // It is a destination so it only receives audio
   def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
   def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
@@ -244,12 +246,13 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUPst::Config
 //------------------------------------------------------------------------
-const auto MAUPst::Config = Config::byDefault<MAUPst>([](auto &def, auto &rtc, auto &rt) {
-  def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
-  def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
-  def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
-  def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
-});
+const auto MAUPst::Config =
+  Config::byDefault<MAUPst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
+    def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
+    def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
+    def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
+    def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
+  });
 
 //------------------------------------------------------------------------
 // MAUPst::MockAudioPassThrough
@@ -320,7 +323,8 @@ bool MockCVDevice::eq(TJBox_Float64 iCV1, TJBox_Float64 iCV2)
 //------------------------------------------------------------------------
 // MCVSrc::Config
 //------------------------------------------------------------------------
-const auto MCVSrc::Config = Config::byDefault<MCVSrc>([](auto &def, auto &rtc, auto &rt) {
+const auto MCVSrc::Config =
+  Config::byDefault<MCVSrc>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
   // It is a source so it only produces cv
   def.cv_outputs[SOCKET] = jbox.cv_output();
 });
@@ -344,7 +348,8 @@ void MCVSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MCVDst::Config
 //------------------------------------------------------------------------
-const auto MCVDst::Config = Config::byDefault<MCVDst>([](auto &def, auto &rtc, auto &rt) {
+const auto MCVDst::Config =
+  Config::byDefault<MCVDst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
   // It is a destination so it only reads cv
   def.cv_inputs[SOCKET] = jbox.cv_input();
 });
@@ -368,7 +373,8 @@ void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MCVPst::Config
 //------------------------------------------------------------------------
-const auto MCVPst::Config = Config::byDefault<MCVPst>([](auto &def, auto &rtc, auto &rt) {
+const auto MCVPst::Config =
+  Config::byDefault<MCVPst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
   def.cv_inputs[SOCKET] = jbox.cv_input();
   def.cv_outputs[SOCKET] = jbox.cv_output();
 });
@@ -395,13 +401,13 @@ void MCVPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // RealtimeController::defaultBindings - defined here because depends on jbox
 //------------------------------------------------------------------------
-RealtimeController RealtimeController::byDefault()
+RealtimeController RealtimeController::byDefault(LuaJbox &jbox)
 {
   RealtimeController rtc{};
 
   rtc.rtc_bindings["/environment/system_sample_rate"] = "/global_rtc/init_instance";
 
-  rtc.global_rtc["init_instance"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+  rtc.global_rtc["init_instance"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
     auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
     jbox.store_property("/custom_properties/instance", new_no);
   };

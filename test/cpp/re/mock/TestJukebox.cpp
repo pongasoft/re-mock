@@ -33,7 +33,7 @@ TEST(Jukebox, Basic)
     TJBox_Float64 fVolume{};
   };
 
-  Config c([](auto &def, auto &rtc, auto &rt) {
+  Config c([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
     def.document_owner.properties["prop_number_default"]  = jbox.number();
     def.document_owner.properties["prop_float"]           = jbox.number<float>({.property_tag = 100, .default_value = 0.7});
     def.document_owner.properties["prop_float_2"]         = jbox.number<float>(0.8);
@@ -54,12 +54,12 @@ TEST(Jukebox, Basic)
     rtc.rtc_bindings["/custom_properties/prop_volume_ro"]   = "/global_rtc/new_gain_ro";
     rtc.rtc_bindings["/custom_properties/prop_volume_rw"]   = "/global_rtc/new_gain_rw";
 
-    rtc.global_rtc["new_gain_ro"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    rtc.global_rtc["new_gain_ro"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
       auto new_no = jbox.make_native_object_ro("Gain", { iNewValue });
       jbox.store_property("/custom_properties/prop_gain_ro", new_no);
     };
 
-    rtc.global_rtc["new_gain_rw"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    rtc.global_rtc["new_gain_rw"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
       auto new_no = jbox.make_native_object_rw("Gain", { iNewValue });
       jbox.store_property("/custom_properties/prop_gain_rw", new_no);
     };
@@ -159,7 +159,7 @@ TEST(Jukebox, AudioSocket)
 {
   Rack rack{};
 
-  Config c([](auto &def, auto &rtc, auto &rt) {
+  Config c([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
     def.audio_inputs["input_1"] = jbox.audio_input();
     def.audio_outputs["output_1"] = jbox.audio_output();
   });

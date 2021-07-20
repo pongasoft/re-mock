@@ -185,14 +185,15 @@ TEST(Rack, CircularWiring)
     }
   };
 
-  const auto MAUSrcCVDstConfig = Config::byDefault<MAUSrcCVDst>([](auto &def, auto &rtc, auto &rt) {
-    // MAUSrcCVDst emits audio
-    def.audio_outputs[MAUSrcCVDst::LEFT_SOCKET] = jbox.audio_output();
-    def.audio_outputs[MAUSrcCVDst::RIGHT_SOCKET] = jbox.audio_output();
+  const auto MAUSrcCVDstConfig =
+    Config::byDefault<MAUSrcCVDst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
+      // MAUSrcCVDst emits audio
+      def.audio_outputs[MAUSrcCVDst::LEFT_SOCKET] = jbox.audio_output();
+      def.audio_outputs[MAUSrcCVDst::RIGHT_SOCKET] = jbox.audio_output();
 
-    // MAUSrcCVDst receives CV
-    def.cv_inputs[MAUSrcCVDst::SOCKET] = jbox.cv_input();
-  });
+      // MAUSrcCVDst receives CV
+      def.cv_inputs[MAUSrcCVDst::SOCKET] = jbox.cv_input();
+    });
 
   struct MAUDstCVSrc : public MAUDst, MCVSrc
   {
@@ -204,15 +205,15 @@ TEST(Rack, CircularWiring)
     }
   };
 
-  const auto MAUDstCVSrcConfig = Config::byDefault<MAUDstCVSrc>([](auto &def, auto &rtc, auto &rt) {
-    // MAUDstCVSrc receives audio
-    def.audio_inputs[MAUDstCVSrc::LEFT_SOCKET] = jbox.audio_input();
-    def.audio_inputs[MAUDstCVSrc::RIGHT_SOCKET] = jbox.audio_input();
+  const auto MAUDstCVSrcConfig =
+    Config::byDefault<MAUDstCVSrc>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
+      // MAUDstCVSrc receives audio
+      def.audio_inputs[MAUDstCVSrc::LEFT_SOCKET] = jbox.audio_input();
+      def.audio_inputs[MAUDstCVSrc::RIGHT_SOCKET] = jbox.audio_input();
 
-    // MAUDstCVSrc emits CV
-    def.cv_outputs[MAUDstCVSrc::SOCKET] = jbox.cv_output();
-  });
-
+      // MAUDstCVSrc emits CV
+      def.cv_outputs[MAUDstCVSrc::SOCKET] = jbox.cv_output();
+    });
 
   Rack rack{};
 
@@ -268,10 +269,11 @@ TEST(Rack, SelfConnection)
 
   Rack rack{};
 
-  auto dev = rack.newDeviceByDefault<SelfConnectedDevice>([](auto &def, auto &rtc, auto &rt) {
-    def.cv_inputs["I"] = jbox.cv_input();
-    def.cv_outputs["O"] = jbox.cv_output();
-  });
+  auto dev =
+    rack.newDeviceByDefault<SelfConnectedDevice>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
+      def.cv_inputs["I"] = jbox.cv_input();
+      def.cv_outputs["O"] = jbox.cv_output();
+    });
 
   rack.wire(dev.getCVOutSocket("O"), dev.getCVInSocket("I"));
 
@@ -298,7 +300,7 @@ TEST(Rack, toString)
     TJBox_Float64 fVolume{};
   };
 
-  Config c([](auto &def, auto &rtc, auto &rt) {
+  Config c([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
     def.audio_outputs["output_1"] = jbox.audio_output();
 
     def.document_owner.properties["prop_volume_ro"]       = jbox.number<float>(0.8);
@@ -312,17 +314,17 @@ TEST(Rack, toString)
     rtc.rtc_bindings["/custom_properties/prop_volume_ro"]   = "/global_rtc/new_gain_ro";
     rtc.rtc_bindings["/custom_properties/prop_volume_rw"]   = "/global_rtc/new_gain_rw";
 
-    rtc.global_rtc["new_gain_ro"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    rtc.global_rtc["new_gain_ro"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
       auto new_no = jbox.make_native_object_ro("Gain", { iNewValue });
       jbox.store_property("/custom_properties/prop_gain_ro", new_no);
     };
 
-    rtc.global_rtc["new_gain_rw"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    rtc.global_rtc["new_gain_rw"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
       auto new_no = jbox.make_native_object_rw("Gain", { iNewValue });
       jbox.store_property("/custom_properties/prop_gain_rw", new_no);
     };
 
-    rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
+    rt.create_native_object = [&jbox](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
       if(std::strcmp(iOperation, "Gain") == 0)
         return new Gain{JBox_GetNumber(iParams[0])};
 
@@ -384,7 +386,7 @@ TEST(Rack, Diff)
     std::vector<TJBox_PropertyDiff> fDiffs{};
   };
 
-  auto c = Config::byDefault<Device>([](auto &def, auto &rtc, auto &rt) {
+  auto c = Config::byDefault<Device>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
     def.audio_inputs["input"] = jbox.audio_input();
     def.cv_inputs["cv"] = jbox.cv_input();
 
@@ -448,11 +450,11 @@ TEST(Rack, InstanceID)
     std::vector<TJBox_PropertyDiff> fDiffs{};
   };
 
-  auto c = Config([](auto &def, auto &rtc, auto &rt) {
+  auto c = Config([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
 
     rtc.rtc_bindings["/environment/instance_id"] = "/global_rtc/init_instance";
 
-    rtc.global_rtc["init_instance"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    rtc.global_rtc["init_instance"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
       auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
       jbox.store_property("/custom_properties/instance", new_no);
     };
@@ -463,7 +465,7 @@ TEST(Rack, InstanceID)
   auto re = rack.newDevice<Device>(c);
 
   ASSERT_TRUE(re.getInstance<Device>() != nullptr);
-  ASSERT_EQ(1, re->fInstanceID);
+  ASSERT_EQ(re.getInstanceId(), re->fInstanceID);
 
 }
 }

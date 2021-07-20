@@ -64,7 +64,7 @@ TEST(RackExtension, Motherboard)
     bool fBool{};
   };
 
-  auto c = Config::byDefault<Device>([](auto &def, auto &rtc, auto &rt) {
+  auto c = Config::byDefault<Device>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
     def.document_owner.properties["prop_number"]  = jbox.number(0.1);
     def.document_owner.properties["prop_float"]   = jbox.number<float>(0.8);
     def.document_owner.properties["prop_int"]     = jbox.number<int>(4);
@@ -86,17 +86,17 @@ TEST(RackExtension, Motherboard)
     rtc.rtc_bindings["/custom_properties/volume_ro"]       = "/global_rtc/new_gain_ro";
     rtc.rtc_bindings["/custom_properties/volume_rw"]       = "/global_rtc/new_gain_rw";
 
-    rtc.global_rtc["init_instance"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    rtc.global_rtc["init_instance"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
       auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
       jbox.store_property("/custom_properties/instance", new_no);
     };
 
-    rtc.global_rtc["new_gain_ro"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    rtc.global_rtc["new_gain_ro"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
       auto new_no = jbox.make_native_object_ro("Gain", { iNewValue });
       jbox.store_property("/custom_properties/gain_ro", new_no);
     };
 
-    rtc.global_rtc["new_gain_rw"] = [](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
+    rtc.global_rtc["new_gain_rw"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
       auto new_no = jbox.make_native_object_rw("Gain", { iNewValue });
       jbox.store_property("/custom_properties/gain_rw", new_no);
     };

@@ -27,8 +27,6 @@
 
 namespace re::mock {
 
-extern LuaJbox jbox;
-
 class Rack
 {
 protected:
@@ -115,6 +113,8 @@ public:
     template<typename T>
     inline T* getInstance() const { return motherboard().getInstance<T>(); }
 
+    inline int getInstanceId() const { return fImpl->fId; }
+
     friend class Rack;
 
   protected:
@@ -186,6 +186,9 @@ public:
 
   static Motherboard &currentMotherboard();
 
+  template<typename Device>
+  ExtensionDevice<Device> getDevice(int iExtensionId);
+
 protected:
   void copyAudioBuffers(Extension::AudioWire const &iWire);
   void copyCVValue(Extension::CVWire const &iWire);
@@ -214,6 +217,16 @@ Rack::ExtensionDevice<Device> Rack::newDeviceByDefault(Config::callback_t iDefau
 {
   return newDevice<Device>(Config::byDefault<Device>().extend(std::move(iDefaultConfigCallback)));
 }
+
+//------------------------------------------------------------------------
+// Rack::getDevice
+//------------------------------------------------------------------------
+template<typename Device>
+Rack::ExtensionDevice<Device> Rack::getDevice(int iExtensionId)
+{
+  return { fExtensions.get(iExtensionId) };
+}
+
 
 }
 

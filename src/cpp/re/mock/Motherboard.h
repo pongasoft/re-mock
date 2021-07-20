@@ -127,11 +127,11 @@ public: // used by Jukebox.cpp (need to be public)
 
 protected:
 
-  static std::unique_ptr<Motherboard> create(int iInstanceId, int iSampleRate, Config const &iConfig);
+  static std::unique_ptr<Motherboard> create(int iInstanceId, int iSampleRate);
 
   Motherboard();
 
-  void init();
+  void init(Config const &iConfig);
 
   impl::JboxObject *addObject(std::string const &iObjectPath);
   inline impl::JboxObject *getObject(std::string const &iObjectPath) const { return getObject(getObjectRef(iObjectPath)); }
@@ -143,7 +143,7 @@ protected:
   void addCVOutput(std::string const &iSocketName);
   void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, jbox_property const &iProperty);
   void registerRTCNotify(std::string const &iPropertyPath);
-  void registerRTCBinding(std::string const &iPropertyPath, RTCCallback iCallback);
+  TJBox_PropertyDiff registerRTCBinding(std::string const &iPropertyPath, RTCCallback iCallback);
   void handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iPropertyDiff);
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
@@ -179,10 +179,10 @@ protected:
   using ComparePropertyRef = decltype(&compare);
 
 protected:
+  LuaJbox fJBox;
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
-  std::vector<TJBox_PropertyDiff> fInitBindings{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};
   Realtime fRealtime{};
