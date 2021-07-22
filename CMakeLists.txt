@@ -24,46 +24,83 @@ project(re-mock LANGUAGES CXX)
 # Using C++17
 set(CMAKE_CXX_STANDARD 17)
 
-enable_testing()
+# Whether it is a dev build (to be able to work on re-mock and run the tests) or a library build
+option(RE_MOCK_DEV_BUILD "Set to ON if you want to work on re-mock, leave to OFF for using as a library" OFF)
 
-include(re-mock.cmake)
+if(RE_MOCK_DEV_BUILD)
+  enable_testing()
 
-# Using RE SDK version 4.2.0
-set(RE_SDK_VERSION 4.2.0)
+  # Using RE SDK version 4.2.0
+  set(RE_SDK_VERSION 4.2.0)
 
-# Location of RE SDK: can be set when invoking cmake => cmake -D "RE_SDK_ROOT:PATH=/path/to/re_sdk"
-# or via -p option in configure.py script or in cmake-gui
-if(APPLE)
-  set(RE_SDK_ROOT "/Users/Shared/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK" CACHE PATH "Location of RE SDK")
+  # Location of RE SDK: can be set when invoking cmake => cmake -D "RE_SDK_ROOT:PATH=/path/to/re_sdk"
+  # or via -p option in configure.py script or in cmake-gui
+  if(APPLE)
+    set(RE_SDK_ROOT "/Users/Shared/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK" CACHE PATH "Location of RE SDK")
+  else()
+    set(RE_SDK_ROOT "C:/Users/Public/Documents/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK" CACHE PATH "Location of RE SDK")
+  endif()
 else()
-  set(RE_SDK_ROOT "C:/Users/Public/Documents/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK" CACHE PATH "Location of RE SDK")
+  if(NOT RE_SDK_ROOT)
+    message(ERROR "RE_SDK_ROOT must be defined")
+  endif()
 endif()
 
 set(target "re-mock")
+
+# Defines the location of the sources
+set(RE_MOCK_CPP_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/src/cpp")
+
+# Defines the headers if you want to include them in your project (optional)
+set(re-mock_BUILD_HEADERS
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Config.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Errors.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/LuaJBox.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Motherboard.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/MotherboardImpl.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Rack.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/fmt.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/stl.h
+    )
+
+# Defines the sources
+set(re-mock_BUILD_SOURCES
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Rack.cpp
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Jukebox.cpp
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/LuaJBox.cpp
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.cpp
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Motherboard.cpp
+    )
+
+# Defines the include directories
+set(re-mock_INCLUDE_DIRECTORIES "${RE_MOCK_CPP_SRC_DIR}")
 
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
 
-#######################################################
-# Testing
-#######################################################
-# Download and unpack googletest at configure time
-include(fetch-GoogleTest.cmake)
-include(GoogleTest)
+if(RE_MOCK_DEV_BUILD)
+  #######################################################
+  # Testing
+  #######################################################
+  # Download and unpack googletest at configure time
+  include(fetch-GoogleTest.cmake)
+  include(GoogleTest)
 
-set(target_test "${target}_test")
+  set(target_test "${target}_test")
 
-set(RE_MOCK_CPP_TST_DIR "${CMAKE_CURRENT_LIST_DIR}/test/cpp")
+  set(RE_MOCK_CPP_TST_DIR "${CMAKE_CURRENT_LIST_DIR}/test/cpp")
 
-set(TEST_CASE_SOURCES
-    "${RE_MOCK_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
-    "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRack.cpp"
-    "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
-    )
+  set(TEST_CASE_SOURCES
+      "${RE_MOCK_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
+      "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRack.cpp"
+      "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
+      )
 
-add_executable("${target_test}" "${TEST_CASE_SOURCES}")
-target_link_libraries("${target_test}" gtest_main ${target})
-target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}")
+  add_executable("${target_test}" "${TEST_CASE_SOURCES}")
+  target_link_libraries("${target_test}" gtest_main ${target})
+  target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}")
 
-gtest_discover_tests("${target_test}")
+  gtest_discover_tests("${target_test}")
+endif()
