@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_stl_h__
-#define __PongasoftCommon_re_mock_stl_h__
+#ifndef __Pongasoft_re_mock_stl_h__
+#define __Pongasoft_re_mock_stl_h__
 
 #include <algorithm>
 #include <cmath>
@@ -132,4 +132,4 @@ inline std::string join_to_string(Container const &iContainer, std::string iSepa
 
 }
 
-#endif //__PongasoftCommon_re_mock_stl_h__
+#endif //__Pongasoft_re_mock_stl_h__

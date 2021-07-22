@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_lua_jbox_h__
-#define __PongasoftCommon_re_mock_lua_jbox_h__
+#ifndef __Pongasoft_re_mock_lua_jbox_h__
+#define __Pongasoft_re_mock_lua_jbox_h__
 
 #include <JukeboxTypes.h>
 #include <Jukebox.h>
@@ -122,4 +122,4 @@ private:
 
 }
 
-#endif //__PongasoftCommon_re_mock_lua_jbox_h__
+#endif //__Pongasoft_re_mock_lua_jbox_h__

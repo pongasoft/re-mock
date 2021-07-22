@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_rack_h__
-#define __PongasoftCommon_re_mock_rack_h__
+#ifndef __Pongasoft_re_mock_rack_h__
+#define __Pongasoft_re_mock_rack_h__
 
 #include <map>
 #include "Motherboard.h"
@@ -239,4 +239,4 @@ Rack::ExtensionDevice<Device> Rack::getDevice(int iExtensionId)
 
 }
 
-#endif //__PongasoftCommon_re_mock_rack_h__
+#endif //__Pongasoft_re_mock_rack_h__

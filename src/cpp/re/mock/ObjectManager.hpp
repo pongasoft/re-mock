@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_object_manager_h__
-#define __PongasoftCommon_re_mock_object_manager_h__
+#ifndef __Pongasoft_re_mock_object_manager_h__
+#define __Pongasoft_re_mock_object_manager_h__
 
 #include <map>
 #include <atomic>

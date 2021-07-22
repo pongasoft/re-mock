@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021 pongasoft
+# Copyright (c) 2021 pongasoft
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -14,19 +14,19 @@
 #
 # @author Yan Pujante
 
-# The purpose of this file is to be able to work on re-common... include re-common.cmake in your project instead!
+# The purpose of this file is to be able to work on re-mock... include re-mock.cmake in your project instead!
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.17)
 
 # Setting up project (note that the version is defined in lua.info)
-project(re-common LANGUAGES CXX)
+project(re-mock LANGUAGES CXX)
 
 # Using C++17
 set(CMAKE_CXX_STANDARD 17)
 
 enable_testing()
 
-include(re-common.cmake)
+include(re-mock.cmake)
 
 # Using RE SDK version 4.2.0
 set(RE_SDK_VERSION 4.2.0)
@@ -39,11 +39,11 @@ else()
   set(RE_SDK_ROOT "C:/Users/Public/Documents/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK" CACHE PATH "Location of RE SDK")
 endif()
 
-set(target "re-common")
+set(target "re-mock")
 
-add_library(${target} STATIC "${RE_COMMON_CPP_SRC_DIR}/jbox.cpp" ${re-common_BUILD_HEADERS} ${re-common_NATIVE_BUILD_SOURCES} ${re-common_EXPERIMENTAL_BUILD_HEADERS} ${re-common_EXPERIMENTAL_BUILD_SOURCES} "${re-common_MOCK_BUILD_SOURCES}")
+add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
-target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" ${re-common_INCLUDE_DIRECTORIES}) # exporting SDK API to plugin
+target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
 
 #######################################################
 # Testing
@@ -54,14 +54,12 @@ include(GoogleTest)
 
 set(target_test "${target}_test")
 
-set(RE_COMMON_CPP_TST_DIR "${CMAKE_CURRENT_LIST_DIR}/test/cpp")
+set(RE_MOCK_CPP_TST_DIR "${CMAKE_CURRENT_LIST_DIR}/test/cpp")
 
 set(TEST_CASE_SOURCES
-    "${RE_COMMON_CPP_TST_DIR}/TestStaticString.cpp"
-    "${RE_COMMON_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
-    "${RE_COMMON_CPP_TST_DIR}/re/mock/TestRack.cpp"
-    "${RE_COMMON_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
-    "${RE_COMMON_CPP_TST_DIR}/re/TestProperty.cpp"
+    "${RE_MOCK_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
+    "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRack.cpp"
+    "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
     )
 
 add_executable("${target_test}" "${TEST_CASE_SOURCES}")

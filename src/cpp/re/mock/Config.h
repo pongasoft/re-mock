@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_types_h__
-#define __PongasoftCommon_re_mock_types_h__
+#ifndef __Pongasoft_re_mock_types_h__
+#define __Pongasoft_re_mock_types_h__
 
 #include <stdexcept>
 #include <JukeboxTypes.h>
@@ -166,4 +166,4 @@ struct Exception : public std::logic_error {
 
 }
 
-#endif //__PongasoftCommon_re_mock_types_h__
+#endif //__Pongasoft_re_mock_types_h__

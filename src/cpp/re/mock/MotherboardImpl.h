@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_motherboard_impl_h__
-#define __PongasoftCommon_re_mock_motherboard_impl_h__
+#ifndef __Pongasoft_re_mock_motherboard_impl_h__
+#define __Pongasoft_re_mock_motherboard_impl_h__
 
 namespace re::mock {
 
@@ -118,4 +118,4 @@ struct NativeObject
 }
 }
 
-#endif //__PongasoftCommon_re_mock_motherboard_impl_h__
+#endif //__Pongasoft_re_mock_motherboard_impl_h__

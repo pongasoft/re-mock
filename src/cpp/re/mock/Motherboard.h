@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_motherboard_h__
-#define __PongasoftCommon_re_mock_motherboard_h__
+#ifndef __Pongasoft_re_mock_motherboard_h__
+#define __Pongasoft_re_mock_motherboard_h__
 
 #include <logging/logging.h>
 #include <JukeboxTypes.h>
@@ -194,4 +194,4 @@ protected:
 
 }
 
-#endif //__PongasoftCommon_re_mock_motherboard_h__
+#endif //__Pongasoft_re_mock_motherboard_h__

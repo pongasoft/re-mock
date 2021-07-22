@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_mock_devices_h__
-#define __PongasoftCommon_re_mock_mock_devices_h__
+#ifndef __Pongasoft_re_mock_mock_devices_h__
+#define __Pongasoft_re_mock_mock_devices_h__
 
 #include "Rack.h"
 #include <array>
@@ -290,4 +290,4 @@ void MockCVDevice::wire(Rack &iRack, Rack::Extension::CVInSocket const &iFromSoc
 
 }
 
-#endif //__PongasoftCommon_re_mock_mock_devices_h__
+#endif //__Pongasoft_re_mock_mock_devices_h__

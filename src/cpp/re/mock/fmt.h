@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#ifndef __PongasoftCommon_re_mock_fmt_h__
-#define __PongasoftCommon_re_mock_fmt_h__
+#ifndef __Pongasoft_re_mock_fmt_h__
+#define __Pongasoft_re_mock_fmt_h__
 
 #include <string>
 
@@ -128,4 +128,4 @@ std::string printf(const std::string& format, Args ... args )
 
 }
 
-#endif //__PongasoftCommon_re_mock_fmt_h__
+#endif //__Pongasoft_re_mock_fmt_h__
