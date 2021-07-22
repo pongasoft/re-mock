@@ -20,7 +20,6 @@
 #ifndef __Pongasoft_re_mock_types_h__
 #define __Pongasoft_re_mock_types_h__
 
-#include <stdexcept>
 #include <JukeboxTypes.h>
 #include "LuaJBox.h"
 
@@ -156,13 +155,6 @@ Config Config::byDefault()
     rt = Realtime::byDefault<T>();
   }});
 }
-
-// Error handling
-struct Exception : public std::logic_error {
-  Exception(std::string s) : std::logic_error(s.c_str()) {}
-  Exception(char const *s) : std::logic_error(s) {}
-};
-
 
 }
 

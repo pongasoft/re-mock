@@ -17,7 +17,6 @@
  */
 
 #include "Motherboard.h"
-#include <logging/logging.h>
 #include <Jukebox.h>
 
 namespace re::mock {

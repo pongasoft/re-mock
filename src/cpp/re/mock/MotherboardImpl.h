@@ -20,6 +20,8 @@
 #ifndef __Pongasoft_re_mock_motherboard_impl_h__
 #define __Pongasoft_re_mock_motherboard_impl_h__
 
+#include "Errors.h"
+
 namespace re::mock {
 
 class Motherboard;

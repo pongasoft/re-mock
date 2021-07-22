@@ -20,7 +20,6 @@
 #ifndef __Pongasoft_re_mock_motherboard_h__
 #define __Pongasoft_re_mock_motherboard_h__
 
-#include <logging/logging.h>
 #include <JukeboxTypes.h>
 #include <Jukebox.h>
 #include <memory>

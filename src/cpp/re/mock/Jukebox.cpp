@@ -17,6 +17,7 @@
  */
 
 #include <algorithm>
+#include "Errors.h"
 #include "Jukebox.h"
 #include "Rack.h"
 
@@ -139,7 +140,8 @@ void JBox_SetDSPBufferData(TJBox_Value iValue,
 
 void JBox_Assert(const char iFile[], TJBox_Int32 iLine, const char iFailedExpression[], const char iMessage[])
 {
-  ABORT_F("%s at %s:%d | %s", iFailedExpression, iFile, iLine, iMessage);
+  LOG_ERROR("%s at %s:%d | %s", iFailedExpression, iFile, iLine, iMessage);
+  abort();
 }
 
 void JBox_Trace(
@@ -147,7 +149,7 @@ void JBox_Trace(
   TJBox_Int32 iLine,
   const char iMessage[])
 {
-  LOG_F(INFO, "%s:%d | %s", iFile, iLine, iMessage);
+  LOG_INFO("%s:%d | %s", iFile, iLine, iMessage);
 }
 
 void JBox_TraceValues(

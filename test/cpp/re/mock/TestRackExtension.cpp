@@ -102,7 +102,7 @@ TEST(RackExtension, Motherboard)
     };
 
     rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
-      DLOG_F(INFO, "rt.create_native_object(%s)", iOperation);
+      LOG_INFO("rt.create_native_object(%s)", iOperation);
       if(std::strcmp(iOperation, "Instance") == 0)
       {
         if(iCount >= 1)

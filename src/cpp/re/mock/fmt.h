@@ -21,6 +21,7 @@
 #define __Pongasoft_re_mock_fmt_h__
 
 #include <string>
+#include <vector>
 
 namespace re::mock::fmt {
 

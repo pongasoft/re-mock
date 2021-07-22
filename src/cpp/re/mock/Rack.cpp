@@ -16,20 +16,12 @@
  * @author Yan Pujante
  */
 
-#include <logging/logging.h>
 #include "Rack.h"
 #include "stl.h"
 
 namespace re::mock {
 
 static thread_local Motherboard *sThreadLocalInstance{};
-
-// Handle loguru fatal error by throwing an exception (testable)
-void loguru_fatal_handler(const loguru::Message& message)
-{
-  LOG_F(ERROR, "Fatal Error at %s:%d | %s", message.filename, message.line, message.message);
-  throw Exception(message.message);
-}
 
 //------------------------------------------------------------------------
 // Rack::currentMotherboard
@@ -45,8 +37,6 @@ Motherboard &Rack::currentMotherboard()
 //------------------------------------------------------------------------
 Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}
 {
-  // set up loguru
-  loguru::set_fatal_handler(loguru_fatal_handler);
 }
 
 //------------------------------------------------------------------------
