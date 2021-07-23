@@ -24,8 +24,12 @@ project(re-mock LANGUAGES CXX)
 # Using C++17
 set(CMAKE_CXX_STANDARD 17)
 
-# Whether it is a dev build (to be able to work on re-mock and run the tests) or a library build
-option(RE_MOCK_DEV_BUILD "Set to ON if you want to work on re-mock, leave to OFF for using as a library" OFF)
+# Determines whether we are working on re-mock or using it
+if(${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})
+  set(RE_MOCK_DEV_BUILD TRUE)
+else()
+  set(RE_MOCK_DEV_BUILD FALSE)
+endif()
 
 if(RE_MOCK_DEV_BUILD)
   enable_testing()
