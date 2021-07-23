@@ -233,9 +233,8 @@ Rack::ExtensionDevice<Device> Rack::newDeviceByDefault(Config::callback_t iDefau
 template<typename Device>
 Rack::ExtensionDevice<Device> Rack::getDevice(int iExtensionId)
 {
-  return { fExtensions.get(iExtensionId) };
+  return Rack::ExtensionDevice<Device>{ fExtensions.get(iExtensionId) };
 }
-
 
 }
 

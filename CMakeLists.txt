@@ -54,6 +54,7 @@ set(RE_MOCK_CPP_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/src/cpp")
 # Defines the headers if you want to include them in your project (optional)
 set(re-mock_BUILD_HEADERS
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Config.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/DeviceTesters.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Errors.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/LuaJBox.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.h
@@ -66,6 +67,7 @@ set(re-mock_BUILD_HEADERS
 
 # Defines the sources
 set(re-mock_BUILD_SOURCES
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/DeviceTesters.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Rack.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Jukebox.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/LuaJBox.cpp
@@ -93,6 +95,7 @@ if(RE_MOCK_DEV_BUILD)
   set(RE_MOCK_CPP_TST_DIR "${CMAKE_CURRENT_LIST_DIR}/test/cpp")
 
   set(TEST_CASE_SOURCES
+      "${RE_MOCK_CPP_TST_DIR}/re/mock/TestDeviceTesters.cpp"
       "${RE_MOCK_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
       "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRack.cpp"
       "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
