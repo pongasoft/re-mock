@@ -50,7 +50,7 @@ TJBox_Value jbox_make_value(TJBox_ValueType iValueType, T iValue)
 template<typename T>
 T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
 {
-  CHECK_F(iJboxValue.fSecret[0] == iValueType);
+  RE_MOCK_ASSERT(iJboxValue.fSecret[0] == iValueType);
   JboxSecretInternal<T> secret{};
   std::copy(std::begin(iJboxValue.fSecret) + 1, std::end(iJboxValue.fSecret), std::begin(secret.fSecret));
   return secret.fValue;

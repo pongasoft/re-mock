@@ -53,7 +53,7 @@ TJBox_ObjectRef Motherboard::getObjectRef(std::string const &iObjectPath) const
 {
 //  DLOG_F(INFO, "Motherboard::getObjectRef(%p, %s)", this, *iObjectPath);
   auto ref = fJboxObjectRefs.find(iObjectPath);
-  CHECK_F(ref != fJboxObjectRefs.end(), "Could not find object [%s] (did you configure it?)", iObjectPath.c_str());
+  RE_MOCK_ASSERT(ref != fJboxObjectRefs.end(), "Could not find object [%s] (did you configure it?)", iObjectPath.c_str());
   return ref->second;
 }
 
@@ -87,7 +87,7 @@ std::string Motherboard::getPropertyPath(TJBox_PropertyRef const &iPropertyRef) 
 TJBox_PropertyRef Motherboard::getPropertyRef(std::string const &iPropertyPath) const
 {
   auto lastSlash = iPropertyPath.find_last_of('/');
-  CHECK_F(lastSlash != std::string::npos, "Invalid property path (missing /) [%s]", iPropertyPath.c_str());
+  RE_MOCK_ASSERT(lastSlash != std::string::npos, "Invalid property path (missing /) [%s]", iPropertyPath.c_str());
   return JBox_MakePropertyRef(getObjectRef(iPropertyPath.substr(0, lastSlash)),
                               iPropertyPath.substr(lastSlash + 1).c_str());
 }
@@ -205,7 +205,7 @@ void Motherboard::init(Config const &iConfig)
   {
     auto bindingRef = getPropertyRef(bindingKey);
     auto binding = rtc.global_rtc.find(bindingRef.fKey);
-    CHECK_F(binding != rtc.global_rtc.end(), "Missing binding [%s] for [%s]", bindingKey.c_str(), propertyPath.c_str());
+    RE_MOCK_ASSERT(binding != rtc.global_rtc.end(), "Missing binding [%s] for [%s]", bindingKey.c_str(), propertyPath.c_str());
     auto diff = registerRTCBinding(propertyPath, binding->second);
     binding->second(getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
   }
@@ -409,7 +409,7 @@ void Motherboard::getDSPBufferData(TJBox_Value const &iValue,
                                    TJBox_AudioFramePos iEndFrame,
                                    TJBox_AudioSample *oAudio) const
 {
-  CHECK_F(iStartFrame >= 0 && iEndFrame >= 0 && iEndFrame <= DSP_BUFFER_SIZE && iStartFrame <= iEndFrame);
+  RE_MOCK_ASSERT(iStartFrame >= 0 && iEndFrame >= 0 && iEndFrame <= DSP_BUFFER_SIZE && iStartFrame <= iEndFrame);
   auto const &buffer = getDSPBuffer(iValue);
   std::copy(std::begin(buffer) + iStartFrame, std::begin(buffer) + iEndFrame, oAudio);
 }
@@ -422,7 +422,7 @@ void Motherboard::setDSPBufferData(TJBox_Value const &iValue,
                                    TJBox_AudioFramePos iEndFrame,
                                    TJBox_AudioSample const *iAudio)
 {
-  CHECK_F(iStartFrame >= 0 && iEndFrame >= 0 && iEndFrame <= DSP_BUFFER_SIZE && iStartFrame <= iEndFrame);
+  RE_MOCK_ASSERT(iStartFrame >= 0 && iEndFrame >= 0 && iEndFrame <= DSP_BUFFER_SIZE && iStartFrame <= iEndFrame);
   auto &buffer = getDSPBuffer(iValue);
   std::copy(iAudio, iAudio + iEndFrame - iStartFrame, std::begin(buffer) + iStartFrame);
 }
@@ -499,7 +499,7 @@ void *Motherboard::getNativeObjectRW(TJBox_Value const &iValue) const
   else
   {
     auto &no = fNativeObjects.get(jbox_get_native_object_id(iValue));
-    CHECK_F(no->fAccessMode == impl::NativeObject::kReadWrite, "Trying to access RO native object in RW mode");
+    RE_MOCK_ASSERT(no->fAccessMode == impl::NativeObject::kReadWrite, "Trying to access RO native object in RW mode");
     return no->fNativeObject;
   }
 }
@@ -602,7 +602,7 @@ impl::JboxObject::JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iOb
 //------------------------------------------------------------------------
 impl::JboxProperty *impl::JboxObject::getProperty(std::string const &iPropertyName) const
 {
-  CHECK_F(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
   return fProperties.at(iPropertyName).get();
 }
 
@@ -614,7 +614,7 @@ impl::JboxProperty *impl::JboxObject::getProperty(TJBox_Tag iPropertyTag) const
   auto iter = std::find_if(fProperties.begin(),
                            fProperties.end(),
                            [iPropertyTag](auto const &p) { return p.second->fTag == iPropertyTag; } );
-  CHECK_F(iter != fProperties.end(), "missing property tag [%d] for object [%s]", iPropertyTag, fObjectPath.c_str());
+  RE_MOCK_ASSERT(iter != fProperties.end(), "missing property tag [%d] for object [%s]", iPropertyTag, fObjectPath.c_str());
   return iter->second.get();
 }
 
@@ -659,7 +659,7 @@ void impl::JboxObject::addProperty(std::string iPropertyName,
                                    TJBox_Value const &iInitialValue,
                                    TJBox_Tag iPropertyTag)
 {
-  CHECK_F(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
   fProperties[iPropertyName] =
     std::make_unique<JboxProperty>(JBox_MakePropertyRef(fObjectRef, iPropertyName.c_str()),
                                    fmt::printf("%s/%s", fObjectPath, iPropertyName),
@@ -673,7 +673,7 @@ void impl::JboxObject::addProperty(std::string iPropertyName,
 //------------------------------------------------------------------------
 TJBox_PropertyDiff impl::JboxObject::watchPropertyForChange(std::string const &iPropertyName)
 {
-  CHECK_F(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
   return fProperties[iPropertyName]->watchForChange();
 }
 
@@ -693,10 +693,10 @@ impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::str
 //------------------------------------------------------------------------
 std::optional<TJBox_PropertyDiff> impl::JboxProperty::storeValue(TJBox_Value const &iValue)
 {
-  CHECK_F(iValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
+  RE_MOCK_ASSERT(iValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
           fValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
           iValue.fSecret[0] == fValue.fSecret[0],
-          "invalid property type for [%s]", fPropertyPath.c_str());
+                 "invalid property type for [%s]", fPropertyPath.c_str());
 
   if(fWatched)
   {

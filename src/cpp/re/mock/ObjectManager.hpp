@@ -81,7 +81,7 @@ template<typename O, typename K>
 O const &ObjectManager<O, K>::get(K id) const
 {
   auto o = fObjects.find(id);
-  CHECK_F(o != fObjects.end(), "Missing object for key [%d]", id);
+  RE_MOCK_ASSERT(o != fObjects.end(), "Missing object for key [%d]", id);
   return o->second;
 }
 
@@ -92,7 +92,7 @@ template<typename O, typename K>
 O &ObjectManager<O, K>::get(K id)
 {
   auto o = fObjects.find(id);
-  CHECK_F(o != fObjects.end(), "Missing object for key [%d]", id);
+  RE_MOCK_ASSERT(o != fObjects.end(), "Missing object for key [%d]", id);
   return o->second;
 }
 
@@ -111,7 +111,7 @@ void ObjectManager<O, K>::remove(K id)
 template<typename O, typename K>
 void ObjectManager<O, K>::replace(K id, O &&iObject)
 {
-  CHECK_F(fObjects.find(id) != fObjects.end(), "Missing object for key [%d]", id);
+  RE_MOCK_ASSERT(fObjects.find(id) != fObjects.end(), "Missing object for key [%d]", id);
   fObjects[id] = std::move(iObject);
 }
 
