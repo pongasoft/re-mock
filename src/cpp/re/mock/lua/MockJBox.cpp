@@ -18,6 +18,7 @@
 
 #include "MockJBox.h"
 #include <re/mock/Errors.h>
+#include <Jukebox.h>
 
 namespace re::mock::lua {
 
@@ -45,6 +46,25 @@ MockJBox *MockJBox::loadFromRegistry(lua_State *L)
   auto res = reinterpret_cast<MockJBox *>(ud);
   RE_MOCK_ASSERT(res->L.getLuaState() == L, "sanity check");
   return res;
+}
+
+//------------------------------------------------------------------------
+// MockJBox::toJBoxValue
+//------------------------------------------------------------------------
+TJBox_Value MockJBox::toJBoxValue(int idx)
+{
+  int t = lua_type(L, idx);
+  switch(t)
+  {
+    case LUA_TBOOLEAN:
+      return JBox_MakeBoolean(lua_toboolean(L, idx));
+
+    case LUA_TNUMBER:
+      return JBox_MakeNumber(lua_tonumber(L, idx));
+
+    default:  /* other values */
+      return JBox_MakeNil();
+  }
 }
 
 }

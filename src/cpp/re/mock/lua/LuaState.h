@@ -50,9 +50,10 @@ public:
   void dumpStack(char const *iMessage = nullptr, std::ostream &oStream = std::cout) { dumpStack(L, iMessage, oStream); }
   std::string getStackString(char const *iMessage = nullptr) { return getStackString(L, iMessage); }
 
-  lua_Number getTableValueAsNumber(char const *iKey);
-  lua_Integer getTableValueAsInteger(char const *iKey);
-  bool getTableValueAsBoolean(char const *iKey);
+  lua_Number getTableValueAsNumber(char const *iKey, int idx = -1);
+  lua_Integer getTableValueAsInteger(char const *iKey, int idx = -1);
+  bool getTableValueAsBoolean(char const *iKey, int idx = -1);
+  lua_Integer getTableSize(int idx = -1);
 
   static std::string getStackString(lua_State *L, char const *iMessage = nullptr);
   static void dumpStack(lua_State *L, char const *iMessage = nullptr, std::ostream &oStream = std::cout);

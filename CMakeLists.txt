@@ -97,6 +97,13 @@ target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCL
 target_link_libraries(${target} PUBLIC lua::lib lua::header)
 
 if(RE_MOCK_DEV_BUILD)
+
+  # Generate the re_cmake_build.h file
+  set(GENERATED_FILES_DIR "${CMAKE_BINARY_DIR}/generated")
+  file(TO_NATIVE_PATH "${CMAKE_CURRENT_LIST_DIR}" PROJECT_DIR_NATIVE_PATH)
+  file(TO_NATIVE_PATH "${RE_SDK_ROOT}" RE_SDK_ROOT_NATIVE_PATH)
+  configure_file("${CMAKE_CURRENT_LIST_DIR}/re_mock_build.h.in" "${GENERATED_FILES_DIR}/re_mock_build.h")
+
   #######################################################
   # Testing
   #######################################################
@@ -118,8 +125,8 @@ if(RE_MOCK_DEV_BUILD)
       )
 
   add_executable("${target_test}" "${TEST_CASE_SOURCES}")
-  target_link_libraries("${target_test}" gtest_main ${target})
-  target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}")
+  target_link_libraries("${target_test}" gtest_main gmock ${target})
+  target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}" "${GENERATED_FILES_DIR}")
 
   gtest_discover_tests("${target_test}")
 endif()

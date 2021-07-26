@@ -17,7 +17,9 @@
  */
 
 #include "MotherboardDef.h"
+#include <Jukebox.h>
 #include <re/mock/Errors.h>
+#include <re/mock/Motherboard.h>
 
 
 //------------------------------------------------------------------------
@@ -35,6 +37,11 @@ static int lua_native_object(lua_State *L)
 static int lua_boolean(lua_State *L)
 {
   return MotherboardDef::loadFromRegistry(L)->luaBoolean();
+}
+
+static int lua_number(lua_State *L)
+{
+  return MotherboardDef::loadFromRegistry(L)->luaNumber();
 }
 
 static int lua_audio_input(lua_State *L)
@@ -88,19 +95,27 @@ struct JBoxObjectUD
 MotherboardDef::MotherboardDef()
 {
   static const struct luaL_Reg jboxLib[] = {
-    {"property_set",                  lua_property_set},
-    {"native_object",                 lua_native_object},
-    {"boolean",                       lua_boolean},
-    {"string",                        lua_ignored},
-    {"audio_input",                   lua_audio_input},
-    {"audio_output",                  lua_audio_output},
-    {"cv_input",                      lua_cv_input},
-    {"cv_output",                     lua_cv_output},
-    {"ui_text",                       lua_ignored},
-    {"ui_selector",                   lua_ignored},
-    {"ui_linear",                     lua_ignored},
-    {"add_stereo_audio_routing_pair", lua_ignored},
-    {nullptr,                         nullptr}
+    {"property_set",                       lua_property_set},
+    {"native_object",                      lua_native_object},
+    {"boolean",                            lua_boolean},
+    {"number" ,                            lua_number},
+    {"string",                             lua_ignored},
+    {"audio_input",                        lua_audio_input},
+    {"audio_output",                       lua_audio_output},
+    {"cv_input",                           lua_cv_input},
+    {"cv_output",                          lua_cv_output},
+    {"ui_text",                            lua_ignored},
+    {"ui_selector",                        lua_ignored},
+    {"ui_linear",                          lua_ignored},
+    {"add_cv_routing_target",              lua_ignored},
+    {"add_mono_audio_routing_target",      lua_ignored},
+    {"add_stereo_audio_routing_target",    lua_ignored},
+    {"add_stereo_audio_routing_pair",      lua_ignored},
+    {"add_stereo_effect_routing_hint",     lua_ignored},
+    {"add_stereo_instrument_routing_hint", lua_ignored},
+    {"add_mono_instrument_routing_hint",   lua_ignored},
+    {"set_effect_auto_bypass_routing",     lua_ignored},
+    {nullptr,                              nullptr}
   };
 
   luaL_newlib(L, jboxLib);
@@ -118,7 +133,7 @@ MotherboardDef *MotherboardDef::loadFromRegistry(lua_State *L)
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::addObject
+// MotherboardDef::addObjectOnTopOfStack
 //------------------------------------------------------------------------
 int MotherboardDef::addObjectOnTopOfStack(std::unique_ptr<jbox_object> iObject)
 {
@@ -129,7 +144,7 @@ int MotherboardDef::addObjectOnTopOfStack(std::unique_ptr<jbox_object> iObject)
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::getObject
+// MotherboardDef::getObjectOnTopOfStack
 //------------------------------------------------------------------------
 std::shared_ptr<jbox_object> MotherboardDef::getObjectOnTopOfStack()
 {
@@ -148,7 +163,7 @@ std::shared_ptr<jbox_object> MotherboardDef::getObjectOnTopOfStack()
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::lua_ignored
+// MotherboardDef::luaIgnored
 //------------------------------------------------------------------------
 int MotherboardDef::luaIgnored()
 {
@@ -156,28 +171,76 @@ int MotherboardDef::luaIgnored()
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::lua_native_object
+// MotherboardDef::luaNativeObject
 //------------------------------------------------------------------------
 int MotherboardDef::luaNativeObject()
 {
   auto p = std::make_unique<jbox_native_object>();
   populatePropertyTag(p.get());
+
+  // handling default = { "Operation", { param1, param2, ... } }
+  if(lua_getfield(L, 1, "default") != LUA_TNIL)
+  {
+    auto defaultTableIdx = lua_gettop(L);
+
+    auto size = L.getTableSize(defaultTableIdx); // actually an array
+
+    // Operation
+    if(size > 0)
+    {
+      lua_geti(L, defaultTableIdx, 1);
+      luaL_checktype(L, -1, LUA_TSTRING);
+      p->default_value.operation = lua_tostring(L, -1);
+      lua_pop(L, 1);
+    }
+
+    // params
+    if(size > 1)
+    {
+      lua_geti(L, defaultTableIdx, 2);
+
+      auto paramsTableIdx = lua_gettop(L);
+
+      auto numParams = L.getTableSize(paramsTableIdx);
+      for(int i = 1; i <= numParams; i++)
+      {
+        lua_geti(L, paramsTableIdx, i);
+        p->default_value.params.emplace_back(toJBoxValue());
+        lua_pop(L, 1);
+      }
+      lua_pop(L, 1);
+    }
+
+  }
+  lua_pop(L, 1);
+
   return addObjectOnTopOfStack(std::move(p));
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::lua_boolean
+// MotherboardDef::luaBoolean
 //------------------------------------------------------------------------
 int MotherboardDef::luaBoolean()
 {
   auto p = std::make_unique<jbox_boolean_property>();
   populatePropertyTag(p.get());
-  p->default_value = L.getTableValueAsBoolean("default_value");
+  p->default_value = L.getTableValueAsBoolean("default", 1);
   return addObjectOnTopOfStack(std::move(p));
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::lua_socket
+// MotherboardDef::luaNumber
+//------------------------------------------------------------------------
+int MotherboardDef::luaNumber()
+{
+  auto p = std::make_unique<jbox_number_property>();
+  populatePropertyTag(p.get());
+  p->default_value = L.getTableValueAsNumber("default", 1);
+  return addObjectOnTopOfStack(std::move(p));
+}
+
+//------------------------------------------------------------------------
+// MotherboardDef::luaSocket
 //------------------------------------------------------------------------
 int MotherboardDef::luaSocket(jbox_object::Type iSocketType)
 {
@@ -187,7 +250,7 @@ int MotherboardDef::luaSocket(jbox_object::Type iSocketType)
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::lua_property_set
+// MotherboardDef::luaPropertySet
 //------------------------------------------------------------------------
 int MotherboardDef::luaPropertySet()
 {
@@ -201,7 +264,7 @@ int MotherboardDef::luaPropertySet()
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::lua_property_set
+// MotherboardDef::luaPropertySet
 //------------------------------------------------------------------------
 void MotherboardDef::luaPropertySet(char const *iKey, jbox_object::map_t &oMap)
 {
@@ -259,7 +322,8 @@ std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName
       sockets->names.emplace_back(iter.first);
     }
   }
-  lua_pop(L, 1);
+  else
+    lua_pop(L, 1);
 
   return sockets;
 }
@@ -269,7 +333,7 @@ std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName
 //------------------------------------------------------------------------
 void MotherboardDef::populatePropertyTag(jbox_property *iProperty)
 {
-  iProperty->property_tag = static_cast<int>(L.getTableValueAsInteger("property_tag"));
+  iProperty->property_tag = static_cast<int>(L.getTableValueAsInteger("property_tag", 1));
 }
 
 //------------------------------------------------------------------------
@@ -303,5 +367,36 @@ std::shared_ptr<jbox_property_set> MotherboardDef::getCustomProperties()
   return res;
 }
 
+//------------------------------------------------------------------------
+// jbox_property::getDefaultValue
+//------------------------------------------------------------------------
+TJBox_Value jbox_property::getDefaultValue() const
+{
+  return JBox_MakeNil();
+}
+
+//------------------------------------------------------------------------
+// jbox_boolean_property::getDefaultValue
+//------------------------------------------------------------------------
+TJBox_Value jbox_boolean_property::getDefaultValue() const
+{
+  return JBox_MakeBoolean(default_value);
+}
+
+//------------------------------------------------------------------------
+// jbox_number_property::getDefaultValue
+//------------------------------------------------------------------------
+TJBox_Value jbox_number_property::getDefaultValue() const
+{
+  return JBox_MakeNumber(default_value);
+}
+
+//------------------------------------------------------------------------
+// jbox_native_object::computeDefaultValue
+//------------------------------------------------------------------------
+TJBox_Value jbox_native_object::computeDefaultValue(Motherboard *iMotherboard)
+{
+  return iMotherboard->makeNativeObjectRW(default_value.operation, default_value.params);
+}
 
 }

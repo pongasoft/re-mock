@@ -106,10 +106,10 @@ std::string LuaState::getStackString(lua_State *L, char const *iMessage)
 //------------------------------------------------------------------------
 // LuaState::getTableValueAsNumber
 //------------------------------------------------------------------------
-lua_Number LuaState::getTableValueAsNumber(char const *iKey)
+lua_Number LuaState::getTableValueAsNumber(char const *iKey, int idx)
 {
-  luaL_checktype(L, 1, LUA_TTABLE);
-  lua_getfield(L, 1, iKey);
+  luaL_checktype(L, idx, LUA_TTABLE);
+  lua_getfield(L, idx, iKey);
   auto res = lua_tonumber(L, -1);
   lua_pop(L, 1);
   return res;
@@ -118,10 +118,10 @@ lua_Number LuaState::getTableValueAsNumber(char const *iKey)
 //------------------------------------------------------------------------
 // LuaState::getTableValueAsInteger
 //------------------------------------------------------------------------
-lua_Integer LuaState::getTableValueAsInteger(char const *iKey)
+lua_Integer LuaState::getTableValueAsInteger(char const *iKey, int idx)
 {
-  luaL_checktype(L, 1, LUA_TTABLE);
-  lua_getfield(L, 1, iKey);
+  luaL_checktype(L, idx, LUA_TTABLE);
+  lua_getfield(L, idx, iKey);
   auto res = lua_tointeger(L, -1);
   lua_pop(L, 1);
   return res;
@@ -130,14 +130,27 @@ lua_Integer LuaState::getTableValueAsInteger(char const *iKey)
 //------------------------------------------------------------------------
 // LuaState::getTableValueAsBoolean
 //------------------------------------------------------------------------
-bool LuaState::getTableValueAsBoolean(char const *iKey)
+bool LuaState::getTableValueAsBoolean(char const *iKey, int idx)
 {
-  luaL_checktype(L, 1, LUA_TTABLE);
-  lua_getfield(L, 1, iKey);
+  luaL_checktype(L, idx, LUA_TTABLE);
+  lua_getfield(L, idx, iKey);
   auto res = lua_toboolean(L, -1);
   lua_pop(L, 1);
   return res;
 }
+
+//------------------------------------------------------------------------
+// LuaState::getTableSize
+//------------------------------------------------------------------------
+lua_Integer LuaState::getTableSize(int idx)
+{
+  luaL_checktype(L, idx, LUA_TTABLE);
+  lua_len(L, idx);
+  auto res = lua_tointeger(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
 
 //------------------------------------------------------------------------
 // LuaState::runLuaFile

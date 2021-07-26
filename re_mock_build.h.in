@@ -17,35 +17,12 @@
  */
 
 #pragma once
-#ifndef __Pongasoft_re_mock_lua_mock_jbox_h__
-#define __Pongasoft_re_mock_lua_mock_jbox_h__
+#ifndef __Pongasoft_re_mock_build_h__
+#define __Pongasoft_re_mock_build_h__
 
-#include "LuaState.h"
-#include <JukeboxTypes.h>
+#define RE_MOCK_PROJECT_NAME "@CMAKE_PROJECT_NAME@"
+#define RE_MOCK_PROJECT_DIR R"(@PROJECT_DIR_NATIVE_PATH@)"
+#define RE_MOCK_SDK_VERSION "@RE_SDK_VERSION@"
+#define RE_MOCK_SDK_ROOT R("@RE_SDK_ROOT_NATIVE_PATH@")
 
-namespace re::mock::lua {
-
-class MockJBox
-{
-public:
-  MockJBox();
-
-  virtual ~MockJBox() = default;
-
-  std::string getStackString(char const *iMessage = nullptr) { return L.getStackString(iMessage); }
-
-  TJBox_Value toJBoxValue(int idx = -1);
-
-protected:
-  static MockJBox *loadFromRegistry(lua_State *L);
-
-protected:
-  LuaState L{}; // using common naming in all lua apis...
-
-private:
-  static char REGISTRY_KEY;
-};
-
-}
-
-#endif //__Pongasoft_re_mock_lua_mock_jbox_h__
+#endif // __Pongasoft_re_mock_build_h__

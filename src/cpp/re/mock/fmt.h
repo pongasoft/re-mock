@@ -122,9 +122,31 @@ Iter printf(Iter first, Iter last, char const *iFormat, std::vector<std::string>
 // printf -> std::string
 //------------------------------------------------------------------------
 template<typename ... Args>
-std::string printf(const std::string& format, Args ... args )
+inline std::string printf(const std::string& format, Args ... args)
 {
   return impl::printf(format, impl::printf_arg(args)...);
+}
+
+//------------------------------------------------------------------------
+// path
+//------------------------------------------------------------------------
+inline std::string path(std::string const &path)
+{
+  return path;
+}
+
+//------------------------------------------------------------------------
+// path
+//------------------------------------------------------------------------
+template<typename ... Args>
+inline std::string path(std::string const &dir, std::string const &child, Args ... children)
+{
+#ifdef _WIN32
+  constexpr char pathSeparator = '\\';
+#else
+  constexpr char pathSeparator = '/';
+#endif
+  return path(dir + pathSeparator + child, std::forward<Args>(children)...);
 }
 
 }

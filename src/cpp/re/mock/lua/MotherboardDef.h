@@ -26,9 +26,13 @@
 #include <map>
 #include <vector>
 
+namespace re::mock {
+class Motherboard;
+}
+
 namespace re::mock::lua {
 
-struct jbox_object
+struct jbox_object : public std::enable_shared_from_this<jbox_object>
 {
   using map_t = std::map<std::string, std::shared_ptr<jbox_object>>;
 
@@ -39,6 +43,7 @@ struct jbox_object
     NATIVE_OBJECT,
     PROPERTY_SET,
     BOOLEAN,
+    NUMBER,
     AUDIO_INPUT,
     AUDIO_INPUTS,
     AUDIO_OUTPUT,
@@ -51,6 +56,14 @@ struct jbox_object
 
   virtual ~jbox_object() = default;
   virtual Type getType() = 0;
+
+  template<typename T>
+  std::shared_ptr<T> withType()
+  {
+    auto ptr = std::dynamic_pointer_cast<T>(shared_from_this());
+    RE_MOCK_ASSERT(ptr != nullptr, "can't convert to requested type");
+    return ptr;
+  }
 };
 
 struct jbox_ignored : public jbox_object {
@@ -59,6 +72,8 @@ struct jbox_ignored : public jbox_object {
 
 struct jbox_property : public jbox_object {
   int property_tag{};
+  virtual TJBox_Value getDefaultValue() const;
+  virtual TJBox_Value computeDefaultValue(Motherboard *iMotherboard) { return getDefaultValue(); }
 };
 
 struct jbox_native_object : public jbox_property {
@@ -68,11 +83,19 @@ struct jbox_native_object : public jbox_property {
     std::string operation;
     std::vector<TJBox_Value> params;
   } default_value{};
+  TJBox_Value computeDefaultValue(Motherboard *iMotherboard) override;
 };
 
 struct jbox_boolean_property : public jbox_property {
   Type getType() override { return Type::BOOLEAN; }
   bool default_value{};
+  TJBox_Value getDefaultValue() const override;
+};
+
+struct jbox_number_property : public jbox_property {
+  Type getType() override { return Type::NUMBER; }
+  TJBox_Float64 default_value{};
+  TJBox_Value getDefaultValue() const override;
 };
 
 struct jbox_property_set : public jbox_object {
@@ -99,13 +122,10 @@ class MotherboardDef : public MockJBox
 public:
 
   int luaIgnored();
-
   int luaNativeObject();
-
   int luaBoolean();
-
+  int luaNumber();
   int luaSocket(jbox_object::Type iSocketType);
-
   int luaPropertySet();
 
   template<typename T>
