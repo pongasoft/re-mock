@@ -21,6 +21,7 @@
 #include <iostream>
 #include <sstream>
 #include <re/mock/fmt.h>
+#include <re/mock/Errors.h>
 
 extern "C" {
 static int lua_panic(lua_State *L)
@@ -35,10 +36,10 @@ namespace re::mock::lua {
 //------------------------------------------------------------------------
 // LuaState::LuaState
 //------------------------------------------------------------------------
-LuaState::LuaState() : fLuaState{luaL_newstate()}
+LuaState::LuaState() : L{luaL_newstate()}
 {
-  lua_atpanic(fLuaState, lua_panic);
-  luaL_openlibs(fLuaState);
+  lua_atpanic(L, lua_panic);
+  luaL_openlibs(L);
 }
 
 //------------------------------------------------------------------------
@@ -46,8 +47,8 @@ LuaState::LuaState() : fLuaState{luaL_newstate()}
 //------------------------------------------------------------------------
 LuaState::~LuaState()
 {
-  if(fLuaState)
-    lua_close(fLuaState);
+  if(L)
+    lua_close(L);
 }
 
 //------------------------------------------------------------------------
@@ -100,6 +101,76 @@ std::string LuaState::getStackString(lua_State *L, char const *iMessage)
   }
 
   return stream.str();
+}
+
+//------------------------------------------------------------------------
+// LuaState::getTableValueAsNumber
+//------------------------------------------------------------------------
+lua_Number LuaState::getTableValueAsNumber(char const *iKey)
+{
+  luaL_checktype(L, 1, LUA_TTABLE);
+  lua_getfield(L, 1, iKey);
+  auto res = lua_tonumber(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// LuaState::getTableValueAsInteger
+//------------------------------------------------------------------------
+lua_Integer LuaState::getTableValueAsInteger(char const *iKey)
+{
+  luaL_checktype(L, 1, LUA_TTABLE);
+  lua_getfield(L, 1, iKey);
+  auto res = lua_tointeger(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// LuaState::getTableValueAsBoolean
+//------------------------------------------------------------------------
+bool LuaState::getTableValueAsBoolean(char const *iKey)
+{
+  luaL_checktype(L, 1, LUA_TTABLE);
+  lua_getfield(L, 1, iKey);
+  auto res = lua_toboolean(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// LuaState::runLuaFile
+//------------------------------------------------------------------------
+int LuaState::runLuaFile(std::string const &iFilename)
+{
+  auto const res = luaL_dofile(L, iFilename.c_str());
+
+  if(res != LUA_OK)
+  {
+    std::string errorMsg{lua_tostring(L, -1)};
+    lua_pop(L, 1);
+    RE_MOCK_ASSERT(res == LUA_OK, "%s", errorMsg.c_str());
+  }
+
+  return res;
+}
+
+//------------------------------------------------------------------------
+// LuaState::runLuaCode
+//------------------------------------------------------------------------
+int LuaState::runLuaCode(std::string const &iSource)
+{
+  auto const res = luaL_dostring(L, iSource.c_str());
+
+  if(res != LUA_OK)
+  {
+    std::string errorMsg{lua_tostring(L, -1)};
+    lua_pop(L, 1);
+    RE_MOCK_ASSERT(res == LUA_OK, "%s", errorMsg.c_str());
+  }
+
+  return res;
 }
 
 }

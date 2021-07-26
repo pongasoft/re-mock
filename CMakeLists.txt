@@ -68,6 +68,8 @@ set(re-mock_BUILD_HEADERS
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/fmt.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/stl.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/LuaState.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/MockJBox.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.h
     )
 
 # Defines the sources
@@ -79,6 +81,8 @@ set(re-mock_BUILD_SOURCES
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Motherboard.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/MockJBox.cpp
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.cpp
     )
 
 # Defines the include directories
@@ -110,6 +114,7 @@ if(RE_MOCK_DEV_BUILD)
       "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRack.cpp"
       "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
       "${RE_MOCK_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"
+      "${RE_MOCK_CPP_TST_DIR}/re/mock/lua/TestMotherboardDef.cpp"
       )
 
   add_executable("${target_test}" "${TEST_CASE_SOURCES}")

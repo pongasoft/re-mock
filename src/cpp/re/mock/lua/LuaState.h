@@ -38,21 +38,27 @@ public:
   LuaState();
   ~LuaState();
 
-  lua_State *getLuaState() { return fLuaState; }
+  int runLuaFile(std::string const &iFilename);
+  int runLuaCode(std::string const &iSource);
+
+  lua_State *getLuaState() { return L; }
 
   /**
    * Make this class behave like a `lua_State *` */
-  operator lua_State *() { return fLuaState; }
+  operator lua_State *() { return L; }
 
-  void dumpStack(char const *iMessage = nullptr, std::ostream &oStream = std::cout) { dumpStack(fLuaState, iMessage, oStream); }
-  std::string getStackString(char const *iMessage = nullptr) { return getStackString(fLuaState, iMessage); }
+  void dumpStack(char const *iMessage = nullptr, std::ostream &oStream = std::cout) { dumpStack(L, iMessage, oStream); }
+  std::string getStackString(char const *iMessage = nullptr) { return getStackString(L, iMessage); }
+
+  lua_Number getTableValueAsNumber(char const *iKey);
+  lua_Integer getTableValueAsInteger(char const *iKey);
+  bool getTableValueAsBoolean(char const *iKey);
 
   static std::string getStackString(lua_State *L, char const *iMessage = nullptr);
   static void dumpStack(lua_State *L, char const *iMessage = nullptr, std::ostream &oStream = std::cout);
 
 private:
-  lua_State *fLuaState{};
-
+  lua_State *L{}; // using common naming in all lua apis...
 };
 
 }
