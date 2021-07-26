@@ -21,8 +21,8 @@
 
 namespace re::mock::lua::Test {
 
-// MotherboardDef.jbox
-TEST(MotherboardDef, jbox)
+// MotherboardDef.Empty
+TEST(MotherboardDef, Empty)
 {
   auto def = MotherboardDef::fromString("print('hello from lua')");
 
@@ -32,7 +32,10 @@ TEST(MotherboardDef, jbox)
   ASSERT_EQ(0, def->getAudioOutputs()->names.size());
   ASSERT_EQ(0, def->getCVInputs()->names.size());
   ASSERT_EQ(0, def->getCVOutputs()->names.size());
-  ASSERT_TRUE(def->getCustomProperties() == nullptr);
+  auto customProperties = def->getCustomProperties();
+  ASSERT_EQ(0, customProperties->document_owner.size());
+  ASSERT_EQ(0, customProperties->rtc_owner.size());
+  ASSERT_EQ(0, customProperties->rt_owner.size());
 
   ASSERT_EQ(def->getStackString(), "<empty>");
 }

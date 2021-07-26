@@ -71,6 +71,17 @@ static int lua_ignored(lua_State *L)
 
 namespace re::mock::lua {
 
+struct JBoxObjectUD
+{
+  jbox_object::Type fType;
+  int fId;
+
+  static JBoxObjectUD *New(lua_State *L)
+  {
+    return reinterpret_cast<JBoxObjectUD *>(lua_newuserdata(L, sizeof(JBoxObjectUD)));
+  }
+};
+
 //------------------------------------------------------------------------
 // MotherboardDef::MotherboardDef
 //------------------------------------------------------------------------
@@ -109,7 +120,7 @@ MotherboardDef *MotherboardDef::loadFromRegistry(lua_State *L)
 //------------------------------------------------------------------------
 // MotherboardDef::addObject
 //------------------------------------------------------------------------
-int MotherboardDef::addObject(std::unique_ptr<jbox_object> iObject)
+int MotherboardDef::addObjectOnTopOfStack(std::unique_ptr<jbox_object> iObject)
 {
   auto ud = JBoxObjectUD::New(L);
   ud->fType = iObject->getType();
@@ -120,7 +131,7 @@ int MotherboardDef::addObject(std::unique_ptr<jbox_object> iObject)
 //------------------------------------------------------------------------
 // MotherboardDef::getObject
 //------------------------------------------------------------------------
-jbox_object *MotherboardDef::getObjectOnTopOfStack()
+std::shared_ptr<jbox_object> MotherboardDef::getObjectOnTopOfStack()
 {
   if(lua_type(L, -1) == LUA_TNIL)
   {
@@ -131,7 +142,7 @@ jbox_object *MotherboardDef::getObjectOnTopOfStack()
   luaL_checktype(L, -1, LUA_TUSERDATA);
   auto ud = reinterpret_cast<JBoxObjectUD *>(lua_touserdata(L, -1));
   lua_pop(L, 1);
-  auto o = fObjects.get(ud->fId).get();
+  auto o = fObjects.get(ud->fId);
   RE_MOCK_ASSERT(o->getType() == ud->fType, "type mismatch");
   return o;
 }
@@ -141,7 +152,7 @@ jbox_object *MotherboardDef::getObjectOnTopOfStack()
 //------------------------------------------------------------------------
 int MotherboardDef::luaIgnored()
 {
-  return addObject(std::make_unique<jbox_ignored>());
+  return addObjectOnTopOfStack(std::make_unique<jbox_ignored>());
 }
 
 //------------------------------------------------------------------------
@@ -151,7 +162,7 @@ int MotherboardDef::luaNativeObject()
 {
   auto p = std::make_unique<jbox_native_object>();
   populatePropertyTag(p.get());
-  return addObject(std::move(p));
+  return addObjectOnTopOfStack(std::move(p));
 }
 
 //------------------------------------------------------------------------
@@ -162,7 +173,7 @@ int MotherboardDef::luaBoolean()
   auto p = std::make_unique<jbox_boolean_property>();
   populatePropertyTag(p.get());
   p->default_value = L.getTableValueAsBoolean("default_value");
-  return addObject(std::move(p));
+  return addObjectOnTopOfStack(std::move(p));
 }
 
 //------------------------------------------------------------------------
@@ -172,7 +183,7 @@ int MotherboardDef::luaSocket(jbox_object::Type iSocketType)
 {
   auto p = std::make_unique<jbox_socket>();
   p->type = iSocketType;
-  return addObject(std::move(p));
+  return addObjectOnTopOfStack(std::move(p));
 }
 
 //------------------------------------------------------------------------
@@ -186,7 +197,7 @@ int MotherboardDef::luaPropertySet()
   luaPropertySet("rtc_owner", set->rtc_owner);
   luaPropertySet("rt_owner", set->rt_owner);
 
-  return addObject(std::move(set));
+  return addObjectOnTopOfStack(std::move(set));
 }
 
 //------------------------------------------------------------------------
@@ -278,6 +289,17 @@ std::unique_ptr<MotherboardDef> MotherboardDef::fromString(std::string const &iL
 {
   auto res = std::unique_ptr<MotherboardDef>(new MotherboardDef());
   res->L.runLuaCode(iLuaCode);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// MotherboardDef::getCustomProperties
+//------------------------------------------------------------------------
+std::shared_ptr<jbox_property_set> MotherboardDef::getCustomProperties()
+{
+  auto res = getGlobal<jbox_property_set>("custom_properties");
+  if(res == nullptr)
+    res = std::make_shared<jbox_property_set>();
   return res;
 }
 

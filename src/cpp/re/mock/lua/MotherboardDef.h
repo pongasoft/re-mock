@@ -30,7 +30,7 @@ namespace re::mock::lua {
 
 struct jbox_object
 {
-  using map_t = std::map<std::string, jbox_object *>;
+  using map_t = std::map<std::string, std::shared_ptr<jbox_object>>;
 
   enum class Type
   {
@@ -78,9 +78,9 @@ struct jbox_boolean_property : public jbox_property {
 struct jbox_property_set : public jbox_object {
   Type getType() override { return Type::PROPERTY_SET; }
 
-  std::map<std::string, jbox_object *> document_owner{};
-  std::map<std::string, jbox_object *> rtc_owner{};
-  std::map<std::string, jbox_object *> rt_owner{};
+  std::map<std::string, std::shared_ptr<jbox_object>> document_owner{};
+  std::map<std::string, std::shared_ptr<jbox_object>> rtc_owner{};
+  std::map<std::string, std::shared_ptr<jbox_object>> rt_owner{};
 };
 
 struct jbox_socket : public jbox_object {
@@ -92,17 +92,6 @@ struct jbox_sockets : public jbox_object {
   Type getType() override { return type; }
   Type type{Type::UNKNOWN};
   std::vector<std::string> names{};
-};
-
-struct JBoxObjectUD
-{
-  jbox_object::Type fType;
-  int fId;
-
-  static JBoxObjectUD *New(lua_State *L)
-  {
-    return reinterpret_cast<JBoxObjectUD *>(lua_newuserdata(L, sizeof(JBoxObjectUD)));
-  }
 };
 
 class MotherboardDef : public MockJBox
@@ -120,16 +109,13 @@ public:
   int luaPropertySet();
 
   template<typename T>
-  T *getGlobal(std::string const &iName)
+  std::shared_ptr<T> getGlobal(std::string const &iName)
   {
     lua_getglobal(L, iName.c_str());
-    return dynamic_cast<T *>(getObjectOnTopOfStack());
+    return std::dynamic_pointer_cast<T>(getObjectOnTopOfStack());
   }
 
-  jbox_property_set *getCustomProperties()
-  {
-    return getGlobal<jbox_property_set>("custom_properties");
-  }
+  std::shared_ptr<jbox_property_set> getCustomProperties();
 
   std::unique_ptr<jbox_sockets> getAudioInputs()
   {
@@ -160,9 +146,9 @@ public:
 protected:
   MotherboardDef();
 
-  int addObject(std::unique_ptr<jbox_object> iObject);
+  int addObjectOnTopOfStack(std::unique_ptr<jbox_object> iObject);
 
-  jbox_object *getObjectOnTopOfStack();
+  std::shared_ptr<jbox_object> getObjectOnTopOfStack();
 
   void luaPropertySet(char const *iKey, jbox_object::map_t &oMap);
 
@@ -177,7 +163,7 @@ protected:
   void populatePropertyTag(jbox_property *iProperty);
 
 private:
-  ObjectManager<std::unique_ptr<jbox_object>> fObjects{};
+  ObjectManager<std::shared_ptr<jbox_object>> fObjects{};
 };
 
 }
