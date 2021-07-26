@@ -67,6 +67,7 @@ set(re-mock_BUILD_HEADERS
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Rack.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/fmt.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/stl.h
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/LuaState.h
     )
 
 # Defines the sources
@@ -77,14 +78,19 @@ set(re-mock_BUILD_SOURCES
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/LuaJBox.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Motherboard.cpp
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp
     )
 
 # Defines the include directories
 set(re-mock_INCLUDE_DIRECTORIES "${RE_MOCK_CPP_SRC_DIR}")
 
+# Including lua lib/headers
+add_subdirectory(external/lua-cmake)
+
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
+target_link_libraries(${target} PUBLIC lua::lib lua::header)
 
 if(RE_MOCK_DEV_BUILD)
   #######################################################
@@ -103,6 +109,7 @@ if(RE_MOCK_DEV_BUILD)
       "${RE_MOCK_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
       "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRack.cpp"
       "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
+      "${RE_MOCK_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"
       )
 
   add_executable("${target_test}" "${TEST_CASE_SOURCES}")
