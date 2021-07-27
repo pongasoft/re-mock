@@ -83,8 +83,8 @@ RealtimeController *RealtimeController::loadFromRegistry(lua_State *L)
 //------------------------------------------------------------------------
 std::unique_ptr<RealtimeController> RealtimeController::fromFile(std::string const &iLuaFilename)
 {
-  auto res = std::unique_ptr<RealtimeController>(new RealtimeController());
-  res->L.runLuaFile(iLuaFilename);
+  auto res = std::make_unique<RealtimeController>();
+  res->loadFile(iLuaFilename);
   return res;
 }
 
@@ -93,8 +93,8 @@ std::unique_ptr<RealtimeController> RealtimeController::fromFile(std::string con
 //------------------------------------------------------------------------
 std::unique_ptr<RealtimeController> RealtimeController::fromString(std::string const &iLuaCode)
 {
-  auto res = std::unique_ptr<RealtimeController>(new RealtimeController());
-  res->L.runLuaCode(iLuaCode);
+  auto res = std::make_unique<RealtimeController>();
+  res->loadString(iLuaCode);
   return res;
 }
 
@@ -178,7 +178,6 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
   lua_pushstring(L, iSourcePropertyPath.c_str());
   pushJBoxValue(iNewValue);
   lua_pcall(L, 2, 0, 0);
-  lua_pop(L, 1);
   fMotherboard = nullptr;
 }
 

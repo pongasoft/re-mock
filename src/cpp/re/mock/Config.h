@@ -21,7 +21,11 @@
 #define __Pongasoft_re_mock_types_h__
 
 #include <JukeboxTypes.h>
-#include "LuaJBox.h"
+#include <Jukebox.h>
+#include <variant>
+#include <map>
+#include <set>
+#include "Errors.h"
 
 namespace re::mock {
 
@@ -31,28 +35,6 @@ enum class PropertyOwner {
   kRTCOwner,
   kDocOwner,
   kGUIOwner
-};
-
-struct MotherboardDef
-{
-  std::map<std::string, std::shared_ptr<jbox_audio_input>> audio_inputs{};
-  std::map<std::string, std::shared_ptr<jbox_audio_output>> audio_outputs{};
-  std::map<std::string, std::shared_ptr<jbox_cv_input>> cv_inputs{};
-  std::map<std::string, std::shared_ptr<jbox_cv_output>> cv_outputs{};
-
-  struct { std::map<std::string, std::shared_ptr<jbox_property>> properties{}; } document_owner;
-  struct { std::map<std::string, std::shared_ptr<jbox_property>> properties{}; } rt_owner;
-};
-
-using RTCCallback = std::function<void (std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue)>;
-
-struct RealtimeController
-{
-  std::map<std::string, std::string> rtc_bindings;
-  std::map<std::string, RTCCallback> global_rtc{};
-  struct { std::set<std::string> notify{}; } rt_input_setup;
-
-  static RealtimeController byDefault(LuaJbox &jbox);
 };
 
 struct Realtime
@@ -66,44 +48,193 @@ struct Realtime
   render_realtime_t render_realtime{};
 
   template<typename T>
+  static create_native_object_t bySampleRateCreator(std::string iOperation = "Instance");
+
+  template<typename T>
+  static destroy_native_object_t destroyer(std::string iOperation = "Instance");
+
+  template<typename T>
+  static render_realtime_t defaultRenderRealtime();
+
+  template<typename T>
   static Realtime byDefault();
 };
 
+struct ConfigFile { std::string fFilename{}; };
+struct ConfigString { std::string fString{}; };
+
 struct Config
 {
-  using callback_t = std::function<void (LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt)>;
+  constexpr static auto LEFT_SOCKET = "L";
+  constexpr static auto RIGHT_SOCKET = "R";
+  constexpr static auto SOCKET = "C";
 
-  Config(): fCallback{} {};
+  using rt_callback_t = std::function<void (Realtime &rt)>;
 
-  explicit Config(callback_t iCallback) : fCallback(std::move(iCallback)) {}
+  static ConfigString audio_out(std::string const &iSocketName);
+  static ConfigString stereo_audio_out(char const *iLeftSocketName = LEFT_SOCKET, char const *iRightSocketName = RIGHT_SOCKET);
+  static ConfigString audio_in(std::string const &iSocketName);
+  static ConfigString stereo_audio_in(char const *iLeftSocketName = LEFT_SOCKET, char const *iRightSocketName = RIGHT_SOCKET);
+  static ConfigString cv_out(char const *iSocketName = SOCKET);
+  static ConfigString cv_in(char const *iSocketName = SOCKET);
+  static ConfigString rtc_binding(std::string const &iSource, std::string const &iDest);
 
-  Config &extend(callback_t iCallback)
+  Config &debug(bool iDebug = true)
+  {
+    fDebug = iDebug;
+    return *this;
+  }
+
+  Config &mdef(ConfigFile iFile)
+  {
+    fMotherboardDefs.emplace_back(iFile);
+    return *this;
+  }
+
+  Config &mdef(ConfigString iString)
+  {
+    fMotherboardDefs.emplace_back(iString);
+    return *this;
+  }
+
+  Config &mdef_string(std::string iString)
+  {
+    return mdef(ConfigString{iString});
+  }
+
+  Config &mdef_file(std::string iFile)
+  {
+    return mdef(ConfigFile{iFile});
+  }
+
+  Config &rtc(ConfigFile iFile)
+  {
+    fRealtimeControllers.emplace_back(iFile);
+    return *this;
+  }
+
+  Config &rtc(ConfigString iString)
+  {
+    fRealtimeControllers.emplace_back(iString);
+    return *this;
+  }
+
+  Config &rtc_string(std::string iString)
+  {
+    return rtc(ConfigString{iString});
+  }
+
+  Config &rtc_file(std::string iFile)
+  {
+    return rtc(ConfigFile{iFile});
+  }
+
+  Config &rt(rt_callback_t iCallback)
   {
     if(iCallback)
     {
-      auto previousCallback = fCallback;
-      fCallback = [previousCallback, iCallback](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-        previousCallback(jbox, def, rtc, rt);
-        iCallback(jbox, def, rtc, rt);
-      };
+      if(fRealtime)
+      {
+        auto previousCallback = fRealtime;
+        fRealtime = [cb = std::move(previousCallback), iCallback](Realtime &rt) {
+          cb(rt);
+          iCallback(rt);
+        };
+      }
+      else
+        fRealtime = iCallback;
     }
     return *this;
   }
 
   template<typename T>
-  static Config byDefault();
+  Config rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
-    template<typename T>
-  static Config byDefault(callback_t iCallback) { return byDefault<T>().extend(std::move(iCallback)); }
+  static Config fromSkeleton();
 
-  void operator()(LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) const
+  friend class Motherboard;
+
+  static ConfigString SKELETON_MOTHERBOARD_DEF;
+  static ConfigString SKELETON_REALTIME_CONTROLLER;
+
+protected:
+  bool fDebug{};
+  std::vector<std::variant<ConfigFile, ConfigString>> fMotherboardDefs{};
+  std::vector<std::variant<ConfigFile, ConfigString>> fRealtimeControllers{};
+  rt_callback_t fRealtime{};
+};
+
+template<typename T>
+struct DeviceConfig
+{
+  using rt_callback_t = std::function<void (Realtime &rt)>;
+
+  DeviceConfig &debug(bool iDebug = true)
   {
-    if(fCallback)
-      fCallback(jbox, def, rtc, rt);
+    fConfig.debug(iDebug);
+    return *this;
   }
 
+  DeviceConfig &mdef(ConfigFile iFile)
+  {
+    fConfig.mdef(iFile);
+    return *this;
+  }
+
+  DeviceConfig &mdef(ConfigString iString)
+  {
+    fConfig.mdef(iString);
+    return *this;
+  }
+
+  DeviceConfig &mdef_string(std::string iString)
+  {
+    return mdef(ConfigString{iString});
+  }
+
+  DeviceConfig &mdef_file(std::string iFile)
+  {
+    return mdef(ConfigFile{iFile});
+  }
+
+  DeviceConfig &rtc(ConfigFile iFile)
+  {
+    fConfig.rtc(iFile);
+    return *this;
+  }
+
+  DeviceConfig &rtc(ConfigString iString)
+  {
+    fConfig.rtc(iString);
+    return *this;
+  }
+
+  DeviceConfig &rtc_string(std::string iString)
+  {
+    return rtc(ConfigString{iString});
+  }
+
+  DeviceConfig &rtc_file(std::string iFile)
+  {
+    return rtc(ConfigFile{iFile});
+  }
+
+  DeviceConfig &rt(rt_callback_t iCallback)
+  {
+    fConfig.rt(std::move(iCallback));
+    return *this;
+  }
+
+  static DeviceConfig fromJBoxExport(std::string const &iMotherboardDefFile,
+                                     std::string const &iRealtimeControllerFile,
+                                     std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
+
+  static DeviceConfig fromSkeleton();
+
+  const Config &getConfig() const { return fConfig; }
+
 private:
-  callback_t fCallback;
+  Config fConfig{};
 };
 
 //------------------------------------------------------------------------
@@ -113,48 +244,104 @@ template<typename T>
 Realtime Realtime::byDefault()
 {
   return {
-    .create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void *{
-      if(std::strcmp(iOperation, "Instance") == 0)
-      {
-        if(iCount >= 1)
-        {
-          TJBox_Float64 sampleRate = JBox_GetNumber(iParams[0]);
-          return new T(static_cast<int>(sampleRate));
-        }
-      }
+    .create_native_object = Realtime::bySampleRateCreator<T>(),
+    .destroy_native_object = Realtime::destroyer<T>(),
+    .render_realtime = Realtime::defaultRenderRealtime<T>()
+  };
+}
 
-      return nullptr;
-    },
-
-    .destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
-      if(std::strcmp(iOperation, "Instance") == 0)
-      {
-        auto device = reinterpret_cast<T *>(iNativeObject);
-        delete device;
-      }
-    },
-
-    .render_realtime = [](void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) {
-      if(!iPrivateState)
-        return;
-
-      auto device = reinterpret_cast<T *>(iPrivateState);
-      device->renderBatch(iPropertyDiffs, iDiffCount);
+//------------------------------------------------------------------------
+// Realtime::destroyer
+//------------------------------------------------------------------------
+template<typename T>
+Realtime::destroy_native_object_t Realtime::destroyer(std::string iOperation)
+{
+  return [operation=iOperation](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
+    if(std::strcmp(iOperation, operation.c_str()) == 0)
+    {
+      auto device = reinterpret_cast<T *>(iNativeObject);
+      delete device;
     }
   };
 }
 
 //------------------------------------------------------------------------
-// Config::byDefault
+// Realtime::bySampleRateCreator
 //------------------------------------------------------------------------
 template<typename T>
-Config Config::byDefault()
+Realtime::create_native_object_t Realtime::bySampleRateCreator(std::string iOperation)
 {
-  return Config({[](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-    rtc = RealtimeController::byDefault(jbox);
-    rt = Realtime::byDefault<T>();
-  }});
+  return [operation=iOperation](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void *{
+    if(std::strcmp(iOperation, operation.c_str()) == 0)
+    {
+      if(iCount >= 1)
+      {
+        TJBox_Float64 sampleRate = JBox_GetNumber(iParams[0]);
+        return new T(static_cast<int>(sampleRate));
+      }
+    }
+
+    return nullptr;
+  };
 }
+
+//------------------------------------------------------------------------
+// Realtime::defaultRenderRealtime
+//------------------------------------------------------------------------
+template<typename T>
+Realtime::render_realtime_t Realtime::defaultRenderRealtime()
+{
+  return [](void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) {
+    if(!iPrivateState)
+      return;
+    auto device = reinterpret_cast<T *>(iPrivateState);
+    device->renderBatch(iPropertyDiffs, iDiffCount);
+  };
+}
+
+//------------------------------------------------------------------------
+// Config::rt_jbox_export
+//------------------------------------------------------------------------
+template<typename T>
+Config Config::rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject)
+{
+  rt([iDestroyNativeObject](Realtime &rt) {
+    rt.create_native_object = JBox_Export_CreateNativeObject;
+    rt.render_realtime = JBox_Export_RenderRealtime;
+    if(iDestroyNativeObject)
+      rt.destroy_native_object = iDestroyNativeObject.value();
+  });
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// DeviceConfig::fromJBoxExport
+//------------------------------------------------------------------------
+template<typename T>
+DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iMotherboardDefFile,
+                                                std::string const &iRealtimeControllerFile,
+                                                std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject)
+{
+  return DeviceConfig<T>()
+    .mdef_file(iMotherboardDefFile)
+    .rtc_file(iRealtimeControllerFile)
+    .template rt_jbox_export<T>(iDestroyNativeObject);
+}
+
+//------------------------------------------------------------------------
+// DeviceConfig::fromSkeleton
+//------------------------------------------------------------------------
+template<typename T>
+DeviceConfig<T> DeviceConfig<T>::fromSkeleton()
+{
+  return DeviceConfig<T>()
+    .mdef(Config::SKELETON_MOTHERBOARD_DEF)
+    .rtc(Config::SKELETON_REALTIME_CONTROLLER)
+    .rt([](Realtime &rt) {
+      rt = Realtime::byDefault<T>();
+    });
+}
+
 
 }
 

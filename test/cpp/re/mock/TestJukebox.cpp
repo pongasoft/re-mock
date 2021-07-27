@@ -33,52 +33,52 @@ TEST(Jukebox, Basic)
     TJBox_Float64 fVolume{};
   };
 
-  Config c([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-    def.document_owner.properties["prop_number_default"]  = jbox.number();
-    def.document_owner.properties["prop_float"]           = jbox.number<float>({.property_tag = 100, .default_value = 0.7});
-    def.document_owner.properties["prop_float_2"]         = jbox.number<float>(0.8);
-    def.document_owner.properties["prop_bool_default"]    = jbox.boolean();
-    def.document_owner.properties["prop_bool"]            = jbox.boolean({.default_value = true});
-    def.document_owner.properties["prop_bool_2"]          = jbox.boolean(true);
-    def.document_owner.properties["prop_generic_default"] = jbox.property();
-    def.document_owner.properties["prop_generic"]         = jbox.property(JBox_MakeNumber(0.2));
-    def.document_owner.properties["prop_generic_2"]       = jbox.property({.default_value = JBox_MakeNumber(0.3)});
-    def.document_owner.properties["prop_volume_ro"]       = jbox.number<float>(0.8);
-    def.document_owner.properties["prop_volume_rw"]       = jbox.number<float>(0.9);
+  auto mdef = R"(
+document_owner_properties["prop_number_default"]  = jbox.number{ }
+document_owner_properties["prop_float"]           = jbox.number{ property_tag = 100, default = 0.7 }
+document_owner_properties["prop_bool_default"]    = jbox.boolean{ }
+document_owner_properties["prop_bool"]            = jbox.boolean{ default = true }
+document_owner_properties["prop_volume_ro"]       = jbox.number{ default = 0.8 }
+document_owner_properties["prop_volume_rw"]       = jbox.number{ default = 0.9 }
 
-    def.rt_owner.properties["prop_gain_default"]          = jbox.native_object();
-    def.rt_owner.properties["prop_gain"]                  = jbox.native_object({.default_value = {.operation = "Gain", .params = {JBox_MakeNumber(0.7)}}});
-    def.rt_owner.properties["prop_gain_ro"]               = jbox.native_object();
-    def.rt_owner.properties["prop_gain_rw"]               = jbox.native_object();
+rt_owner_properties["prop_gain_default"]          = jbox.native_object{ }
+rt_owner_properties["prop_gain"]                  = jbox.native_object{ default = { "Gain", { 0.7 } } }
+rt_owner_properties["prop_gain_ro"]               = jbox.native_object{ }
+rt_owner_properties["prop_gain_rw"]               = jbox.native_object{ }
+)";
 
-    rtc.rtc_bindings["/custom_properties/prop_volume_ro"]   = "/global_rtc/new_gain_ro";
-    rtc.rtc_bindings["/custom_properties/prop_volume_rw"]   = "/global_rtc/new_gain_rw";
+  auto rtc = R"(
+rtc_bindings = {
+  { source = "/custom_properties/prop_volume_ro", dest = "/global_rtc/new_gain_ro" },
+  { source = "/custom_properties/prop_volume_rw", dest = "/global_rtc/new_gain_rw" },
+}
 
-    rtc.global_rtc["new_gain_ro"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
-      auto new_no = jbox.make_native_object_ro("Gain", { iNewValue });
-      jbox.store_property("/custom_properties/prop_gain_ro", new_no);
-    };
+global_rtc = {
+  new_gain_ro = function(source_property_path, new_value)
+    local new_no = jbox.make_native_object_ro("Gain", { new_value })
+    jbox.store_property("/custom_properties/prop_gain_ro", new_no)
+  end,
 
-    rtc.global_rtc["new_gain_rw"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
-      auto new_no = jbox.make_native_object_rw("Gain", { iNewValue });
-      jbox.store_property("/custom_properties/prop_gain_rw", new_no);
-    };
+  new_gain_rw = function(source_property_path, new_value)
+    local new_no = jbox.make_native_object_rw("Gain", { new_value })
+    jbox.store_property("/custom_properties/prop_gain_rw", new_no)
+  end,
+}
+)";
 
-    rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
-      if(std::strcmp(iOperation, "Gain") == 0)
-        return new Gain{JBox_GetNumber(iParams[0])};
+  auto c = Config::fromSkeleton()
+    .mdef_string(mdef)
+    .rtc_string(rtc)
+    .rt([](Realtime &rt) {
+      rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
+        if(std::strcmp(iOperation, "Gain") == 0)
+          return new Gain{JBox_GetNumber(iParams[0])};
 
-      return nullptr;
-    };
+        return nullptr;
+      };
 
-    rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
-      if(std::strcmp(iOperation, "Gain") == 0)
-      {
-        delete reinterpret_cast<Gain *>(iNativeObject);
-      }
-    };
-  });
-
+      rt.destroy_native_object = Realtime::destroyer<Gain>("Gain");
+    });
 
   auto re = rack.newExtension(c);
 
@@ -99,14 +99,8 @@ TEST(Jukebox, Basic)
     ASSERT_EQ(customProperties, JBox_FindPropertyByTag(customProperties, 100).fObject);
     ASSERT_STREQ("prop_float", JBox_FindPropertyByTag(customProperties, 100).fKey);
 
-    ASSERT_FLOAT_EQ(0.8, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float_2"))));
-
     ASSERT_FALSE(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_bool_default"))));
     ASSERT_TRUE(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_bool"))));
-
-    ASSERT_FLOAT_EQ(0, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_generic_default"))));
-    ASSERT_FLOAT_EQ(0.2, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_generic"))));
-    ASSERT_FLOAT_EQ(0.3, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_generic_2"))));
 
     ASSERT_TRUE(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_default"))) == nullptr);
     ASSERT_TRUE(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_default"))) == nullptr);
@@ -159,10 +153,9 @@ TEST(Jukebox, AudioSocket)
 {
   Rack rack{};
 
-  Config c([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-    def.audio_inputs["input_1"] = jbox.audio_input();
-    def.audio_outputs["output_1"] = jbox.audio_output();
-  });
+  auto c = Config::fromSkeleton()
+    .mdef(Config::audio_in("input_1"))
+    .mdef(Config::audio_out("output_1"));
 
   auto re = rack.newExtension(c);
 

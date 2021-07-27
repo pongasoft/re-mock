@@ -32,6 +32,7 @@ namespace re::mock::lua {
 class RealtimeController: public MockJBox
 {
 public:
+  RealtimeController();
 
   int luaLoadProperty();
   int luaStoreProperty();
@@ -53,9 +54,6 @@ protected:
   Motherboard *getCurrentMotherboard() const;
 
   void putBindingOnTopOfStack(std::string const &iBindingName);
-
-protected:
-  RealtimeController();
 
 private:
   Motherboard *fMotherboard{};

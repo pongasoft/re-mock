@@ -133,4 +133,15 @@ TEST(MotherboardDef, All)
   ASSERT_EQ(def->getStackString(), "<empty>");
 }
 
+// MotherboardDef.Multiple
+TEST(MotherboardDef, Multiple)
+{
+  MotherboardDef def{};
+  def.loadString("print('first load')");
+  def.loadString("audio_outputs={}");
+  def.loadString(R"(audio_outputs["au_out1"] = jbox.audio_output { })");
+  def.loadString(R"(audio_outputs["au_out2"] = jbox.audio_output { })");
+  ASSERT_THAT(def.getAudioOutputs()->names, UnorderedElementsAre("au_out1", "au_out2"));
+}
+
 }

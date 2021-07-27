@@ -32,8 +32,8 @@ DeviceTester::DeviceTester(Config const &iDeviceConfig) : fDevice{fRack.newExten
 //------------------------------------------------------------------------
 ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig) :
   DeviceTester(iDeviceConfig),
-  fSrc{fRack.newDevice<MAUSrc>(MAUSrc::Config)},
-  fDst{fRack.newDevice<MAUDst>(MAUDst::Config)}
+  fSrc{fRack.newDevice<MAUSrc>(MAUSrc::CONFIG)},
+  fDst{fRack.newDevice<MAUDst>(MAUDst::CONFIG)}
 {
 }
 
@@ -79,7 +79,7 @@ void ExtensionEffectTester::nextFrame(MockAudioDevice::StereoBuffer const &iInpu
 //------------------------------------------------------------------------
 ExtensionInstrumentTester::ExtensionInstrumentTester(Config const &iDeviceConfig) :
   DeviceTester(iDeviceConfig),
-  fDst{fRack.newDevice<MAUDst>(MAUDst::Config)}
+  fDst{fRack.newDevice<MAUDst>(MAUDst::CONFIG)}
 {
 }
 

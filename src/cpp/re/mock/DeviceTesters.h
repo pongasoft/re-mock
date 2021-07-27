@@ -62,7 +62,7 @@ template<typename Effect>
 class EffectTester : public ExtensionEffectTester
 {
 public:
-  explicit EffectTester(Config const &iDeviceConfig) : ExtensionEffectTester(iDeviceConfig) {}
+  explicit EffectTester(DeviceConfig<Effect> const &iDeviceConfig) : ExtensionEffectTester(iDeviceConfig.getConfig()) {}
   Rack::ExtensionDevice<Effect> getEffect() { return getExtensionDevice<Effect>(); }
 };
 
@@ -84,7 +84,7 @@ template<typename Instrument>
 class InstrumentTester : public ExtensionInstrumentTester
 {
 public:
-  explicit InstrumentTester(Config const &iDeviceConfig) : ExtensionInstrumentTester(iDeviceConfig) {}
+  explicit InstrumentTester(DeviceConfig<Instrument> const &iDeviceConfig) : ExtensionInstrumentTester(iDeviceConfig.getConfig()) {}
   Rack::ExtensionDevice<Instrument> getInstrument() { return getExtensionDevice<Instrument>(); }
 };
 

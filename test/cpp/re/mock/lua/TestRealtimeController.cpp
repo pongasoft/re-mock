@@ -19,8 +19,6 @@
 #include <re/mock/lua/RealtimeController.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock-matchers.h>
-#include <re_mock_build.h>
-#include <Jukebox.h>
 
 namespace re::mock::lua::Test {
 

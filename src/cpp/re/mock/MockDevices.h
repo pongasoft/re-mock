@@ -104,7 +104,7 @@ public:
   explicit MAUSrc(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
-  static const Config Config;
+  static const DeviceConfig<MAUSrc> CONFIG;
 
 protected:
   StereoSocket fOutSocket{};
@@ -118,7 +118,7 @@ public:
   explicit MAUDst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
-  static const Config Config;
+  static const DeviceConfig<MAUDst> CONFIG;
 
 protected:
   StereoSocket fInSocket{};
@@ -132,7 +132,7 @@ public:
   explicit MAUPst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
-  static const Config Config;
+  static const DeviceConfig<MAUPst> CONFIG;
 
 protected:
   StereoSocket fInSocket{};
@@ -179,7 +179,7 @@ public:
   explicit MCVSrc(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
-  static const Config Config;
+  static const DeviceConfig<MCVSrc> CONFIG;
 
 protected:
   TJBox_ObjectRef fOutSocket{};
@@ -193,7 +193,7 @@ public:
   explicit MCVDst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
-  static const Config Config;
+  static const DeviceConfig<MCVDst> CONFIG;
 
 protected:
   TJBox_ObjectRef fInSocket{};
@@ -207,7 +207,7 @@ public:
   explicit MCVPst(int iSampleRate);
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
-  static const Config Config;
+  static const DeviceConfig<MCVPst> CONFIG;
 
 protected:
   TJBox_ObjectRef fInSocket{};

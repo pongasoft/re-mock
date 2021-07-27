@@ -26,7 +26,7 @@ using namespace mock;
 // EffectTester.Usage
 TEST(EffectTester, Usage)
 {
-  EffectTester<MAUPst> tester(MAUPst::Config);
+  EffectTester<MAUPst> tester(MAUPst::CONFIG);
 
   // device is not wired yet!
   ASSERT_EQ(tester.nextFrame(MockAudioDevice::buffer(1.0, 2.0)), MockAudioDevice::buffer(0, 0));
@@ -50,7 +50,7 @@ TEST(EffectTester, Usage)
 // InstrumentTester.Usage
 TEST(InstrumentTester, Usage)
 {
-  InstrumentTester<MAUSrc> tester(MAUSrc::Config);
+  InstrumentTester<MAUSrc> tester(MAUSrc::CONFIG);
 
   tester.getInstrument()->fBuffer = MockAudioDevice::buffer(1.0, 2.0);
 

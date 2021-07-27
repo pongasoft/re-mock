@@ -30,10 +30,11 @@
 #include <set>
 #include <array>
 #include "fmt.h"
-#include "LuaJBox.h"
 #include "Config.h"
 #include "ObjectManager.hpp"
 #include "MotherboardImpl.h"
+#include "lua/MotherboardDef.h"
+#include "lua/RealtimeController.h"
 
 namespace re::mock {
 
@@ -143,9 +144,9 @@ protected:
   void addAudioOutput(std::string const &iSocketName);
   void addCVInput(std::string const &iSocketName);
   void addCVOutput(std::string const &iSocketName);
-  void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, jbox_property const &iProperty);
+  void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, lua::jbox_property const &iProperty);
   void registerRTCNotify(std::string const &iPropertyPath);
-  TJBox_PropertyDiff registerRTCBinding(std::string const &iPropertyPath, RTCCallback iCallback);
+  TJBox_PropertyDiff registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingName);
   void handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iPropertyDiff);
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
@@ -182,16 +183,16 @@ protected:
   using ComparePropertyRef = decltype(&compare);
 
 protected:
-  LuaJbox fJBox;
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};
+  std::unique_ptr<lua::RealtimeController> fRealtimeController{};
   Realtime fRealtime{};
   ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
-  std::map<TJBox_PropertyRef, RTCCallback, ComparePropertyRef> fRTCBindings{compare};
+  std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
 };
 
 }

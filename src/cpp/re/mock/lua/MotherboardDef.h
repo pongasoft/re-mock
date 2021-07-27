@@ -41,7 +41,6 @@ struct jbox_object : public std::enable_shared_from_this<jbox_object>
     UNKNOWN,
     IGNORED,
     NATIVE_OBJECT,
-    PROPERTY_SET,
     BOOLEAN,
     NUMBER,
     AUDIO_INPUT,
@@ -73,7 +72,7 @@ struct jbox_ignored : public jbox_object {
 struct jbox_property : public jbox_object {
   int property_tag{};
   virtual TJBox_Value getDefaultValue() const;
-  virtual TJBox_Value computeDefaultValue(Motherboard *iMotherboard) { return getDefaultValue(); }
+  virtual TJBox_Value computeDefaultValue(Motherboard *iMotherboard) const { return getDefaultValue(); }
 };
 
 struct jbox_native_object : public jbox_property {
@@ -83,7 +82,7 @@ struct jbox_native_object : public jbox_property {
     std::string operation;
     std::vector<TJBox_Value> params;
   } default_value{};
-  TJBox_Value computeDefaultValue(Motherboard *iMotherboard) override;
+  TJBox_Value computeDefaultValue(Motherboard *iMotherboard) const override;
 };
 
 struct jbox_boolean_property : public jbox_property {
@@ -98,9 +97,7 @@ struct jbox_number_property : public jbox_property {
   TJBox_Value getDefaultValue() const override;
 };
 
-struct jbox_property_set : public jbox_object {
-  Type getType() override { return Type::PROPERTY_SET; }
-
+struct jbox_property_set {
   std::map<std::string, std::shared_ptr<jbox_object>> document_owner{};
   std::map<std::string, std::shared_ptr<jbox_object>> rtc_owner{};
   std::map<std::string, std::shared_ptr<jbox_object>> rt_owner{};
@@ -120,6 +117,7 @@ struct jbox_sockets : public jbox_object {
 class MotherboardDef : public MockJBox
 {
 public:
+  MotherboardDef();
 
   int luaIgnored();
   int luaNativeObject();
@@ -135,7 +133,7 @@ public:
     return std::dynamic_pointer_cast<T>(getObjectOnTopOfStack());
   }
 
-  std::shared_ptr<jbox_property_set> getCustomProperties();
+  std::unique_ptr<jbox_property_set> getCustomProperties();
 
   std::unique_ptr<jbox_sockets> getAudioInputs()
   {
@@ -164,8 +162,6 @@ public:
   static std::unique_ptr<MotherboardDef> fromString(std::string const &iLuaCode);
 
 protected:
-  MotherboardDef();
-
   int addObjectOnTopOfStack(std::unique_ptr<jbox_object> iObject);
 
   std::shared_ptr<jbox_object> getObjectOnTopOfStack();

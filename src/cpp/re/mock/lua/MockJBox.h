@@ -22,6 +22,7 @@
 
 #include "LuaState.h"
 #include <JukeboxTypes.h>
+#include <string>
 
 namespace re::mock::lua {
 
@@ -36,6 +37,9 @@ public:
 
   TJBox_Value toJBoxValue(int idx = -1);
   void pushJBoxValue(TJBox_Value const &iJBoxValue);
+
+  int loadFile(std::string const &iLuaFilename);
+  int loadString(std::string const &iLuaCode);
 
 protected:
   static MockJBox *loadFromRegistry(lua_State *L);

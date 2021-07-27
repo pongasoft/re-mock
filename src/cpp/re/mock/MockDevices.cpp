@@ -192,14 +192,9 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 }
 
 //------------------------------------------------------------------------
-// MAUSrc::Config
+// MAUSrc::CONFIG
 //------------------------------------------------------------------------
-const auto MAUSrc::Config =
-  Config::byDefault<MAUSrc>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-  // It is a source so it only produces audio
-  def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
-  def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
-});
+const auto MAUSrc::CONFIG = DeviceConfig<MAUSrc>::fromSkeleton().mdef(Config::stereo_audio_out());
 
 //------------------------------------------------------------------------
 // MAUSrc::MAUSrc
@@ -220,12 +215,7 @@ void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUDst::Config
 //------------------------------------------------------------------------
-const auto MAUDst::Config =
-  Config::byDefault<MAUDst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-  // It is a destination so it only receives audio
-  def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
-  def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
-});
+const auto MAUDst::CONFIG = DeviceConfig<MAUDst>::fromSkeleton().mdef(Config::stereo_audio_in());
 
 //------------------------------------------------------------------------
 // MAUDst::MAUDst
@@ -246,13 +236,9 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUPst::Config
 //------------------------------------------------------------------------
-const auto MAUPst::Config =
-  Config::byDefault<MAUPst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-    def.audio_outputs[LEFT_SOCKET] = jbox.audio_output();
-    def.audio_outputs[RIGHT_SOCKET] = jbox.audio_output();
-    def.audio_inputs[LEFT_SOCKET] = jbox.audio_input();
-    def.audio_inputs[RIGHT_SOCKET] = jbox.audio_input();
-  });
+const auto MAUPst::CONFIG = DeviceConfig<MAUPst>::fromSkeleton()
+  .mdef(Config::stereo_audio_out())
+  .mdef(Config::stereo_audio_in());
 
 //------------------------------------------------------------------------
 // MAUPst::MockAudioPassThrough
@@ -271,7 +257,6 @@ void MAUPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
   copyBuffer(fInSocket, fBuffer);
   copyBuffer(fBuffer, fOutSocket);
 }
-
 
 //------------------------------------------------------------------------
 // MockCVDevice::MockCVDevice
@@ -321,13 +306,9 @@ bool MockCVDevice::eq(TJBox_Float64 iCV1, TJBox_Float64 iCV2)
 }
 
 //------------------------------------------------------------------------
-// MCVSrc::Config
+// MCVSrc::CONFIG
 //------------------------------------------------------------------------
-const auto MCVSrc::Config =
-  Config::byDefault<MCVSrc>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-  // It is a source so it only produces cv
-  def.cv_outputs[SOCKET] = jbox.cv_output();
-});
+const auto MCVSrc::CONFIG = DeviceConfig<MCVSrc>::fromSkeleton().mdef(Config::cv_out());
 
 //------------------------------------------------------------------------
 // MCVSrc::MCVSrc
@@ -346,13 +327,9 @@ void MCVSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 }
 
 //------------------------------------------------------------------------
-// MCVDst::Config
+// MCVDst::CONFIG
 //------------------------------------------------------------------------
-const auto MCVDst::Config =
-  Config::byDefault<MCVDst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-  // It is a destination so it only reads cv
-  def.cv_inputs[SOCKET] = jbox.cv_input();
-});
+const auto MCVDst::CONFIG = DeviceConfig<MCVDst>::fromSkeleton().mdef(Config::cv_in());
 
 //------------------------------------------------------------------------
 // MCVDst::MCVDst
@@ -371,13 +348,9 @@ void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 }
 
 //------------------------------------------------------------------------
-// MCVPst::Config
+// MCVPst::CONFIG
 //------------------------------------------------------------------------
-const auto MCVPst::Config =
-  Config::byDefault<MCVPst>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-  def.cv_inputs[SOCKET] = jbox.cv_input();
-  def.cv_outputs[SOCKET] = jbox.cv_output();
-});
+const auto MCVPst::CONFIG = DeviceConfig<MCVPst>::fromSkeleton().mdef(Config::cv_out()).mdef(Config::cv_in());
 
 //------------------------------------------------------------------------
 // MCVPst::MCVPst
@@ -396,23 +369,6 @@ void MCVPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 {
   loadValue(fInSocket);
   storeValue(fOutSocket);
-}
-
-//------------------------------------------------------------------------
-// RealtimeController::defaultBindings - defined here because depends on jbox
-//------------------------------------------------------------------------
-RealtimeController RealtimeController::byDefault(LuaJbox &jbox)
-{
-  RealtimeController rtc{};
-
-  rtc.rtc_bindings["/environment/system_sample_rate"] = "/global_rtc/init_instance";
-
-  rtc.global_rtc["init_instance"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
-    auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
-    jbox.store_property("/custom_properties/instance", new_no);
-  };
-
-  return rtc;
 }
 
 }

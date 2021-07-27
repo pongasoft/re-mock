@@ -97,4 +97,20 @@ void MockJBox::pushJBoxValue(TJBox_Value const &iJBoxValue)
   }
 }
 
+//------------------------------------------------------------------------
+// MockJBox::loadFile
+//------------------------------------------------------------------------
+int MockJBox::loadFile(std::string const &iLuaFilename)
+{
+  return L.runLuaFile(iLuaFilename);
+}
+
+//------------------------------------------------------------------------
+// MockJBox::loadString
+//------------------------------------------------------------------------
+int MockJBox::loadString(std::string const &iLuaCode)
+{
+  return L.runLuaCode(iLuaCode);
+}
+
 }

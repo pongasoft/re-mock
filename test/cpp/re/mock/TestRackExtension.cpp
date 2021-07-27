@@ -64,79 +64,71 @@ TEST(RackExtension, Motherboard)
     bool fBool{};
   };
 
-  auto c = Config::byDefault<Device>([](LuaJbox &jbox, MotherboardDef &def, RealtimeController &rtc, Realtime &rt) {
-    def.document_owner.properties["prop_number"]  = jbox.number(0.1);
-    def.document_owner.properties["prop_float"]   = jbox.number<float>(0.8);
-    def.document_owner.properties["prop_int"]     = jbox.number<int>(4);
-    def.document_owner.properties["prop_bool"]    = jbox.boolean(true);
-    def.document_owner.properties["volume_ro"]    = jbox.number(0.7);
-    def.document_owner.properties["volume_rw"]    = jbox.number(0.75);
-    def.rt_owner.properties["gain_ro"]            = jbox.native_object();
-    def.rt_owner.properties["gain_rw"]            = jbox.native_object();
+  auto c = DeviceConfig<Device>::fromSkeleton()
+    .mdef(Config::stereo_audio_in())
+    .mdef(Config::stereo_audio_out())
+    .mdef(Config::cv_in())
+    .mdef(Config::cv_out())
+    .mdef_string(R"(
+document_owner_properties["prop_number"]  = jbox.number { default = 0.1 }
+document_owner_properties["prop_float"]   = jbox.number { default = 0.8 }
+document_owner_properties["prop_int"]     = jbox.number { default = 4 }
+document_owner_properties["prop_bool"]    = jbox.boolean { default = true }
+document_owner_properties["volume_ro"]    = jbox.number { default = 0.7 }
+document_owner_properties["volume_rw"]    = jbox.number { default = 0.75 }
 
-    def.audio_outputs[MAUPst::LEFT_SOCKET] = jbox.audio_output();
-    def.audio_outputs[MAUPst::RIGHT_SOCKET] = jbox.audio_output();
-    def.audio_inputs[MAUPst::LEFT_SOCKET] = jbox.audio_input();
-    def.audio_inputs[MAUPst::RIGHT_SOCKET] = jbox.audio_input();
+rtc_owner_properties["gain_ro"]            = jbox.native_object {}
+rtc_owner_properties["gain_rw"]            = jbox.native_object {}
+)")
+    .rtc(Config::rtc_binding("/custom_properties/volume_ro", "/global_rtc/new_gain_ro"))
+    .rtc(Config::rtc_binding("/custom_properties/volume_rw", "/global_rtc/new_gain_rw"))
+    .rtc_string(R"(
+global_rtc["new_gain_ro"] = function(source_property_path, new_value)
+  local new_no = jbox.make_native_object_ro("Gain", { new_value })
+  jbox.store_property("/custom_properties/gain_ro", new_no)
+end
 
-    def.cv_inputs[MCVPst::SOCKET] = jbox.cv_input();
-    def.cv_outputs[MCVPst::SOCKET] = jbox.cv_output();
-
-    rtc.rtc_bindings["/environment/system_sample_rate"]    = "/global_rtc/init_instance";
-    rtc.rtc_bindings["/custom_properties/volume_ro"]       = "/global_rtc/new_gain_ro";
-    rtc.rtc_bindings["/custom_properties/volume_rw"]       = "/global_rtc/new_gain_rw";
-
-    rtc.global_rtc["init_instance"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
-      auto new_no = jbox.make_native_object_rw("Instance", { iNewValue });
-      jbox.store_property("/custom_properties/instance", new_no);
-    };
-
-    rtc.global_rtc["new_gain_ro"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
-      auto new_no = jbox.make_native_object_ro("Gain", { iNewValue });
-      jbox.store_property("/custom_properties/gain_ro", new_no);
-    };
-
-    rtc.global_rtc["new_gain_rw"] = [&jbox](std::string const &iSourcePropertyPath, TJBox_Value const &iNewValue) {
-      auto new_no = jbox.make_native_object_rw("Gain", { iNewValue });
-      jbox.store_property("/custom_properties/gain_rw", new_no);
-    };
-
-    rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
-      RE_MOCK_LOG_INFO("rt.create_native_object(%s)", iOperation);
-      if(std::strcmp(iOperation, "Instance") == 0)
-      {
-        if(iCount >= 1)
+global_rtc["new_gain_rw"] = function(source_property_path, new_value)
+  local new_no = jbox.make_native_object_rw("Gain", { new_value })
+  jbox.store_property("/custom_properties/gain_rw", new_no)
+end
+)")
+    .rt([](Realtime &rt) {
+      rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
+        RE_MOCK_LOG_INFO("rt.create_native_object(%s)", iOperation);
+        if(std::strcmp(iOperation, "Instance") == 0)
         {
-          TJBox_Float64 sampleRate = JBox_GetNumber(iParams[0]);
-          return new Device(static_cast<int>(sampleRate));
+          if(iCount >= 1)
+          {
+            TJBox_Float64 sampleRate = JBox_GetNumber(iParams[0]);
+            return new Device(static_cast<int>(sampleRate));
+          }
         }
-      }
 
-      if(std::strcmp(iOperation, "Gain") == 0)
-        return new Gain{JBox_GetNumber(iParams[0])};
+        if(std::strcmp(iOperation, "Gain") == 0)
+          return new Gain{JBox_GetNumber(iParams[0])};
 
-      return nullptr;
-    };
+        return nullptr;
+      };
 
-    rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
-      if(std::strcmp(iOperation, "Instance") == 0)
-      {
-        delete reinterpret_cast<Device *>(iNativeObject);
-      }
+      rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
+        if(std::strcmp(iOperation, "Instance") == 0)
+        {
+          delete reinterpret_cast<Device *>(iNativeObject);
+        }
 
-      if(std::strcmp(iOperation, "Gain") == 0)
-      {
-        delete reinterpret_cast<Gain *>(iNativeObject);
-      }
-    };
-
-  });
+        if(std::strcmp(iOperation, "Gain") == 0)
+        {
+          delete reinterpret_cast<Gain *>(iNativeObject);
+        }
+      };
+    });
 
   auto re = rack.newDevice<Device>(c);
-  auto auSrc = rack.newDevice<MAUSrc>(MAUSrc::Config);
-  auto cvSrc = rack.newDevice<MCVSrc>(MCVSrc::Config);
-  auto auDst = rack.newDevice<MAUDst>(MAUDst::Config);
-  auto cvDst = rack.newDevice<MCVDst>(MCVDst::Config);
+  auto auSrc = rack.newDevice<MAUSrc>(MAUSrc::CONFIG);
+  auto cvSrc = rack.newDevice<MCVSrc>(MCVSrc::CONFIG);
+  auto auDst = rack.newDevice<MAUDst>(MAUDst::CONFIG);
+  auto cvDst = rack.newDevice<MCVDst>(MCVDst::CONFIG);
 
   MockAudioDevice::wire(rack, auSrc, re);
   MockAudioDevice::wire(rack, re, auDst);

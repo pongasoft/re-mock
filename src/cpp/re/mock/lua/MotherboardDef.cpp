@@ -254,13 +254,8 @@ int MotherboardDef::luaSocket(jbox_object::Type iSocketType)
 //------------------------------------------------------------------------
 int MotherboardDef::luaPropertySet()
 {
-  auto set = std::make_unique<jbox_property_set>();
-
-  luaPropertySet("document_owner", set->document_owner);
-  luaPropertySet("rtc_owner", set->rtc_owner);
-  luaPropertySet("rt_owner", set->rt_owner);
-
-  return addObjectOnTopOfStack(std::move(set));
+  // we simply return the map (it will be processed later)
+  return 1;
 }
 
 //------------------------------------------------------------------------
@@ -333,6 +328,7 @@ std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName
 //------------------------------------------------------------------------
 void MotherboardDef::populatePropertyTag(jbox_property *iProperty)
 {
+  RE_MOCK_ASSERT(lua_gettop(L) > 0, "Missing table... Did you use () instead of {}?");
   iProperty->property_tag = static_cast<int>(L.getTableValueAsInteger("property_tag", 1));
 }
 
@@ -341,8 +337,8 @@ void MotherboardDef::populatePropertyTag(jbox_property *iProperty)
 //------------------------------------------------------------------------
 std::unique_ptr<MotherboardDef> MotherboardDef::fromFile(std::string const &iLuaFilename)
 {
-  auto res = std::unique_ptr<MotherboardDef>(new MotherboardDef());
-  res->L.runLuaFile(iLuaFilename);
+  auto res = std::make_unique<MotherboardDef>();
+  res->loadFile(iLuaFilename);
   return res;
 }
 
@@ -351,20 +347,28 @@ std::unique_ptr<MotherboardDef> MotherboardDef::fromFile(std::string const &iLua
 //------------------------------------------------------------------------
 std::unique_ptr<MotherboardDef> MotherboardDef::fromString(std::string const &iLuaCode)
 {
-  auto res = std::unique_ptr<MotherboardDef>(new MotherboardDef());
-  res->L.runLuaCode(iLuaCode);
+  auto res = std::make_unique<MotherboardDef>();
+  res->loadString(iLuaCode);
   return res;
 }
 
 //------------------------------------------------------------------------
 // MotherboardDef::getCustomProperties
 //------------------------------------------------------------------------
-std::shared_ptr<jbox_property_set> MotherboardDef::getCustomProperties()
+std::unique_ptr<jbox_property_set> MotherboardDef::getCustomProperties()
 {
-  auto res = getGlobal<jbox_property_set>("custom_properties");
-  if(res == nullptr)
-    res = std::make_shared<jbox_property_set>();
-  return res;
+  auto set = std::make_unique<jbox_property_set>();
+
+  if(lua_getglobal(L, "custom_properties") != LUA_TNIL)
+  {
+    luaPropertySet("document_owner", set->document_owner);
+    luaPropertySet("rtc_owner", set->rtc_owner);
+    luaPropertySet("rt_owner", set->rt_owner);
+  }
+
+  lua_pop(L, 1);
+
+  return set;
 }
 
 //------------------------------------------------------------------------
@@ -394,7 +398,7 @@ TJBox_Value jbox_number_property::getDefaultValue() const
 //------------------------------------------------------------------------
 // jbox_native_object::computeDefaultValue
 //------------------------------------------------------------------------
-TJBox_Value jbox_native_object::computeDefaultValue(Motherboard *iMotherboard)
+TJBox_Value jbox_native_object::computeDefaultValue(Motherboard *iMotherboard) const
 {
   return iMotherboard->makeNativeObjectRW(default_value.operation, default_value.params);
 }

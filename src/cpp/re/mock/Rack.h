@@ -22,7 +22,6 @@
 
 #include <map>
 #include "Motherboard.h"
-#include "LuaJBox.h"
 #include "ObjectManager.hpp"
 
 namespace re::mock {
@@ -179,10 +178,7 @@ public:
   Extension newExtension(Config const &iConfig);
 
   template<typename Device>
-  ExtensionDevice<Device> newDevice(Config const &iConfig);
-
-  template<typename Device>
-  ExtensionDevice<Device> newDeviceByDefault(Config::callback_t iDefaultConfigCallback);
+  ExtensionDevice<Device> newDevice(DeviceConfig<Device> const &iConfig);
 
   void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
   void unwire(Extension::AudioOutSocket const &iOutSocket);
@@ -213,18 +209,9 @@ protected:
 // Rack::newDevice
 //------------------------------------------------------------------------
 template<typename Device>
-Rack::ExtensionDevice<Device> Rack::newDevice(Config const &iConfig)
+Rack::ExtensionDevice<Device> Rack::newDevice(DeviceConfig<Device> const &iConfig)
 {
-  return ExtensionDevice<Device>(newExtension(iConfig).fImpl);
-}
-
-//------------------------------------------------------------------------
-// Rack::newDeviceWithDefault
-//------------------------------------------------------------------------
-template<typename Device>
-Rack::ExtensionDevice<Device> Rack::newDeviceByDefault(Config::callback_t iDefaultConfigCallback)
-{
-  return newDevice<Device>(Config::byDefault<Device>().extend(std::move(iDefaultConfigCallback)));
+  return ExtensionDevice<Device>(newExtension(iConfig.getConfig()).fImpl);
 }
 
 //------------------------------------------------------------------------

@@ -60,7 +60,6 @@ set(re-mock_BUILD_HEADERS
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Config.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/DeviceTesters.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Errors.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/LuaJBox.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Motherboard.h
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/MotherboardImpl.h
@@ -75,10 +74,10 @@ set(re-mock_BUILD_HEADERS
 
 # Defines the sources
 set(re-mock_BUILD_SOURCES
+    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Config.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/DeviceTesters.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Rack.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Jukebox.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/LuaJBox.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/Motherboard.cpp
     ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp

@@ -17,6 +17,7 @@
  */
 
 #include "Motherboard.h"
+#include "lua/MotherboardDef.h"
 #include <Jukebox.h>
 
 namespace re::mock {
@@ -24,15 +25,15 @@ namespace re::mock {
 //------------------------------------------------------------------------
 // Motherboard::Motherboard
 //------------------------------------------------------------------------
-Motherboard::Motherboard() : fJBox{this}
+Motherboard::Motherboard()
 {
 //  DLOG_F(INFO, "Motherboard(%p)", this);
 
   // /custom_properties
   fCustomPropertiesRef = addObject("/custom_properties")->fObjectRef;
 
-  // /custom_properties/instance (for the "privateState")
-  addProperty(fCustomPropertiesRef, "instance", PropertyOwner::kRTCOwner, {});
+//  // /custom_properties/instance (for the "privateState")
+//  addProperty(fCustomPropertiesRef, "instance", PropertyOwner::kRTCOwner, lua::jbox_native_object{});
 
   // global_rtc
   addObject("/global_rtc");
@@ -133,7 +134,10 @@ void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iP
   {
     auto binding = fRTCBindings.find(iPropertyDiff->fPropertyRef);
     if(binding != fRTCBindings.end())
-      binding->second(getPropertyPath(iPropertyDiff->fPropertyRef), iPropertyDiff->fCurrentValue);
+      fRealtimeController->invokeBinding(this,
+                                         binding->second,
+                                         getPropertyPath(iPropertyDiff->fPropertyRef),
+                                         iPropertyDiff->fCurrentValue);
 
     if(fRTCNotify.find(iPropertyDiff->fPropertyRef) != fRTCNotify.end())
       fCurrentFramePropertyDiffs.emplace_back(*iPropertyDiff);
@@ -150,64 +154,122 @@ std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRat
   auto environment = res->addObject("/environment");
 
   // /environment/instance_id
-  res->addProperty(environment->fObjectRef, "instance_id", PropertyOwner::kHostOwner,
-                   { .property_tag = kJBox_EnvironmentInstanceID, .default_value = JBox_MakeNumber(iInstanceId) });
+  auto idProp = lua::jbox_number_property{};
+  idProp.property_tag = kJBox_EnvironmentInstanceID;
+  idProp.default_value = iInstanceId;
+  res->addProperty(environment->fObjectRef, "instance_id", PropertyOwner::kHostOwner, idProp);
 
   // /environment/system_sample_rate
-  res->addProperty(environment->fObjectRef, "system_sample_rate", PropertyOwner::kHostOwner,
-                   { .property_tag = kJBox_EnvironmentSystemSampleRate, .default_value = JBox_MakeNumber(iSampleRate) });
+  auto sampleRateProp = lua::jbox_number_property{};
+  sampleRateProp.property_tag = kJBox_EnvironmentSystemSampleRate;
+  sampleRateProp.default_value = iSampleRate;
+  res->addProperty(environment->fObjectRef, "system_sample_rate", PropertyOwner::kHostOwner, sampleRateProp);
 
   return res;
 }
+
+struct MockJBoxVisitor
+{
+  void operator()(ConfigString const &iString) {
+    fCode += iString.fString + "\n";
+    fMockJBox.loadString(iString.fString);
+  }
+  void operator()(ConfigFile const &iFile) { fMockJBox.loadFile(iFile.fFilename); }
+
+  lua::MockJBox &fMockJBox;
+  std::string fCode{};
+};
 
 //------------------------------------------------------------------------
 // Motherboard::init
 //------------------------------------------------------------------------
 void Motherboard::init(Config const &iConfig)
 {
-  MotherboardDef def{};
-  RealtimeController rtc{};
+  // lua::MotherboardDef
+  lua::MotherboardDef def{};
+  MockJBoxVisitor defVisitor{def};
+  for(auto &v: iConfig.fMotherboardDefs)
+    std::visit(defVisitor, v);
 
-  iConfig(fJBox, def, rtc, fRealtime);
+  if(iConfig.fDebug)
+  {
+    std::cout << "---- MotherboardDef -----\n";
+    std::cout << defVisitor.fCode << "\n";
+    std::cout << "------------------------" << std::endl;
+  }
+
+  // lua::RealtimeController
+  fRealtimeController = std::make_unique<lua::RealtimeController>();
+  MockJBoxVisitor rtcVisitor{*fRealtimeController.get()};
+  for(auto &v: iConfig.fRealtimeControllers)
+    std::visit(rtcVisitor, v);
+
+  if(iConfig.fDebug)
+  {
+    std::cout << "---- RealtimeController -----\n";
+    std::cout << rtcVisitor.fCode << "\n";
+    std::cout << "------------------------" << std::endl;
+  }
+
+  // Realtime
+  if(iConfig.fRealtime)
+    iConfig.fRealtime(fRealtime);
 
   // audio_inputs
-  for(auto &&input: def.audio_inputs)
-    addAudioInput(input.first);
+  {
+    auto inputs = def.getAudioInputs();
+    for(auto const &input: inputs->names)
+      addAudioInput(input);
+  }
 
   // audio_outputs
-  for(auto &&output: def.audio_outputs)
-    addAudioOutput(output.first);
+  {
+    auto outputs = def.getAudioOutputs();
+    for(auto const &output: outputs->names)
+      addAudioOutput(output);
+  }
 
   // cv_inputs
-  for(auto &&input: def.cv_inputs)
-    addCVInput(input.first);
+  {
+    auto inputs = def.getCVInputs();
+    for(auto const &input: inputs->names)
+      addCVInput(input);
+  }
 
   // cv_outputs
-  for(auto &&output: def.cv_outputs)
-    addCVOutput(output.first);
+  {
+    auto outputs = def.getCVOutputs();
+    for(auto const &output: outputs->names)
+      addCVOutput(output);
+  }
+
+  auto customProperties = def.getCustomProperties();
 
   // document_owner.properties
-  for(auto &&prop: def.document_owner.properties)
-    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kDocOwner, *prop.second);
+  for(auto &&prop: customProperties->document_owner)
+    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kDocOwner, *prop.second->withType<lua::jbox_property>());
 
   // rt_owner.properties
-  for(auto &&prop: def.rt_owner.properties)
-    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTOwner, *prop.second);
+  for(auto &&prop: customProperties->rt_owner)
+    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTOwner, *prop.second->withType<lua::jbox_property>());
+
+  // rtc_owner.properties
+  for(auto &&prop: customProperties->rtc_owner)
+    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTCOwner, *prop.second->withType<lua::jbox_property>());
 
   // rt_input_setup.notify
-  for(auto &&propertyPath: rtc.rt_input_setup.notify)
+  for(auto &&propertyPath: fRealtimeController->getRTInputSetupNotify())
   {
     registerRTCNotify(propertyPath);
   }
 
   // rtc_bindings
-  for(auto &&[propertyPath, bindingKey]: rtc.rtc_bindings)
+  auto bindings1 = fRealtimeController->getBindings();
+  auto bindings2 = fRealtimeController->getBindings();
+  for(auto &&[propertyPath, bindingKey]: fRealtimeController->getBindings())
   {
-    auto bindingRef = getPropertyRef(bindingKey);
-    auto binding = rtc.global_rtc.find(bindingRef.fKey);
-    RE_MOCK_ASSERT(binding != rtc.global_rtc.end(), "Missing binding [%s] for [%s]", bindingKey.c_str(), propertyPath.c_str());
-    auto diff = registerRTCBinding(propertyPath, binding->second);
-    binding->second(getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
+    auto diff = registerRTCBinding(propertyPath, bindingKey);
+    fRealtimeController->invokeBinding(this, bindingKey, getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
   }
 }
 
@@ -217,7 +279,7 @@ void Motherboard::init(Config const &iConfig)
 void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
                               std::string const &iPropertyName,
                               PropertyOwner iOwner,
-                              jbox_property const &iProperty)
+                              lua::jbox_property const &iProperty)
 {
   fJboxObjects.get(iParentObject)->addProperty(iPropertyName,
                                                iOwner,
@@ -241,10 +303,10 @@ void Motherboard::registerRTCNotify(std::string const &iPropertyPath)
 //------------------------------------------------------------------------
 // Motherboard::registerRTCBinding
 //------------------------------------------------------------------------
-TJBox_PropertyDiff Motherboard::registerRTCBinding(std::string const &iPropertyPath, RTCCallback iCallback)
+TJBox_PropertyDiff Motherboard::registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingKey)
 {
   auto ref = getPropertyRef(iPropertyPath);
-  fRTCBindings[ref] = std::move(iCallback);
+  fRTCBindings[ref] = iBindingKey;
   return fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey);
 }
 
@@ -445,6 +507,7 @@ TJBox_Value Motherboard::makeNativeObject(std::string const &iOperation,
 {
   if(fRealtime.create_native_object)
   {
+    auto params = iParams.data();
     auto nativeObject = fRealtime.create_native_object(iOperation.c_str(), iParams.data(), iParams.size());
     if(nativeObject)
     {
