@@ -107,6 +107,7 @@ MotherboardDef::MotherboardDef()
     {"ui_text",                            lua_ignored},
     {"ui_selector",                        lua_ignored},
     {"ui_linear",                          lua_ignored},
+    {"ui_nonlinear",                       lua_ignored},
     {"add_cv_routing_target",              lua_ignored},
     {"add_mono_audio_routing_target",      lua_ignored},
     {"add_stereo_audio_routing_target",    lua_ignored},
