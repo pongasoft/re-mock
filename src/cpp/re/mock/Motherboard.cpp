@@ -590,6 +590,23 @@ std::string Motherboard::getObjectPath(TJBox_ObjectRef iObjectRef) const
   return getObject(iObjectRef)->fObjectPath;
 }
 
+//------------------------------------------------------------------------
+// Motherboard::copy
+//------------------------------------------------------------------------
+void Motherboard::copy(TJBox_Value const &iFromValue, TJBox_Value &oToValue)
+{
+  std::copy(std::begin(iFromValue.fSecret), std::end(iFromValue.fSecret), oToValue.fSecret);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::clone
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::clone(TJBox_Value const &iValue)
+{
+  TJBox_Value v{};
+  copy(iValue, v);
+  return v;
+}
 
 //------------------------------------------------------------------------
 // JboxObject::JboxObject

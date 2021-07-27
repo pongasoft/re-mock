@@ -18,6 +18,7 @@
 
 #include "MockJBox.h"
 #include <re/mock/Errors.h>
+#include <re/mock/Motherboard.h>
 #include <Jukebox.h>
 
 namespace re::mock::lua {
@@ -62,8 +63,37 @@ TJBox_Value MockJBox::toJBoxValue(int idx)
     case LUA_TNUMBER:
       return JBox_MakeNumber(lua_tonumber(L, idx));
 
+    case LUA_TUSERDATA:
+      return Motherboard::clone(*reinterpret_cast<TJBox_Value *>(lua_touserdata(L, idx)));
+
     default:  /* other values */
       return JBox_MakeNil();
+  }
+}
+
+//------------------------------------------------------------------------
+// MockJBox::pushJBoxValue
+//------------------------------------------------------------------------
+void MockJBox::pushJBoxValue(TJBox_Value const &iJBoxValue)
+{
+  switch(JBox_GetType(iJBoxValue))
+  {
+    case kJBox_Nil:
+      lua_pushnil(L);
+      break;
+
+    case kJBox_Boolean:
+      lua_pushboolean(L, JBox_GetBoolean(iJBoxValue));
+      break;
+
+    case kJBox_Number:
+      lua_pushnumber(L, JBox_GetNumber(iJBoxValue));
+      break;
+
+    default:
+      auto jboxValueUserData = reinterpret_cast<TJBox_Value *>(lua_newuserdata(L, sizeof(TJBox_Value)));
+      Motherboard::copy(iJBoxValue, *jboxValueUserData);
+      break;
   }
 }
 

@@ -122,6 +122,9 @@ public: // used by Jukebox.cpp (need to be public)
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
 
+  static void copy(TJBox_Value const &iFromValue, TJBox_Value &oToValue);
+  static TJBox_Value clone(TJBox_Value const &iValue);
+
   friend class Rack;
 
 protected:

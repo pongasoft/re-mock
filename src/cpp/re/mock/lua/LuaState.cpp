@@ -27,7 +27,10 @@ extern "C" {
 static int lua_panic(lua_State *L)
 {
   re::mock::lua::LuaState::dumpStack(L, "panic");
-  throw std::runtime_error("panic");
+  if(lua_gettop(L) > 0)
+    throw std::runtime_error(lua_tostring(L, -1));
+  else
+    throw std::runtime_error("panic");
 }
 }
 
@@ -140,15 +143,24 @@ bool LuaState::getTableValueAsBoolean(char const *iKey, int idx)
 }
 
 //------------------------------------------------------------------------
-// LuaState::getTableSize
+// LuaState::getTableValueAsString
 //------------------------------------------------------------------------
-lua_Integer LuaState::getTableSize(int idx)
+std::string LuaState::getTableValueAsString(char const *iKey, int idx)
 {
   luaL_checktype(L, idx, LUA_TTABLE);
-  lua_len(L, idx);
-  auto res = lua_tointeger(L, -1);
+  lua_getfield(L, idx, iKey);
+  auto res = std::string(lua_tostring(L, -1));
   lua_pop(L, 1);
   return res;
+}
+
+//------------------------------------------------------------------------
+// LuaState::getTableSize
+//------------------------------------------------------------------------
+lua_Unsigned LuaState::getTableSize(int idx)
+{
+  luaL_checktype(L, idx, LUA_TTABLE);
+  return lua_rawlen(L, idx);
 }
 
 
@@ -185,5 +197,6 @@ int LuaState::runLuaCode(std::string const &iSource)
 
   return res;
 }
+
 
 }

@@ -35,6 +35,7 @@ public:
   std::string getStackString(char const *iMessage = nullptr) { return L.getStackString(iMessage); }
 
   TJBox_Value toJBoxValue(int idx = -1);
+  void pushJBoxValue(TJBox_Value const &iJBoxValue);
 
 protected:
   static MockJBox *loadFromRegistry(lua_State *L);
