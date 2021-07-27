@@ -124,11 +124,11 @@ end
       };
     });
 
-  auto re = rack.newDevice<Device>(c);
-  auto auSrc = rack.newDevice<MAUSrc>(MAUSrc::CONFIG);
-  auto cvSrc = rack.newDevice<MCVSrc>(MCVSrc::CONFIG);
-  auto auDst = rack.newDevice<MAUDst>(MAUDst::CONFIG);
-  auto cvDst = rack.newDevice<MCVDst>(MCVDst::CONFIG);
+  auto re = rack.newDevice(c);
+  auto auSrc = rack.newDevice(MAUSrc::CONFIG);
+  auto cvSrc = rack.newDevice(MCVSrc::CONFIG);
+  auto auDst = rack.newDevice(MAUDst::CONFIG);
+  auto cvDst = rack.newDevice(MCVDst::CONFIG);
 
   MockAudioDevice::wire(rack, auSrc, re);
   MockAudioDevice::wire(rack, re, auDst);

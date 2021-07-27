@@ -94,9 +94,9 @@ TEST(Rack, AudioWiring) {
 TEST(Rack, AudioUnwiring) {
   Rack rack{};
 
-  auto pst = rack.newDevice<MAUPst>(MAUPst::CONFIG);
-  auto src = rack.newDevice<MAUSrc>(MAUSrc::CONFIG);
-  auto dst = rack.newDevice<MAUDst>(MAUDst::CONFIG);
+  auto pst = rack.newDevice(MAUPst::CONFIG);
+  auto src = rack.newDevice(MAUSrc::CONFIG);
+  auto dst = rack.newDevice(MAUDst::CONFIG);
 
   MockAudioDevice::wire(rack, src, pst);
   MockAudioDevice::wire(rack, pst, dst);
@@ -135,9 +135,9 @@ TEST(Rack, AudioUnwiring) {
 TEST(Rack, AudioWiring2) {
   Rack rack{};
 
-  auto src = rack.newDevice<MAUSrc>(MAUSrc::CONFIG);
-  auto dst = rack.newDevice<MAUDst>(MAUDst::CONFIG);
-  auto pst = rack.newDevice<MAUPst>(MAUPst::CONFIG);
+  auto src = rack.newDevice(MAUSrc::CONFIG);
+  auto dst = rack.newDevice(MAUDst::CONFIG);
+  auto pst = rack.newDevice(MAUPst::CONFIG);
 
   MockAudioDevice::wire(rack, src, pst.getStereoAudioInSocket(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET));
   MockAudioDevice::wire(rack, pst.getStereoAudioOutSocket(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET), dst);
@@ -161,15 +161,15 @@ TEST(Rack, AudioWiring2) {
 TEST(Rack, CVWiring) {
   Rack rack{};
 
-  auto src = rack.newDevice<MCVSrc>(MCVSrc::CONFIG);
+  auto src = rack.newDevice(MCVSrc::CONFIG);
 
   ASSERT_FLOAT_EQ(0, src->fValue);
 
-  auto dst = rack.newDevice<MCVDst>(MCVDst::CONFIG);
+  auto dst = rack.newDevice(MCVDst::CONFIG);
 
   ASSERT_FLOAT_EQ(0, dst->fValue);
 
-  auto pst = rack.newDevice<MCVPst>(MCVPst::CONFIG);
+  auto pst = rack.newDevice(MCVPst::CONFIG);
 
   ASSERT_FLOAT_EQ(0, pst->fValue);
 
@@ -211,9 +211,9 @@ TEST(Rack, CVWiring) {
 TEST(Rack, CVUnWiring) {
   Rack rack{};
 
-  auto src = rack.newDevice<MCVSrc>(MCVSrc::CONFIG);
-  auto dst = rack.newDevice<MCVDst>(MCVDst::CONFIG);
-  auto pst = rack.newDevice<MCVPst>(MCVPst::CONFIG);
+  auto src = rack.newDevice(MCVSrc::CONFIG);
+  auto dst = rack.newDevice(MCVDst::CONFIG);
+  auto pst = rack.newDevice(MCVPst::CONFIG);
   MockCVDevice::wire(rack, src, pst);
   MockCVDevice::wire(rack, pst, dst);
 
@@ -459,8 +459,8 @@ rt_input_setup = {
 }
 )");
 
-  auto src = rack.newDevice<MAUSrc>(MAUSrc::CONFIG);
-  auto re = rack.newDevice<Device>(c);
+  auto src = rack.newDevice(MAUSrc::CONFIG);
+  auto re = rack.newDevice(c);
 
   rack.wire(src.getAudioOutSocket(MAUSrc::LEFT_SOCKET), re.getAudioInSocket("input"));
 
@@ -510,7 +510,7 @@ rtc_bindings = {
 }
 )");
 
-  auto re = rack.newDevice<Device>(c);
+  auto re = rack.newDevice(c);
 
   ASSERT_TRUE(re.getInstance<Device>() != nullptr);
   ASSERT_EQ(re.getInstanceId(), re->fInstanceID);
