@@ -507,7 +507,6 @@ TJBox_Value Motherboard::makeNativeObject(std::string const &iOperation,
 {
   if(fRealtime.create_native_object)
   {
-    auto params = iParams.data();
     auto nativeObject = fRealtime.create_native_object(iOperation.c_str(), iParams.data(), iParams.size());
     if(nativeObject)
     {

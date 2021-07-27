@@ -400,7 +400,10 @@ TJBox_Value jbox_number_property::getDefaultValue() const
 //------------------------------------------------------------------------
 TJBox_Value jbox_native_object::computeDefaultValue(Motherboard *iMotherboard) const
 {
-  return iMotherboard->makeNativeObjectRW(default_value.operation, default_value.params);
+  if(!default_value.operation.empty())
+    return iMotherboard->makeNativeObjectRW(default_value.operation, default_value.params);
+  else
+    return JBox_MakeNil();
 }
 
 }

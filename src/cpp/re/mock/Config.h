@@ -148,7 +148,7 @@ struct Config
   }
 
   template<typename T>
-  Config rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
+  Config &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
   static Config fromSkeleton();
 
@@ -222,6 +222,12 @@ struct DeviceConfig
   DeviceConfig &rt(rt_callback_t iCallback)
   {
     fConfig.rt(std::move(iCallback));
+    return *this;
+  }
+
+  DeviceConfig &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>())
+  {
+    fConfig.template rt_jbox_export<T>(iDestroyNativeObject);
     return *this;
   }
 
@@ -303,7 +309,7 @@ Realtime::render_realtime_t Realtime::defaultRenderRealtime()
 // Config::rt_jbox_export
 //------------------------------------------------------------------------
 template<typename T>
-Config Config::rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject)
+Config &Config::rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject)
 {
   rt([iDestroyNativeObject](Realtime &rt) {
     rt.create_native_object = JBox_Export_CreateNativeObject;
@@ -325,7 +331,7 @@ DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iMotherboardD
   return DeviceConfig<T>()
     .mdef_file(iMotherboardDefFile)
     .rtc_file(iRealtimeControllerFile)
-    .template rt_jbox_export<T>(iDestroyNativeObject);
+    .rt_jbox_export(iDestroyNativeObject);
 }
 
 //------------------------------------------------------------------------
