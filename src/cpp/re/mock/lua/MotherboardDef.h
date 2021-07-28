@@ -50,7 +50,8 @@ struct jbox_object : public std::enable_shared_from_this<jbox_object>
     CV_INPUT,
     CV_INPUTS,
     CV_OUTPUT,
-    CV_OUTPUTS
+    CV_OUTPUTS,
+    PROPERTY_SET
   };
 
   virtual ~jbox_object() = default;
@@ -97,7 +98,16 @@ struct jbox_number_property : public jbox_property {
   TJBox_Value getDefaultValue() const override;
 };
 
-struct jbox_property_set {
+struct jbox_property_set : public jbox_object {
+  jbox_property_set(lua_State *iLuaState);
+  Type getType() override { return Type::PROPERTY_SET; }
+  int custom_properties_ref{LUA_NOREF};
+  ~jbox_property_set();
+private:
+  lua_State *L;
+};
+
+struct JboxPropertySet {
   std::map<std::string, std::shared_ptr<jbox_object>> document_owner{};
   std::map<std::string, std::shared_ptr<jbox_object>> rtc_owner{};
   std::map<std::string, std::shared_ptr<jbox_object>> rt_owner{};
@@ -133,7 +143,7 @@ public:
     return std::dynamic_pointer_cast<T>(getObjectOnTopOfStack());
   }
 
-  std::unique_ptr<jbox_property_set> getCustomProperties();
+  std::unique_ptr<JboxPropertySet> getCustomProperties();
 
   std::unique_ptr<jbox_sockets> getAudioInputs()
   {

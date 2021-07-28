@@ -255,8 +255,10 @@ int MotherboardDef::luaSocket(jbox_object::Type iSocketType)
 //------------------------------------------------------------------------
 int MotherboardDef::luaPropertySet()
 {
-  // we simply return the map (it will be processed later)
-  return 1;
+  luaL_checktype(L, 1, LUA_TTABLE);
+  auto p = std::make_unique<jbox_property_set>(L);
+  p->custom_properties_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+  return addObjectOnTopOfStack(std::move(p));
 }
 
 //------------------------------------------------------------------------
@@ -356,15 +358,22 @@ std::unique_ptr<MotherboardDef> MotherboardDef::fromString(std::string const &iL
 //------------------------------------------------------------------------
 // MotherboardDef::getCustomProperties
 //------------------------------------------------------------------------
-std::unique_ptr<jbox_property_set> MotherboardDef::getCustomProperties()
+std::unique_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
 {
-  auto set = std::make_unique<jbox_property_set>();
+  auto set = std::make_unique<JboxPropertySet>();
 
   if(lua_getglobal(L, "custom_properties") != LUA_TNIL)
   {
-    luaPropertySet("document_owner", set->document_owner);
-    luaPropertySet("rtc_owner", set->rtc_owner);
-    luaPropertySet("rt_owner", set->rt_owner);
+    auto o = getObjectOnTopOfStack()->withType<jbox_property_set>();
+
+    if(o)
+    {
+      lua_rawgeti(L, LUA_REGISTRYINDEX, o->custom_properties_ref);
+
+      luaPropertySet("document_owner", set->document_owner);
+      luaPropertySet("rtc_owner", set->rtc_owner);
+      luaPropertySet("rt_owner", set->rt_owner);
+    }
   }
 
   lua_pop(L, 1);
@@ -406,5 +415,20 @@ TJBox_Value jbox_native_object::computeDefaultValue(Motherboard *iMotherboard) c
   else
     return JBox_MakeNil();
 }
+
+//------------------------------------------------------------------------
+// jbox_property_set::jbox_property_set
+//------------------------------------------------------------------------
+jbox_property_set::jbox_property_set(lua_State *iLuaState) : L{iLuaState} {}
+
+//------------------------------------------------------------------------
+// jbox_property_set::jbox_property_set
+//------------------------------------------------------------------------
+jbox_property_set::~jbox_property_set()
+{
+  if(custom_properties_ref != LUA_NOREF)
+    luaL_unref(L, LUA_REGISTRYINDEX, custom_properties_ref);
+}
+
 
 }
