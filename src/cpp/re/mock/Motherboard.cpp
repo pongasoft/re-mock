@@ -154,15 +154,15 @@ std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRat
   auto environment = res->addObject("/environment");
 
   // /environment/instance_id
-  auto idProp = lua::jbox_number_property{};
-  idProp.property_tag = kJBox_EnvironmentInstanceID;
-  idProp.default_value = iInstanceId;
+  auto idProp = std::make_shared<lua::jbox_number_property>();
+  idProp->property_tag = kJBox_EnvironmentInstanceID;
+  idProp->default_value = iInstanceId;
   res->addProperty(environment->fObjectRef, "instance_id", PropertyOwner::kHostOwner, idProp);
 
   // /environment/system_sample_rate
-  auto sampleRateProp = lua::jbox_number_property{};
-  sampleRateProp.property_tag = kJBox_EnvironmentSystemSampleRate;
-  sampleRateProp.default_value = iSampleRate;
+  auto sampleRateProp = std::make_shared<lua::jbox_number_property>();
+  sampleRateProp->property_tag = kJBox_EnvironmentSystemSampleRate;
+  sampleRateProp->default_value = iSampleRate;
   res->addProperty(environment->fObjectRef, "system_sample_rate", PropertyOwner::kHostOwner, sampleRateProp);
 
   return res;
@@ -247,15 +247,15 @@ void Motherboard::init(Config const &iConfig)
 
   // document_owner.properties
   for(auto &&prop: customProperties->document_owner)
-    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kDocOwner, *prop.second->withType<lua::jbox_property>());
+    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kDocOwner, prop.second);
 
   // rt_owner.properties
   for(auto &&prop: customProperties->rt_owner)
-    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTOwner, *prop.second->withType<lua::jbox_property>());
+    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTOwner, prop.second);
 
   // rtc_owner.properties
   for(auto &&prop: customProperties->rtc_owner)
-    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTCOwner, *prop.second->withType<lua::jbox_property>());
+    addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTCOwner, prop.second);
 
   // rt_input_setup.notify
   for(auto &&propertyPath: fRealtimeController->getRTInputSetupNotify())
@@ -281,10 +281,29 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
                               PropertyOwner iOwner,
                               lua::jbox_property const &iProperty)
 {
+  struct DefaultValueVisitor
+  {
+
+    DefaultValueVisitor(Motherboard *motherboard) : fMotherboard(motherboard) {}
+
+    TJBox_Value operator()(std::shared_ptr<lua::jbox_boolean_property> o) { return JBox_MakeBoolean(o->default_value); }
+    TJBox_Value operator()(std::shared_ptr<lua::jbox_number_property> o) { return JBox_MakeNumber(o->default_value); }
+    TJBox_Value operator()(std::shared_ptr<lua::jbox_native_object> o) {
+      if(!o->default_value.operation.empty())
+        return fMotherboard->makeNativeObjectRW(o->default_value.operation, o->default_value.params);
+      else
+        return JBox_MakeNil();
+    }
+    Motherboard *fMotherboard;
+  };
+
+  auto propertyTag = std::visit([](auto &p) { return p->property_tag; }, iProperty);
+  auto defaultValue = std::visit(DefaultValueVisitor{this}, iProperty);
+
   fJboxObjects.get(iParentObject)->addProperty(iPropertyName,
                                                iOwner,
-                                               iProperty.computeDefaultValue(this),
-                                               iProperty.property_tag);
+                                               defaultValue,
+                                               propertyTag);
 }
 
 //------------------------------------------------------------------------

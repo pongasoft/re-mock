@@ -65,7 +65,7 @@ TEST(MotherboardDef, BlankEffect)
   auto customProperties = def->getCustomProperties();
   ASSERT_EQ(0, customProperties->document_owner.size());
   ASSERT_EQ(1, customProperties->rtc_owner.size());
-  ASSERT_EQ(customProperties->rtc_owner["instance"]->getType(), jbox_object::Type::NATIVE_OBJECT);
+  ASSERT_EQ(std::get<std::shared_ptr<lua::jbox_native_object>>(customProperties->rtc_owner["instance"])->getType(), JBoxObjectType::NATIVE_OBJECT);
   ASSERT_EQ(0, customProperties->rt_owner.size());
 
   ASSERT_EQ(def->getStackString(), "<empty>");
@@ -88,31 +88,29 @@ TEST(MotherboardDef, All)
   // document_owner
   ASSERT_EQ(2, customProperties->document_owner.size());
   {
-    auto ptr = customProperties->document_owner["doc_boolean"]->withType<jbox_boolean_property>();
-    ASSERT_EQ(ptr->getType(), jbox_object::Type::BOOLEAN);
+    auto ptr = std::get<std::shared_ptr<jbox_boolean_property>>(customProperties->document_owner["doc_boolean"]);
+    ASSERT_EQ(ptr->getType(), JBoxObjectType::BOOLEAN);
     ASSERT_EQ(ptr->property_tag, 100);
     ASSERT_TRUE(ptr->default_value);
-    ASSERT_TRUE(JBox_GetBoolean(ptr->getDefaultValue()));
   }
   {
-    auto ptr = customProperties->document_owner["doc_number"]->withType<jbox_number_property>();
-    ASSERT_EQ(ptr->getType(), jbox_object::Type::NUMBER);
+    auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->document_owner["doc_number"]);
+    ASSERT_EQ(ptr->getType(), JBoxObjectType::NUMBER);
     ASSERT_EQ(ptr->property_tag, 101);
     ASSERT_FLOAT_EQ(ptr->default_value, 3);
-    ASSERT_FLOAT_EQ(JBox_GetNumber(ptr->getDefaultValue()), 3);
   }
 
   // rtc_owner
   ASSERT_EQ(2, customProperties->rtc_owner.size());
   {
-    auto ptr = customProperties->rtc_owner["instance"]->withType<jbox_native_object>();
-    ASSERT_EQ(ptr->getType(), jbox_object::Type::NATIVE_OBJECT);
+    auto ptr = std::get<std::shared_ptr<jbox_native_object>>(customProperties->rtc_owner["instance"]);
+    ASSERT_EQ(ptr->getType(), JBoxObjectType::NATIVE_OBJECT);
     ASSERT_EQ(ptr->default_value.operation, "");
     ASSERT_EQ(ptr->default_value.params.size(), 0);
   }
   {
-    auto ptr = customProperties->rtc_owner["instance_with_default"]->withType<jbox_native_object>();
-    ASSERT_EQ(ptr->getType(), jbox_object::Type::NATIVE_OBJECT);
+    auto ptr = std::get<std::shared_ptr<jbox_native_object>>(customProperties->rtc_owner["instance_with_default"]);
+    ASSERT_EQ(ptr->getType(), JBoxObjectType::NATIVE_OBJECT);
     ASSERT_EQ(ptr->default_value.operation, "Operation");
     ASSERT_EQ(ptr->default_value.params.size(), 3);
     ASSERT_FLOAT_EQ(JBox_GetNumber(ptr->default_value.params[0]), 0.5);
@@ -123,11 +121,10 @@ TEST(MotherboardDef, All)
   // rt_owner
   ASSERT_EQ(1, customProperties->rt_owner.size());
   {
-    auto ptr = customProperties->rt_owner["rt_number"]->withType<jbox_number_property>();
-    ASSERT_EQ(ptr->getType(), jbox_object::Type::NUMBER);
+    auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->rt_owner["rt_number"]);
+    ASSERT_EQ(ptr->getType(), JBoxObjectType::NUMBER);
     ASSERT_EQ(ptr->property_tag, 102);
     ASSERT_EQ(ptr->default_value, 0);
-    ASSERT_FLOAT_EQ(JBox_GetNumber(ptr->getDefaultValue()), 0);
   }
 
   ASSERT_EQ(def->getStackString(), "<empty>");

@@ -25,6 +25,7 @@
 #include <JukeboxTypes.h>
 #include <map>
 #include <vector>
+#include <variant>
 
 namespace re::mock {
 class Motherboard;
@@ -32,96 +33,98 @@ class Motherboard;
 
 namespace re::mock::lua {
 
-struct jbox_object : public std::enable_shared_from_this<jbox_object>
+enum class JBoxObjectType
 {
-  using map_t = std::map<std::string, std::shared_ptr<jbox_object>>;
-
-  enum class Type
-  {
-    UNKNOWN,
-    IGNORED,
-    NATIVE_OBJECT,
-    BOOLEAN,
-    NUMBER,
-    AUDIO_INPUT,
-    AUDIO_INPUTS,
-    AUDIO_OUTPUT,
-    AUDIO_OUTPUTS,
-    CV_INPUT,
-    CV_INPUTS,
-    CV_OUTPUT,
-    CV_OUTPUTS,
-    PROPERTY_SET
-  };
-
-  virtual ~jbox_object() = default;
-  virtual Type getType() = 0;
-
-  template<typename T>
-  std::shared_ptr<T> withType()
-  {
-    auto ptr = std::dynamic_pointer_cast<T>(shared_from_this());
-    RE_MOCK_ASSERT(ptr != nullptr, "can't convert to requested type");
-    return ptr;
-  }
+  UNKNOWN,
+  IGNORED,
+  NATIVE_OBJECT,
+  BOOLEAN,
+  NUMBER,
+  AUDIO_INPUT,
+  AUDIO_INPUTS,
+  AUDIO_OUTPUT,
+  AUDIO_OUTPUTS,
+  CV_INPUT,
+  CV_INPUTS,
+  CV_OUTPUT,
+  CV_OUTPUTS,
+  PROPERTY_SET
 };
 
-struct jbox_ignored : public jbox_object {
-  Type getType() override { return Type::IGNORED; }
-};
-
-struct jbox_property : public jbox_object {
+struct jbox_native_object {
   int property_tag{};
-  virtual TJBox_Value getDefaultValue() const;
-  virtual TJBox_Value computeDefaultValue(Motherboard *iMotherboard) const { return getDefaultValue(); }
-};
 
-struct jbox_native_object : public jbox_property {
-
-  Type getType() override { return Type::NATIVE_OBJECT; }
   struct {
     std::string operation;
     std::vector<TJBox_Value> params;
   } default_value{};
-  TJBox_Value computeDefaultValue(Motherboard *iMotherboard) const override;
+
+  JBoxObjectType getType() { return JBoxObjectType::NATIVE_OBJECT; }
 };
 
-struct jbox_boolean_property : public jbox_property {
-  Type getType() override { return Type::BOOLEAN; }
+struct jbox_boolean_property {
+  int property_tag{};
   bool default_value{};
-  TJBox_Value getDefaultValue() const override;
+
+  JBoxObjectType getType() { return JBoxObjectType::BOOLEAN; }
 };
 
-struct jbox_number_property : public jbox_property {
-  Type getType() override { return Type::NUMBER; }
+struct jbox_number_property {
+  int property_tag{};
   TJBox_Float64 default_value{};
-  TJBox_Value getDefaultValue() const override;
+
+  JBoxObjectType getType() { return JBoxObjectType::NUMBER; }
 };
 
-struct jbox_property_set : public jbox_object {
+struct jbox_sockets {
+  JBoxObjectType type{JBoxObjectType::UNKNOWN};
+  std::vector<std::string> names{};
+
+  JBoxObjectType getType() { return type; }
+};
+
+namespace impl {
+
+struct jbox_ignored {
+  JBoxObjectType getType() { return JBoxObjectType::IGNORED; }
+};
+
+struct jbox_property_set {
+  int property_tag{};
   jbox_property_set(lua_State *iLuaState);
-  Type getType() override { return Type::PROPERTY_SET; }
+  JBoxObjectType getType() { return JBoxObjectType::PROPERTY_SET; }
   int custom_properties_ref{LUA_NOREF};
   ~jbox_property_set();
 private:
   lua_State *L;
 };
 
+struct jbox_socket {
+  int property_tag{};
+  JBoxObjectType getType() { return type; }
+  JBoxObjectType type{JBoxObjectType::UNKNOWN};
+};
+
+using jbox_object = std::variant<
+  std::shared_ptr<impl::jbox_ignored>,
+  std::shared_ptr<jbox_native_object>,
+  std::shared_ptr<jbox_boolean_property>,
+  std::shared_ptr<jbox_number_property>,
+  std::shared_ptr<impl::jbox_property_set>,
+  std::shared_ptr<impl::jbox_socket>
+  >;
+}
+
+using jbox_property = std::variant<
+  std::shared_ptr<jbox_native_object>,
+  std::shared_ptr<jbox_boolean_property>,
+  std::shared_ptr<jbox_number_property>
+  >;
+
 struct JboxPropertySet {
-  std::map<std::string, std::shared_ptr<jbox_object>> document_owner{};
-  std::map<std::string, std::shared_ptr<jbox_object>> rtc_owner{};
-  std::map<std::string, std::shared_ptr<jbox_object>> rt_owner{};
-};
-
-struct jbox_socket : public jbox_object {
-  Type getType() override { return type; }
-  Type type{Type::UNKNOWN};
-};
-
-struct jbox_sockets : public jbox_object {
-  Type getType() override { return type; }
-  Type type{Type::UNKNOWN};
-  std::vector<std::string> names{};
+  std::map<std::string, jbox_property> document_owner{};
+  std::map<std::string, jbox_property> rtc_owner{};
+  std::map<std::string, jbox_property> rt_owner{};
 };
 
 class MotherboardDef : public MockJBox
@@ -133,7 +136,7 @@ public:
   int luaNativeObject();
   int luaBoolean();
   int luaNumber();
-  int luaSocket(jbox_object::Type iSocketType);
+  int luaSocket(JBoxObjectType iSocketType);
   int luaPropertySet();
 
   template<typename T>
@@ -147,22 +150,22 @@ public:
 
   std::unique_ptr<jbox_sockets> getAudioInputs()
   {
-    return getSockets("audio_inputs", jbox_object::Type::AUDIO_INPUTS, jbox_object::Type::AUDIO_INPUT);
+    return getSockets("audio_inputs", JBoxObjectType::AUDIO_INPUTS, JBoxObjectType::AUDIO_INPUT);
   }
 
   std::unique_ptr<jbox_sockets> getAudioOutputs()
   {
-    return getSockets("audio_outputs", jbox_object::Type::AUDIO_OUTPUTS, jbox_object::Type::AUDIO_OUTPUT);
+    return getSockets("audio_outputs", JBoxObjectType::AUDIO_OUTPUTS, JBoxObjectType::AUDIO_OUTPUT);
   }
 
   std::unique_ptr<jbox_sockets> getCVInputs()
   {
-    return getSockets("cv_inputs", jbox_object::Type::CV_INPUTS, jbox_object::Type::CV_INPUT);
+    return getSockets("cv_inputs", JBoxObjectType::CV_INPUTS, JBoxObjectType::CV_INPUT);
   }
 
   std::unique_ptr<jbox_sockets> getCVOutputs()
   {
-    return getSockets("cv_outputs", jbox_object::Type::CV_OUTPUTS, jbox_object::Type::CV_OUTPUT);
+    return getSockets("cv_outputs", JBoxObjectType::CV_OUTPUTS, JBoxObjectType::CV_OUTPUT);
   }
 
   static MotherboardDef *loadFromRegistry(lua_State *L);
@@ -171,25 +174,31 @@ public:
 
   static std::unique_ptr<MotherboardDef> fromString(std::string const &iLuaCode);
 
+
 protected:
-  int addObjectOnTopOfStack(std::unique_ptr<jbox_object> iObject);
+  using jbox_object_map_t = std::map<std::string, impl::jbox_object>;
+  using jbox_property_map_t = std::map<std::string, jbox_property>;
 
-  std::shared_ptr<jbox_object> getObjectOnTopOfStack();
+  int addObjectOnTopOfStack(impl::jbox_object iObject);
 
-  void luaPropertySet(char const *iKey, jbox_object::map_t &oMap);
+  std::optional<impl::jbox_object> getObjectOnTopOfStack();
+
+  void luaPropertySet(char const *iKey, jbox_object_map_t &oMap);
 
   /**
    * Assumes lua table is at the top of the stack. Removes the map from the stack! */
-  void populateMapFromLuaTable(jbox_object::map_t &oMap);
+  void populateMapFromLuaTable(jbox_object_map_t &oMap);
 
   std::unique_ptr<jbox_sockets> getSockets(char const *iSocketName,
-                                           jbox_object::Type iSocketsType,
-                                           jbox_object::Type iSocketType);
+                                           JBoxObjectType iSocketsType,
+                                           JBoxObjectType iSocketType);
 
-  void populatePropertyTag(jbox_property *iProperty);
+  void populatePropertyTag(jbox_property iProperty);
+
+  void filter(jbox_object_map_t &iMap, jbox_property_map_t &oMap);
 
 private:
-  ObjectManager<std::shared_ptr<jbox_object>> fObjects{};
+  ObjectManager<impl::jbox_object> fObjects{};
 };
 
 }

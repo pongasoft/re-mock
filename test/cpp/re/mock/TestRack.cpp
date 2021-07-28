@@ -514,6 +514,5 @@ rtc_bindings = {
 
   ASSERT_TRUE(re.getInstance<Device>() != nullptr);
   ASSERT_EQ(re.getInstanceId(), re->fInstanceID);
-
 }
 }
