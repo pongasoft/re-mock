@@ -25,6 +25,7 @@
 #include <variant>
 #include <map>
 #include <set>
+#include <re/mock/lua/MotherboardDef.h>
 #include "Errors.h"
 
 namespace re::mock {
@@ -70,6 +71,14 @@ struct Config
   constexpr static auto SOCKET = "C";
 
   using rt_callback_t = std::function<void (Realtime &rt)>;
+
+  static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
+  static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
+  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty);
+  static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
+  static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
 
   static ConfigString audio_out(std::string const &iSocketName);
   static ConfigString stereo_audio_out(char const *iLeftSocketName = LEFT_SOCKET, char const *iRightSocketName = RIGHT_SOCKET);

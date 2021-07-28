@@ -69,17 +69,16 @@ TEST(RackExtension, Motherboard)
     .mdef(Config::stereo_audio_out())
     .mdef(Config::cv_in())
     .mdef(Config::cv_out())
-    .mdef_string(R"(
-document_owner_properties["prop_number"]  = jbox.number { default = 0.1 }
-document_owner_properties["prop_float"]   = jbox.number { default = 0.8 }
-document_owner_properties["prop_int"]     = jbox.number { default = 4 }
-document_owner_properties["prop_bool"]    = jbox.boolean { default = true }
-document_owner_properties["volume_ro"]    = jbox.number { default = 0.7 }
-document_owner_properties["volume_rw"]    = jbox.number { default = 0.75 }
+    .mdef(Config::document_owner_property("prop_number", lua::jbox_number_property{ .default_value = 0.1 }))
+    .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{ .default_value = 0.8 }))
+    .mdef(Config::document_owner_property("prop_int", lua::jbox_number_property{ .default_value = 4 }))
+    .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{ .default_value = true }))
+    .mdef(Config::document_owner_property("volume_ro", lua::jbox_number_property{ .default_value = 0.7 }))
+    .mdef(Config::document_owner_property("volume_rw", lua::jbox_number_property{ .default_value = 0.75 }))
 
-rtc_owner_properties["gain_ro"]            = jbox.native_object {}
-rtc_owner_properties["gain_rw"]            = jbox.native_object {}
-)")
+    .mdef(Config::rtc_owner_property("gain_ro", lua::jbox_native_object{ }))
+    .mdef(Config::rtc_owner_property("gain_rw", lua::jbox_native_object{ }))
+
     .rtc(Config::rtc_binding("/custom_properties/volume_ro", "/global_rtc/new_gain_ro"))
     .rtc(Config::rtc_binding("/custom_properties/volume_rw", "/global_rtc/new_gain_rw"))
     .rtc_string(R"(

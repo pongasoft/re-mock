@@ -33,20 +33,6 @@ TEST(Jukebox, Basic)
     TJBox_Float64 fVolume{};
   };
 
-  auto mdef = R"(
-document_owner_properties["prop_number_default"]  = jbox.number{ }
-document_owner_properties["prop_float"]           = jbox.number{ property_tag = 100, default = 0.7 }
-document_owner_properties["prop_bool_default"]    = jbox.boolean{ }
-document_owner_properties["prop_bool"]            = jbox.boolean{ default = true }
-document_owner_properties["prop_volume_ro"]       = jbox.number{ default = 0.8 }
-document_owner_properties["prop_volume_rw"]       = jbox.number{ default = 0.9 }
-
-rt_owner_properties["prop_gain_default"]          = jbox.native_object{ }
-rt_owner_properties["prop_gain"]                  = jbox.native_object{ default = { "Gain", { 0.7 } } }
-rt_owner_properties["prop_gain_ro"]               = jbox.native_object{ }
-rt_owner_properties["prop_gain_rw"]               = jbox.native_object{ }
-)";
-
   auto rtc = R"(
 rtc_bindings = {
   { source = "/custom_properties/prop_volume_ro", dest = "/global_rtc/new_gain_ro" },
@@ -67,7 +53,18 @@ global_rtc = {
 )";
 
   auto c = Config::fromSkeleton()
-    .mdef_string(mdef)
+    .mdef(Config::document_owner_property("prop_number_default", lua::jbox_number_property{}))
+    .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{ .property_tag = 100, .default_value = 0.7 }))
+    .mdef(Config::document_owner_property("prop_bool_default", lua::jbox_boolean_property{}))
+    .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{ .default_value = true }))
+    .mdef(Config::document_owner_property("prop_volume_ro", lua::jbox_number_property{ .default_value = 0.8 }))
+    .mdef(Config::document_owner_property("prop_volume_rw", lua::jbox_number_property{ .default_value = 0.9 }))
+
+    .mdef(Config::rtc_owner_property("prop_gain_default", lua::jbox_native_object{ }))
+    .mdef(Config::rtc_owner_property("prop_gain",
+                                     lua::jbox_native_object{ .default_value = { .operation = "Gain", .params = { JBox_MakeNumber(0.7) } } }))
+    .mdef(Config::rtc_owner_property("prop_gain_ro", lua::jbox_native_object{ }))
+    .mdef(Config::rtc_owner_property("prop_gain_rw", lua::jbox_native_object{ }))
     .rtc_string(rtc)
     .rt([](Realtime &rt) {
       rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {

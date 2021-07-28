@@ -123,5 +123,120 @@ ConfigString Config::rtc_binding(std::string const &iSource, std::string const &
   return {fmt::printf(R"(rtc_bindings[#rtc_bindings + 1] = { source ="%s", dest = "%s"})", iSource, iDest)};
 }
 
+namespace impl {
+
+inline std::string property_tag(int iPropertyTag)
+{
+  if(iPropertyTag > 0)
+    return fmt::printf(", property_tag = %d", iPropertyTag);
+  else
+    return "";
+}
+
+inline ConfigString custom_property(std::string const &iPropertyType,
+                                    std::string const &iPropertyName,
+                                    lua::jbox_boolean_property const &iProperty)
+{
+  return { fmt::printf(R"(%s["%s"] = jbox.boolean{ default = %s%s })",
+                       iPropertyType, iPropertyName, iProperty.default_value ? "true" : "false", property_tag(iProperty.property_tag)) };
+}
+
+inline ConfigString custom_property(std::string const &iPropertyType,
+                                    std::string const &iPropertyName,
+                                    lua::jbox_number_property const &iProperty)
+{
+  return { fmt::printf(R"(%s["%s"] = jbox.number{ default = %f%s })",
+                       iPropertyType, iPropertyName, iProperty.default_value, property_tag(iProperty.property_tag)) };
+}
+
+}
+
+//------------------------------------------------------------------------
+// Config::document_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
+{
+  return impl::custom_property("document_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::document_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+{
+  return impl::custom_property("document_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::rt_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
+{
+  return impl::custom_property("rt_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::rt_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+{
+  return impl::custom_property("rt_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::rtc_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
+{
+  return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::rtc_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+{
+  return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::rtc_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty)
+{
+  auto defaultValue = std::string{};
+  if(!iProperty.default_value.operation.empty())
+  {
+    auto params = std::string{};
+    if(!iProperty.default_value.params.empty())
+    {
+      for(int i = 0; i < iProperty.default_value.params.size(); i++)
+      {
+        if(i > 0)
+          params += ", ";
+        auto const &param = iProperty.default_value.params[i];
+        switch(JBox_GetType(param))
+        {
+          case kJBox_Boolean:
+            params += JBox_GetBoolean(param) ? "true" : "false";
+            break;
+
+          case kJBox_Number:
+            params += std::to_string(JBox_GetNumber(param));
+            break;
+
+          default:
+            RE_MOCK_ASSERT(false, "Invalid param [%d] type for jbox.native_object{} [%s]", i, iPropertyName);
+            break;
+        }
+      }
+    }
+
+    defaultValue = fmt::printf(R"(default = { "%s", { %s } })", iProperty.default_value.operation, params);
+  }
+  return { fmt::printf(R"(rtc_owner_properties["%s"] = jbox.native_object { %s%s })",
+                       iPropertyName, defaultValue, impl::property_tag(iProperty.property_tag)) };
+}
+
 
 }

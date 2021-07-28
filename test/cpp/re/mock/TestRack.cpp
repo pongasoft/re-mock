@@ -436,15 +436,11 @@ TEST(Rack, Diff)
   };
 
   auto c = DeviceConfig<Device>::fromSkeleton()
-    .mdef_string(R"(
-audio_inputs["input"] = jbox.audio_input();
-cv_inputs["cv"] = jbox.cv_input();
-
-document_owner_properties["prop_float"]       = jbox.number{ default = 0.8 }
-document_owner_properties["prop_bool"]        = jbox.boolean{}
-document_owner_properties["prop_untracked"]   = jbox.boolean{}
-
-)")
+    .mdef(Config::audio_in("input"))
+    .mdef(Config::cv_in("cv"))
+    .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{ .default_value = 0.8 }))
+    .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}))
+    .mdef(Config::document_owner_property("prop_untracked", lua::jbox_boolean_property{}))
     .rtc_string(R"(
 rt_input_setup = {
   notify = {
