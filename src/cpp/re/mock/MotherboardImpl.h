@@ -58,7 +58,7 @@ T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
 
 struct JboxProperty
 {
-  JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::string const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
+  JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::string iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
 
   inline TJBox_Value loadValue() const { return fValue; };
   std::optional<TJBox_PropertyDiff> storeValue(TJBox_Value const &iValue);
@@ -93,7 +93,7 @@ struct JboxObject
   friend class re::mock::Motherboard;
 
 protected:
-  void addProperty(std::string iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iPropertyTag);
+  void addProperty(const std::string& iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iPropertyTag);
   JboxProperty *getProperty(std::string const &iPropertyName) const;
   JboxProperty *getProperty(TJBox_Tag iPropertyTag) const;
 

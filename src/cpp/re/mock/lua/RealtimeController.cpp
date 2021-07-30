@@ -65,7 +65,7 @@ RealtimeController::RealtimeController()
   };
 
   luaL_newlib(L, jboxLib);
-  lua_setglobal(L, "jbox"); // will be available in motherboard_def.lua as jbox
+  lua_setglobal(L, "jbox"); // will be available in realtime_controller.lua as jbox
 }
 
 //------------------------------------------------------------------------

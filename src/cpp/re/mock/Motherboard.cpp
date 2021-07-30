@@ -203,7 +203,7 @@ void Motherboard::init(Config const &iConfig)
 
   // lua::RealtimeController
   fRealtimeController = std::make_unique<lua::RealtimeController>();
-  MockJBoxVisitor rtcVisitor{*fRealtimeController.get()};
+  MockJBoxVisitor rtcVisitor{*fRealtimeController};
   for(auto &v: iConfig.fRealtimeControllers)
     std::visit(rtcVisitor, v);
 
@@ -267,9 +267,7 @@ void Motherboard::init(Config const &iConfig)
   }
 
   // rtc_bindings
-  auto bindings1 = fRealtimeController->getBindings();
-  auto bindings2 = fRealtimeController->getBindings();
-  for(auto &&[propertyPath, bindingKey]: fRealtimeController->getBindings())
+  for(auto const &[propertyPath, bindingKey]: fRealtimeController->getBindings())
   {
     auto diff = registerRTCBinding(propertyPath, bindingKey);
     fRealtimeController->invokeBinding(this, bindingKey, getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
@@ -286,16 +284,16 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 {
   struct DefaultValueVisitor
   {
-    DefaultValueVisitor(Motherboard *motherboard) : fMotherboard(motherboard) {}
+    explicit DefaultValueVisitor(Motherboard *motherboard) : fMotherboard(motherboard) {}
 
-    TJBox_Value operator()(std::shared_ptr<lua::jbox_boolean_property> o) { return JBox_MakeBoolean(o->default_value); }
-    TJBox_Value operator()(std::shared_ptr<lua::jbox_number_property> o) { return JBox_MakeNumber(o->default_value); }
-    TJBox_Value operator()(std::shared_ptr<lua::jbox_native_object> o) {
+    TJBox_Value operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return JBox_MakeBoolean(o->default_value); }
+    TJBox_Value operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return JBox_MakeNumber(o->default_value); }
+    TJBox_Value operator()(const std::shared_ptr<lua::jbox_native_object>& o) const {
       if(!o->default_value.operation.empty())
       {
         struct TJBox_Value_Visitor {
-          TJBox_Value operator()(bool v) { return JBox_MakeBoolean(v); }
-          TJBox_Value operator()(TJBox_Float64 v) { return JBox_MakeNumber(v); }
+          TJBox_Value operator()(bool v) const { return JBox_MakeBoolean(v); }
+          TJBox_Value operator()(TJBox_Float64 v) const { return JBox_MakeNumber(v); }
         };
 
         std::vector<TJBox_Value> params{};
@@ -767,7 +765,7 @@ std::optional<TJBox_PropertyDiff> impl::JboxObject::storeValue(TJBox_Tag iProper
 //------------------------------------------------------------------------
 // JboxObject::addProperty
 //------------------------------------------------------------------------
-void impl::JboxObject::addProperty(std::string iPropertyName,
+void impl::JboxObject::addProperty(const std::string& iPropertyName,
                                    PropertyOwner iOwner,
                                    TJBox_Value const &iInitialValue,
                                    TJBox_Tag iPropertyTag)
@@ -793,9 +791,9 @@ TJBox_PropertyDiff impl::JboxObject::watchPropertyForChange(std::string const &i
 //------------------------------------------------------------------------
 // JboxProperty::JboxProperty
 //------------------------------------------------------------------------
-impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::string const &iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag) :
+impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::string iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag) :
   fPropertyRef{iPropertyRef},
-  fPropertyPath{iPropertyPath},
+  fPropertyPath{std::move(iPropertyPath)},
   fOwner{iOwner},
   fTag{iTag},
   fValue{iInitialValue}
