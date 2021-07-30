@@ -46,22 +46,22 @@ static int lua_number(lua_State *L)
 
 static int lua_audio_input(lua_State *L)
 {
-  return MotherboardDef::loadFromRegistry(L)->luaSocket(JBoxObjectType::AUDIO_INPUT);
+  return MotherboardDef::loadFromRegistry(L)->luaSocket(jbox_sockets::Type::AUDIO_INPUT);
 }
 
 static int lua_audio_output(lua_State *L)
 {
-  return MotherboardDef::loadFromRegistry(L)->luaSocket(JBoxObjectType::AUDIO_OUTPUT);
+  return MotherboardDef::loadFromRegistry(L)->luaSocket(jbox_sockets::Type::AUDIO_OUTPUT);
 }
 
 static int lua_cv_input(lua_State *L)
 {
-  return MotherboardDef::loadFromRegistry(L)->luaSocket(JBoxObjectType::CV_INPUT);
+  return MotherboardDef::loadFromRegistry(L)->luaSocket(jbox_sockets::Type::CV_INPUT);
 }
 
 static int lua_cv_output(lua_State *L)
 {
-  return MotherboardDef::loadFromRegistry(L)->luaSocket(JBoxObjectType::CV_OUTPUT);
+  return MotherboardDef::loadFromRegistry(L)->luaSocket(jbox_sockets::Type::CV_OUTPUT);
 }
 
 static int lua_property_set(lua_State *L)
@@ -168,6 +168,26 @@ int MotherboardDef::luaIgnored()
 }
 
 //------------------------------------------------------------------------
+// MotherboardDef::toParam
+//------------------------------------------------------------------------
+jbox_native_object::param_t MotherboardDef::toParam(int idx)
+{
+  int t = lua_type(L, idx);
+  switch(t)
+  {
+    case LUA_TBOOLEAN:
+      return static_cast<bool>(lua_toboolean(L, idx));
+
+    case LUA_TNUMBER:
+      return static_cast<TJBox_Float64>(lua_tonumber(L, idx));
+
+    default:
+      RE_MOCK_ASSERT(false, "Invalid type for jbox.native_object param (only boolean or number allowed)");
+      return false; // statement never reached (compiler does not know)
+  }
+}
+
+//------------------------------------------------------------------------
 // MotherboardDef::luaNativeObject
 //------------------------------------------------------------------------
 int MotherboardDef::luaNativeObject()
@@ -202,7 +222,7 @@ int MotherboardDef::luaNativeObject()
       for(int i = 1; i <= numParams; i++)
       {
         lua_geti(L, paramsTableIdx, i);
-        p->default_value.params.emplace_back(toJBoxValue());
+        p->default_value.params.emplace_back(toParam());
         lua_pop(L, 1);
       }
       lua_pop(L, 1);
@@ -239,7 +259,7 @@ int MotherboardDef::luaNumber()
 //------------------------------------------------------------------------
 // MotherboardDef::luaSocket
 //------------------------------------------------------------------------
-int MotherboardDef::luaSocket(JBoxObjectType iSocketType)
+int MotherboardDef::luaSocket(jbox_sockets::Type iSocketType)
 {
   auto p = std::make_unique<impl::jbox_socket>();
   p->type = iSocketType;
@@ -323,19 +343,17 @@ void MotherboardDef::populateMapFromLuaTable(jbox_object_map_t &oMap)
 //------------------------------------------------------------------------
 // MotherboardDef::getSockets
 //------------------------------------------------------------------------
-std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName,
-                                                         JBoxObjectType iSocketsType,
-                                                         JBoxObjectType iSocketType)
+std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName, jbox_sockets::Type iSocketType)
 {
   auto sockets = std::make_unique<jbox_sockets>();
-  sockets->type = iSocketsType;
+  sockets->type = iSocketType;
   if(lua_getglobal(L, iSocketName) != LUA_TNIL)
   {
     jbox_object_map_t m{};
     populateMapFromLuaTable(m);
     for(auto &iter : m)
     {
-      RE_MOCK_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(iter.second)->getType() == iSocketType, "[%s] wrong socket type", iter.first.c_str());
+      RE_MOCK_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(iter.second)->type == iSocketType, "[%s] wrong socket type", iter.first.c_str());
       sockets->names.emplace_back(iter.first);
     }
   }

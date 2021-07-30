@@ -204,6 +204,11 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty)
 {
+  struct visitor {
+    std::string operator()(bool v) { return (v ? "true" : "false"); }
+    std::string operator()(TJBox_Float64 v) { return std::to_string(v); }
+  };
+
   auto defaultValue = std::string{};
   if(!iProperty.default_value.operation.empty())
   {
@@ -214,21 +219,7 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
       {
         if(i > 0)
           params += ", ";
-        auto const &param = iProperty.default_value.params[i];
-        switch(JBox_GetType(param))
-        {
-          case kJBox_Boolean:
-            params += JBox_GetBoolean(param) ? "true" : "false";
-            break;
-
-          case kJBox_Number:
-            params += std::to_string(JBox_GetNumber(param));
-            break;
-
-          default:
-            RE_MOCK_ASSERT(false, "Invalid param [%d] type for jbox.native_object{} [%s]", i, iPropertyName);
-            break;
-        }
+        params += std::visit(visitor{}, iProperty.default_value.params[i]);
       }
     }
 

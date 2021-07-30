@@ -62,7 +62,7 @@ global_rtc = {
 
     .mdef(Config::rtc_owner_property("prop_gain_default", lua::jbox_native_object{ }))
     .mdef(Config::rtc_owner_property("prop_gain",
-                                     lua::jbox_native_object{ .default_value = { .operation = "Gain", .params = { JBox_MakeNumber(0.7) } } }))
+                                     lua::jbox_native_object{ .default_value = { .operation = "Gain", .params = { 0.7 } } }))
     .mdef(Config::rtc_owner_property("prop_gain_ro", lua::jbox_native_object{ }))
     .mdef(Config::rtc_owner_property("prop_gain_rw", lua::jbox_native_object{ }))
     .rtc_string(rtc)

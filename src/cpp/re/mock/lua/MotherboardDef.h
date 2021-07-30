@@ -33,67 +33,43 @@ class Motherboard;
 
 namespace re::mock::lua {
 
-enum class JBoxObjectType
-{
-  UNKNOWN,
-  IGNORED,
-  NATIVE_OBJECT,
-  BOOLEAN,
-  NUMBER,
-  AUDIO_INPUT,
-  AUDIO_INPUTS,
-  AUDIO_OUTPUT,
-  AUDIO_OUTPUTS,
-  CV_INPUT,
-  CV_INPUTS,
-  CV_OUTPUT,
-  CV_OUTPUTS,
-  PROPERTY_SET
-};
-
 struct jbox_native_object {
+  using param_t = std::variant<TJBox_Float64, bool>;
+
   int property_tag{};
 
   struct {
     std::string operation;
-    std::vector<TJBox_Value> params;
+    std::vector<param_t> params;
   } default_value{};
-
-  JBoxObjectType getType() { return JBoxObjectType::NATIVE_OBJECT; }
 };
 
 struct jbox_boolean_property {
   int property_tag{};
   bool default_value{};
-
-  JBoxObjectType getType() { return JBoxObjectType::BOOLEAN; }
 };
 
 struct jbox_number_property {
   int property_tag{};
   TJBox_Float64 default_value{};
-
-  JBoxObjectType getType() { return JBoxObjectType::NUMBER; }
 };
 
 struct jbox_sockets {
-  JBoxObjectType type{JBoxObjectType::UNKNOWN};
-  std::vector<std::string> names{};
+  enum Type { UNKNOWN, AUDIO_INPUT, AUDIO_OUTPUT, CV_INPUT, CV_OUTPUT };
 
-  JBoxObjectType getType() { return type; }
+  Type type{UNKNOWN};
+  std::vector<std::string> names{};
 };
 
 namespace impl {
 
-struct jbox_ignored {
-  JBoxObjectType getType() { return JBoxObjectType::IGNORED; }
-};
+struct jbox_ignored {};
 
 struct jbox_property_set {
   int property_tag{};
-  jbox_property_set(lua_State *iLuaState);
-  JBoxObjectType getType() { return JBoxObjectType::PROPERTY_SET; }
   int custom_properties_ref{LUA_NOREF};
+
+  jbox_property_set(lua_State *iLuaState);
   ~jbox_property_set();
 private:
   lua_State *L;
@@ -101,8 +77,7 @@ private:
 
 struct jbox_socket {
   int property_tag{};
-  JBoxObjectType getType() { return type; }
-  JBoxObjectType type{JBoxObjectType::UNKNOWN};
+  jbox_sockets::Type type{jbox_sockets::Type::UNKNOWN};
 };
 
 using jbox_object = std::variant<
@@ -136,7 +111,7 @@ public:
   int luaNativeObject();
   int luaBoolean();
   int luaNumber();
-  int luaSocket(JBoxObjectType iSocketType);
+  int luaSocket(jbox_sockets::Type iSocketType);
   int luaPropertySet();
 
   template<typename T>
@@ -150,22 +125,22 @@ public:
 
   std::unique_ptr<jbox_sockets> getAudioInputs()
   {
-    return getSockets("audio_inputs", JBoxObjectType::AUDIO_INPUTS, JBoxObjectType::AUDIO_INPUT);
+    return getSockets("audio_inputs", jbox_sockets::Type::AUDIO_INPUT);
   }
 
   std::unique_ptr<jbox_sockets> getAudioOutputs()
   {
-    return getSockets("audio_outputs", JBoxObjectType::AUDIO_OUTPUTS, JBoxObjectType::AUDIO_OUTPUT);
+    return getSockets("audio_outputs", jbox_sockets::Type::AUDIO_OUTPUT);
   }
 
   std::unique_ptr<jbox_sockets> getCVInputs()
   {
-    return getSockets("cv_inputs", JBoxObjectType::CV_INPUTS, JBoxObjectType::CV_INPUT);
+    return getSockets("cv_inputs", jbox_sockets::Type::CV_INPUT);
   }
 
   std::unique_ptr<jbox_sockets> getCVOutputs()
   {
-    return getSockets("cv_outputs", JBoxObjectType::CV_OUTPUTS, JBoxObjectType::CV_OUTPUT);
+    return getSockets("cv_outputs", jbox_sockets::Type::CV_OUTPUT);
   }
 
   static MotherboardDef *loadFromRegistry(lua_State *L);
@@ -189,13 +164,13 @@ protected:
    * Assumes lua table is at the top of the stack. Removes the map from the stack! */
   void populateMapFromLuaTable(jbox_object_map_t &oMap);
 
-  std::unique_ptr<jbox_sockets> getSockets(char const *iSocketName,
-                                           JBoxObjectType iSocketsType,
-                                           JBoxObjectType iSocketType);
+  std::unique_ptr<jbox_sockets> getSockets(char const *iSocketName, jbox_sockets::Type iSocketType);
 
   void populatePropertyTag(jbox_property iProperty);
 
   void filter(jbox_object_map_t &iMap, jbox_property_map_t &oMap);
+
+  jbox_native_object::param_t toParam(int idx = -1);
 
 private:
   ObjectManager<impl::jbox_object> fObjects{};

@@ -37,6 +37,9 @@ Motherboard::Motherboard()
 
   // global_rtc
   addObject("/global_rtc");
+
+  // note_states
+  addObject("/note_states");
 }
 
 //------------------------------------------------------------------------
@@ -283,14 +286,26 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 {
   struct DefaultValueVisitor
   {
-
     DefaultValueVisitor(Motherboard *motherboard) : fMotherboard(motherboard) {}
 
     TJBox_Value operator()(std::shared_ptr<lua::jbox_boolean_property> o) { return JBox_MakeBoolean(o->default_value); }
     TJBox_Value operator()(std::shared_ptr<lua::jbox_number_property> o) { return JBox_MakeNumber(o->default_value); }
     TJBox_Value operator()(std::shared_ptr<lua::jbox_native_object> o) {
       if(!o->default_value.operation.empty())
-        return fMotherboard->makeNativeObjectRW(o->default_value.operation, o->default_value.params);
+      {
+        struct TJBox_Value_Visitor {
+          TJBox_Value operator()(bool v) { return JBox_MakeBoolean(v); }
+          TJBox_Value operator()(TJBox_Float64 v) { return JBox_MakeNumber(v); }
+        };
+
+        std::vector<TJBox_Value> params{};
+        std::transform(o->default_value.params.begin(),
+                       o->default_value.params.end(),
+                       std::back_inserter(params),
+                       [](auto &v) { return std::visit(TJBox_Value_Visitor{}, v); });
+
+        return fMotherboard->makeNativeObjectRW(o->default_value.operation, params);
+      }
       else
         return JBox_MakeNil();
     }
