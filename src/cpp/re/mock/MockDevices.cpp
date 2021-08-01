@@ -194,7 +194,8 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 //------------------------------------------------------------------------
 // MAUSrc::CONFIG
 //------------------------------------------------------------------------
-const auto MAUSrc::CONFIG = DeviceConfig<MAUSrc>::fromSkeleton().mdef(Config::stereo_audio_out());
+const DeviceConfig<MAUSrc> MAUSrc::CONFIG = 
+  DeviceConfig<MAUSrc>::fromSkeleton().mdef(Config::stereo_audio_out());
 
 //------------------------------------------------------------------------
 // MAUSrc::MAUSrc
@@ -215,7 +216,8 @@ void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUDst::Config
 //------------------------------------------------------------------------
-const auto MAUDst::CONFIG = DeviceConfig<MAUDst>::fromSkeleton().mdef(Config::stereo_audio_in());
+const DeviceConfig<MAUDst> MAUDst::CONFIG = 
+  DeviceConfig<MAUDst>::fromSkeleton().mdef(Config::stereo_audio_in());
 
 //------------------------------------------------------------------------
 // MAUDst::MAUDst
@@ -236,7 +238,7 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUPst::Config
 //------------------------------------------------------------------------
-const auto MAUPst::CONFIG = DeviceConfig<MAUPst>::fromSkeleton()
+const DeviceConfig<MAUPst> MAUPst::CONFIG = DeviceConfig<MAUPst>::fromSkeleton()
   .mdef(Config::stereo_audio_out())
   .mdef(Config::stereo_audio_in());
 
@@ -308,7 +310,8 @@ bool MockCVDevice::eq(TJBox_Float64 iCV1, TJBox_Float64 iCV2)
 //------------------------------------------------------------------------
 // MCVSrc::CONFIG
 //------------------------------------------------------------------------
-const auto MCVSrc::CONFIG = DeviceConfig<MCVSrc>::fromSkeleton().mdef(Config::cv_out());
+const DeviceConfig<MCVSrc> MCVSrc::CONFIG =
+  DeviceConfig<MCVSrc>::fromSkeleton().mdef(Config::cv_out());
 
 //------------------------------------------------------------------------
 // MCVSrc::MCVSrc
@@ -329,7 +332,8 @@ void MCVSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MCVDst::CONFIG
 //------------------------------------------------------------------------
-const auto MCVDst::CONFIG = DeviceConfig<MCVDst>::fromSkeleton().mdef(Config::cv_in());
+const DeviceConfig<MCVDst> MCVDst::CONFIG =
+  DeviceConfig<MCVDst>::fromSkeleton().mdef(Config::cv_in());
 
 //------------------------------------------------------------------------
 // MCVDst::MCVDst
@@ -350,7 +354,8 @@ void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MCVPst::CONFIG
 //------------------------------------------------------------------------
-const auto MCVPst::CONFIG = DeviceConfig<MCVPst>::fromSkeleton().mdef(Config::cv_out()).mdef(Config::cv_in());
+const DeviceConfig<MCVPst> MCVPst::CONFIG = 
+  DeviceConfig<MCVPst>::fromSkeleton().mdef(Config::cv_out()).mdef(Config::cv_in());
 
 //------------------------------------------------------------------------
 // MCVPst::MCVPst

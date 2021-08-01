@@ -22,6 +22,7 @@
 
 #include <map>
 #include <atomic>
+#include <functional>
 #include "Errors.h"
 
 namespace re::mock {

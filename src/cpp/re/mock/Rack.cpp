@@ -334,7 +334,7 @@ std::optional<Rack::Extension::AudioOutSocket> Rack::ExtensionImpl::unwire(Exten
   RE_MOCK_ASSERT(iInSocket.fExtensionId == fId); // sanity check...
 
   auto iter =
-    std::find_if(fAudioInWires.begin(), fAudioOutWires.end(), [&iInSocket](auto &wire) { return wire.fToSocket == iInSocket; });
+    std::find_if(fAudioInWires.begin(), fAudioInWires.end(), [&iInSocket](auto &wire) { return wire.fToSocket == iInSocket; });
 
   if(iter != fAudioInWires.end())
   {

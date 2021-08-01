@@ -20,7 +20,11 @@
 
 namespace re::mock {
 
-ConfigString Config::SKELETON_MOTHERBOARD_DEF{R"(
+//------------------------------------------------------------------------
+// Config::skeletonMotherboardDef
+//------------------------------------------------------------------------
+ConfigString Config::skeletonMotherboardDef() {
+  return {R"(
 format_version = "2.0"
 gui_owner_properties = {}
 document_owner_properties = {}
@@ -37,8 +41,13 @@ custom_properties = jbox.property_set {
   rt_owner = { properties = rt_owner_properties }
 }
 )"};
+}
 
-ConfigString Config::SKELETON_REALTIME_CONTROLLER{R"(
+//------------------------------------------------------------------------
+// Config::skeletonRealtimeController
+//------------------------------------------------------------------------
+ConfigString Config::skeletonRealtimeController() {
+  return {R"(
 format_version = "1.0"
 rtc_bindings = {
   { source = "/environment/system_sample_rate", dest = "/global_rtc/init_instance" },
@@ -50,13 +59,14 @@ global_rtc = {
   end,
 }
 )"};
+}
 
 //------------------------------------------------------------------------
 // Config::skeleton
 //------------------------------------------------------------------------
 Config Config::fromSkeleton()
 {
-  return Config().mdef(SKELETON_MOTHERBOARD_DEF).rtc(SKELETON_REALTIME_CONTROLLER);
+  return Config().mdef(skeletonMotherboardDef()).rtc(skeletonRealtimeController());
 }
 
 //------------------------------------------------------------------------

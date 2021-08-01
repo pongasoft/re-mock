@@ -26,6 +26,7 @@
 #include <map>
 #include <vector>
 #include <variant>
+#include <optional>
 
 namespace re::mock {
 class Motherboard;

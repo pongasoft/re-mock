@@ -163,8 +163,8 @@ struct Config
 
   friend class Motherboard;
 
-  static ConfigString SKELETON_MOTHERBOARD_DEF;
-  static ConfigString SKELETON_REALTIME_CONTROLLER;
+  static ConfigString skeletonMotherboardDef();
+  static ConfigString skeletonRealtimeController();
 
 protected:
   bool fDebug{};
@@ -350,8 +350,8 @@ template<typename T>
 DeviceConfig<T> DeviceConfig<T>::fromSkeleton()
 {
   return DeviceConfig<T>()
-    .mdef(Config::SKELETON_MOTHERBOARD_DEF)
-    .rtc(Config::SKELETON_REALTIME_CONTROLLER)
+    .mdef(Config::skeletonMotherboardDef())
+    .rtc(Config::skeletonRealtimeController())
     .rt([](Realtime &rt) {
       rt = Realtime::byDefault<T>();
     });

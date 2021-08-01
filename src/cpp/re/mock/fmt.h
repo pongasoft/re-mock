@@ -22,6 +22,7 @@
 
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace re::mock::fmt {
 
@@ -32,7 +33,7 @@ constexpr auto printf_arg(T const &t) { return t; }
 
 // Handles std::string without having to call c_str all the time
 template<>
-constexpr auto printf_arg<std::string>(std::string const &s) { return s.c_str(); }
+inline auto printf_arg<std::string>(std::string const &s) { return s.c_str(); }
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-security"
@@ -112,6 +113,11 @@ Iter printf(Iter first, Iter last, char const *iFormat, std::vector<std::string>
       *first++ = c;
     }
   }
+  
+  // must be null terminated
+  if(first == last)
+    first--;
+  *first++ = '\0';
 
   return first;
 }

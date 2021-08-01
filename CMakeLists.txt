@@ -21,8 +21,14 @@ cmake_minimum_required(VERSION 3.17)
 # Setting up project (note that the version is defined in lua.info)
 project(re-mock LANGUAGES CXX)
 
-# Using C++17
-set(CMAKE_CXX_STANDARD 17)
+if(APPLE)
+  # Using C++17
+  set(CMAKE_CXX_STANDARD 17)
+else()
+  # Using C++20 (designated initializers not working on windows if not)
+  set(CMAKE_CXX_STANDARD 20)
+endif()
+
 
 # Determines whether we are working on re-mock or using it
 if(${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})
@@ -96,6 +102,10 @@ add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
 target_link_libraries(${target} PUBLIC lua::lib lua::header)
+
+if(NOT APPLE)
+#  target_compile_options(${target} PUBLIC "/std:c++latest")
+endif()
 
 if(RE_MOCK_DEV_BUILD)
 

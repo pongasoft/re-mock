@@ -19,6 +19,7 @@
 #include "Motherboard.h"
 #include "lua/MotherboardDef.h"
 #include <Jukebox.h>
+#include <algorithm>
 
 namespace re::mock {
 

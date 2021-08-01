@@ -18,6 +18,7 @@
 
 #include <re/mock/Rack.h>
 #include <gtest/gtest.h>
+#include <algorithm>
 
 namespace re::mock::Test {
 
