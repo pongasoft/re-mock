@@ -528,7 +528,7 @@ void Motherboard::setDSPBufferData(TJBox_Value const &iValue,
 TJBox_DSPBufferInfo Motherboard::getDSPBufferInfo(TJBox_Value const &iValue) const
 {
   getDSPBuffer(iValue); // meant to check that iValue refers to a valid dsp buffer
-  return {DSP_BUFFER_SIZE};
+  return {/* .fSampleCount = */ DSP_BUFFER_SIZE};
 }
 
 //------------------------------------------------------------------------
@@ -544,11 +544,11 @@ TJBox_Value Motherboard::makeNativeObject(std::string const &iOperation,
     if(nativeObject)
     {
       auto uno = std::unique_ptr<impl::NativeObject>(new impl::NativeObject{
-        nativeObject,
-        iOperation,
-        iParams,
-        fRealtime.destroy_native_object,
-        iAccessMode
+        /* .fNativeObject = */ nativeObject,
+        /* .fOperation = */    iOperation,
+        /* .fParams = */       iParams,
+        /* .fDeleter = */      fRealtime.destroy_native_object,
+        /* .fAccessMode = */   iAccessMode
       });
       return impl::jbox_make_value<int>(kJBox_NativeObject, fNativeObjects.add(std::move(uno)));
     }
@@ -815,10 +815,10 @@ std::optional<TJBox_PropertyDiff> impl::JboxProperty::storeValue(TJBox_Value con
     auto previousValue = fValue;
     fValue = iValue;
     return TJBox_PropertyDiff{
-      previousValue,
-      fValue,
-      fPropertyRef,
-      fTag
+      /* .fPreviousValue = */ previousValue,
+      /* .fCurrentValue = */  fValue,
+      /* .fPropertyRef = */   fPropertyRef,
+      /* .fPropertyTag = */   fTag
     };
   }
   else
@@ -836,10 +836,10 @@ TJBox_PropertyDiff impl::JboxProperty::watchForChange()
 {
   fWatched = true;
   return TJBox_PropertyDiff{
-    fValue,
-    fValue,
-    fPropertyRef,
-    fTag
+    /* .fPreviousValue = */ fValue,
+    /* .fCurrentValue = */  fValue,
+    /* .fPropertyRef = */   fPropertyRef,
+    /* .fPropertyTag = */   fTag
   };
 }
 

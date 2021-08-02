@@ -175,8 +175,8 @@ MockAudioDevice::StereoBuffer MockAudioDevice::buffer(TJBox_AudioSample iLeftSam
 MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::input()
 {
   return {
-    JBox_GetMotherboardObjectRef(fmt::printf("/audio_inputs/%s", LEFT_SOCKET).c_str()),
-    JBox_GetMotherboardObjectRef(fmt::printf("/audio_inputs/%s", RIGHT_SOCKET).c_str())
+    /* .fLeft = */  JBox_GetMotherboardObjectRef(fmt::printf("/audio_inputs/%s", LEFT_SOCKET).c_str()),
+    /* .fRight = */ JBox_GetMotherboardObjectRef(fmt::printf("/audio_inputs/%s", RIGHT_SOCKET).c_str())
   };
 }
 
@@ -186,8 +186,8 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::input()
 MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 {
   return {
-    JBox_GetMotherboardObjectRef(fmt::printf("/audio_outputs/%s", LEFT_SOCKET).c_str()),
-    JBox_GetMotherboardObjectRef(fmt::printf("/audio_outputs/%s", RIGHT_SOCKET).c_str())
+    /* .fLeft = */  JBox_GetMotherboardObjectRef(fmt::printf("/audio_outputs/%s", LEFT_SOCKET).c_str()),
+    /* .fRight = */ JBox_GetMotherboardObjectRef(fmt::printf("/audio_outputs/%s", RIGHT_SOCKET).c_str())
   };
 }
 
