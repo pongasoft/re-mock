@@ -259,9 +259,9 @@ template<typename T>
 Realtime Realtime::byDefault()
 {
   return {
-    .create_native_object = Realtime::bySampleRateCreator<T>(),
-    .destroy_native_object = Realtime::destroyer<T>(),
-    .render_realtime = Realtime::defaultRenderRealtime<T>()
+    /* .create_native_object = */  Realtime::bySampleRateCreator<T>(),
+    /* .destroy_native_object = */ Realtime::destroyer<T>(),
+    /* .render_realtime = */       Realtime::defaultRenderRealtime<T>()
   };
 }
 

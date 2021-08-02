@@ -154,15 +154,15 @@ end
   ASSERT_TRUE(re.getBool("/custom_properties/prop_bool"));
   {
     auto buffer = MockAudioDevice::StereoBuffer{
-      .fLeft = re.getDSPBuffer("/audio_inputs/L"),
-      .fRight = re.getDSPBuffer(re.getAudioInSocket("R"))
+      /* .fLeft = */  re.getDSPBuffer("/audio_inputs/L"),
+      /* .fRight = */ re.getDSPBuffer(re.getAudioInSocket("R"))
     };
     ASSERT_EQ(buffer, MockAudioDevice::buffer(1.0, 2.0));
   }
   {
     auto buffer = MockAudioDevice::StereoBuffer{
-      .fLeft = re.getDSPBuffer("/audio_outputs/L"),
-      .fRight = re.getDSPBuffer(re.getAudioOutSocket("R"))
+      /* .fLeft = */  re.getDSPBuffer("/audio_outputs/L"),
+      /* .fRight = */ re.getDSPBuffer(re.getAudioOutSocket("R"))
     };
     ASSERT_EQ(buffer, MockAudioDevice::buffer(4.0, 6.0));
   }
@@ -192,8 +192,8 @@ end
     re.setDSPBuffer("/audio_outputs/L", buffer.fLeft);
     re.setDSPBuffer(re.getAudioOutSocket("R"), buffer.fRight);
     buffer = MockAudioDevice::StereoBuffer{
-      .fLeft = re.getDSPBuffer("/audio_outputs/L"),
-      .fRight = re.getDSPBuffer(re.getAudioOutSocket("R"))
+      /* .fLeft = */  re.getDSPBuffer("/audio_outputs/L"),
+      /* .fRight = */ re.getDSPBuffer(re.getAudioOutSocket("R"))
     };
     ASSERT_EQ(buffer, MockAudioDevice::buffer(101.0, 102.0));
   }
