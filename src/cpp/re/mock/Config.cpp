@@ -148,7 +148,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
                                     lua::jbox_boolean_property const &iProperty)
 {
   return { fmt::printf(R"(%s["%s"] = jbox.boolean{ default = %s%s })",
-                       iPropertyType, iPropertyName, iProperty.default_value ? "true" : "false", property_tag(iProperty.property_tag)) };
+                       iPropertyType, iPropertyName, iProperty.fDefaultValue ? "true" : "false", property_tag(iProperty.fPropertyTag)) };
 }
 
 inline ConfigString custom_property(std::string const &iPropertyType,
@@ -156,7 +156,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
                                     lua::jbox_number_property const &iProperty)
 {
   return { fmt::printf(R"(%s["%s"] = jbox.number{ default = %f%s })",
-                       iPropertyType, iPropertyName, iProperty.default_value, property_tag(iProperty.property_tag)) };
+                       iPropertyType, iPropertyName, iProperty.fDefaultValue, property_tag(iProperty.fPropertyTag)) };
 }
 
 }
@@ -220,23 +220,23 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
   };
 
   auto defaultValue = std::string{};
-  if(!iProperty.default_value.operation.empty())
+  if(!iProperty.fDefaultValue.operation.empty())
   {
     auto params = std::string{};
-    if(!iProperty.default_value.params.empty())
+    if(!iProperty.fDefaultValue.params.empty())
     {
-      for(int i = 0; i < iProperty.default_value.params.size(); i++)
+      for(int i = 0; i < iProperty.fDefaultValue.params.size(); i++)
       {
         if(i > 0)
           params += ", ";
-        params += std::visit(visitor{}, iProperty.default_value.params[i]);
+        params += std::visit(visitor{}, iProperty.fDefaultValue.params[i]);
       }
     }
 
-    defaultValue = fmt::printf(R"(default = { "%s", { %s } })", iProperty.default_value.operation, params);
+    defaultValue = fmt::printf(R"(default = { "%s", { %s } })", iProperty.fDefaultValue.operation, params);
   }
   return { fmt::printf(R"(rtc_owner_properties["%s"] = jbox.native_object { %s%s })",
-                       iPropertyName, defaultValue, impl::property_tag(iProperty.property_tag)) };
+                       iPropertyName, defaultValue, impl::property_tag(iProperty.fPropertyTag)) };
 }
 
 

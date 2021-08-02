@@ -55,15 +55,15 @@ global_rtc = {
 
   auto c = Config::fromSkeleton()
     .mdef(Config::document_owner_property("prop_number_default", lua::jbox_number_property{}))
-    .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{ .property_tag = 100, .default_value = 0.7 }))
+    .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.property_tag(100).default_value(0.7)))
     .mdef(Config::document_owner_property("prop_bool_default", lua::jbox_boolean_property{}))
-    .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{ .default_value = true }))
-    .mdef(Config::document_owner_property("prop_volume_ro", lua::jbox_number_property{ .default_value = 0.8 }))
-    .mdef(Config::document_owner_property("prop_volume_rw", lua::jbox_number_property{ .default_value = 0.9 }))
+    .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}.default_value(true)))
+    .mdef(Config::document_owner_property("prop_volume_ro", lua::jbox_number_property{}.default_value(0.8)))
+    .mdef(Config::document_owner_property("prop_volume_rw", lua::jbox_number_property{}.default_value(0.9)))
 
     .mdef(Config::rtc_owner_property("prop_gain_default", lua::jbox_native_object{ }))
     .mdef(Config::rtc_owner_property("prop_gain",
-                                     lua::jbox_native_object{ .default_value = { .operation = "Gain", .params = { 0.7 } } }))
+                                     lua::jbox_native_object{}.default_value("Gain", { 0.7 })))
     .mdef(Config::rtc_owner_property("prop_gain_ro", lua::jbox_native_object{ }))
     .mdef(Config::rtc_owner_property("prop_gain_rw", lua::jbox_native_object{ }))
     .rtc_string(rtc)

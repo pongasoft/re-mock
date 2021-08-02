@@ -207,7 +207,7 @@ int MotherboardDef::luaNativeObject()
     {
       lua_geti(L, defaultTableIdx, 1);
       luaL_checktype(L, -1, LUA_TSTRING);
-      p->default_value.operation = lua_tostring(L, -1);
+      p->fDefaultValue.operation = lua_tostring(L, -1);
       lua_pop(L, 1);
     }
 
@@ -222,7 +222,7 @@ int MotherboardDef::luaNativeObject()
       for(int i = 1; i <= numParams; i++)
       {
         lua_geti(L, paramsTableIdx, i);
-        p->default_value.params.emplace_back(toParam());
+        p->fDefaultValue.params.emplace_back(toParam());
         lua_pop(L, 1);
       }
       lua_pop(L, 1);
@@ -241,7 +241,7 @@ int MotherboardDef::luaBoolean()
 {
   auto p = std::make_shared<jbox_boolean_property>();
   populatePropertyTag(p);
-  p->default_value = L.getTableValueAsBoolean("default", 1);
+  p->fDefaultValue = L.getTableValueAsBoolean("default", 1);
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -252,7 +252,7 @@ int MotherboardDef::luaNumber()
 {
   auto p = std::make_shared<jbox_number_property>();
   populatePropertyTag(p);
-  p->default_value = L.getTableValueAsNumber("default", 1);
+  p->fDefaultValue = L.getTableValueAsNumber("default", 1);
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -262,7 +262,7 @@ int MotherboardDef::luaNumber()
 int MotherboardDef::luaSocket(jbox_sockets::Type iSocketType)
 {
   auto p = std::make_unique<impl::jbox_socket>();
-  p->type = iSocketType;
+  p->fType = iSocketType;
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -273,7 +273,7 @@ int MotherboardDef::luaPropertySet()
 {
   luaL_checktype(L, 1, LUA_TTABLE);
   auto p = std::make_unique<impl::jbox_property_set>(L);
-  p->custom_properties_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+  p->fCustomPropertiesRef = luaL_ref(L, LUA_REGISTRYINDEX);
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -346,15 +346,15 @@ void MotherboardDef::populateMapFromLuaTable(jbox_object_map_t &oMap)
 std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName, jbox_sockets::Type iSocketType)
 {
   auto sockets = std::make_unique<jbox_sockets>();
-  sockets->type = iSocketType;
+  sockets->fType = iSocketType;
   if(lua_getglobal(L, iSocketName) != LUA_TNIL)
   {
     jbox_object_map_t m{};
     populateMapFromLuaTable(m);
     for(auto &iter : m)
     {
-      RE_MOCK_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(iter.second)->type == iSocketType, "[%s] wrong socket type", iter.first.c_str());
-      sockets->names.emplace_back(iter.first);
+      RE_MOCK_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(iter.second)->fType == iSocketType, "[%s] wrong socket type", iter.first.c_str());
+      sockets->fNames.emplace_back(iter.first);
     }
   }
   else
@@ -370,7 +370,7 @@ void MotherboardDef::populatePropertyTag(jbox_property iProperty)
 {
   RE_MOCK_ASSERT(lua_gettop(L) > 0, "Missing table... Did you use () instead of {}?");
   auto const propertyTag = static_cast<int>(L.getTableValueAsInteger("property_tag", 1));
-  std::visit([propertyTag](auto &t) { t->property_tag = propertyTag; }, iProperty);
+  std::visit([propertyTag](auto &t) { t->fPropertyTag = propertyTag; }, iProperty);
 }
 
 //------------------------------------------------------------------------
@@ -409,7 +409,7 @@ std::unique_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
     {
       auto jps = std::get<std::shared_ptr<impl::jbox_property_set>>(o.value());
 
-      lua_rawgeti(L, LUA_REGISTRYINDEX, jps->custom_properties_ref);
+      lua_rawgeti(L, LUA_REGISTRYINDEX, jps->fCustomPropertiesRef);
 
       {
         jbox_object_map_t map{};
@@ -459,8 +459,8 @@ impl::jbox_property_set::jbox_property_set(lua_State *iLuaState) : L{iLuaState} 
 //------------------------------------------------------------------------
 impl::jbox_property_set::~jbox_property_set()
 {
-  if(custom_properties_ref != LUA_NOREF)
-    luaL_unref(L, LUA_REGISTRYINDEX, custom_properties_ref);
+  if(fCustomPropertiesRef != LUA_NOREF)
+    luaL_unref(L, LUA_REGISTRYINDEX, fCustomPropertiesRef);
 }
 
 

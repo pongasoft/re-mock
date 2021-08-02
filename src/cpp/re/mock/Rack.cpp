@@ -273,7 +273,7 @@ Rack::Extension::CVInSocket Rack::Extension::getCVInSocket(std::string const &iS
 Rack::Extension::StereoAudioOutSocket Rack::Extension::getStereoAudioOutSocket(std::string const &iLeftSocketName,
                                                                                std::string const &iRightSocketName) const
 {
-  return {.fLeft = getAudioOutSocket(iLeftSocketName), .fRight = getAudioOutSocket(iRightSocketName) };
+  return { getAudioOutSocket(iLeftSocketName), getAudioOutSocket(iRightSocketName) };
 }
 
 //------------------------------------------------------------------------
@@ -282,7 +282,7 @@ Rack::Extension::StereoAudioOutSocket Rack::Extension::getStereoAudioOutSocket(s
 Rack::Extension::StereoAudioInSocket Rack::Extension::getStereoAudioInSocket(std::string const &iLeftSocketName,
                                                                                std::string const &iRightSocketName) const
 {
-  return {.fLeft = getAudioInSocket(iLeftSocketName), .fRight = getAudioInSocket(iRightSocketName) };
+  return { getAudioInSocket(iLeftSocketName), getAudioInSocket(iRightSocketName) };
 }
 
 //------------------------------------------------------------------------
@@ -291,7 +291,7 @@ Rack::Extension::StereoAudioInSocket Rack::Extension::getStereoAudioInSocket(std
 void Rack::ExtensionImpl::wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket)
 {
   RE_MOCK_ASSERT(iInSocket.fExtensionId == fId || iOutSocket.fExtensionId == fId); // sanity check...
-  auto newWire = Extension::AudioWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
+  auto newWire = Extension::AudioWire{ iOutSocket, iInSocket };
 
   // check for duplicate
   RE_MOCK_ASSERT(!stl::find_if(fAudioOutWires, [&newWire](auto &wire) { return Rack::Extension::AudioWire::overlap(wire, newWire); }), "Audio socket in use");
@@ -420,7 +420,7 @@ bool Rack::Extension::CVWire::overlap(CVWire const &iWire1, CVWire const &iWire2
 void Rack::ExtensionImpl::wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket)
 {
   RE_MOCK_ASSERT(iInSocket.fExtensionId == fId || iOutSocket.fExtensionId == fId); // sanity check...
-  auto newWire = Extension::CVWire{.fFromSocket = iOutSocket, .fToSocket = iInSocket };
+  auto newWire = Extension::CVWire{ iOutSocket, iInSocket };
 
   // check for duplicate
   RE_MOCK_ASSERT(!stl::find_if(fCVOutWires, [&newWire](auto &wire) { return Rack::Extension::CVWire::overlap(wire, newWire); }), "CV socket in use");

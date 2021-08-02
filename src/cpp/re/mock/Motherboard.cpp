@@ -159,14 +159,14 @@ std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRat
 
   // /environment/instance_id
   auto idProp = std::make_shared<lua::jbox_number_property>();
-  idProp->property_tag = kJBox_EnvironmentInstanceID;
-  idProp->default_value = iInstanceId;
+  idProp->fPropertyTag = kJBox_EnvironmentInstanceID;
+  idProp->fDefaultValue = iInstanceId;
   res->addProperty(environment->fObjectRef, "instance_id", PropertyOwner::kHostOwner, idProp);
 
   // /environment/system_sample_rate
   auto sampleRateProp = std::make_shared<lua::jbox_number_property>();
-  sampleRateProp->property_tag = kJBox_EnvironmentSystemSampleRate;
-  sampleRateProp->default_value = iSampleRate;
+  sampleRateProp->fPropertyTag = kJBox_EnvironmentSystemSampleRate;
+  sampleRateProp->fDefaultValue = iSampleRate;
   res->addProperty(environment->fObjectRef, "system_sample_rate", PropertyOwner::kHostOwner, sampleRateProp);
 
   return res;
@@ -222,28 +222,28 @@ void Motherboard::init(Config const &iConfig)
   // audio_inputs
   {
     auto inputs = def.getAudioInputs();
-    for(auto const &input: inputs->names)
+    for(auto const &input: inputs->fNames)
       addAudioInput(input);
   }
 
   // audio_outputs
   {
     auto outputs = def.getAudioOutputs();
-    for(auto const &output: outputs->names)
+    for(auto const &output: outputs->fNames)
       addAudioOutput(output);
   }
 
   // cv_inputs
   {
     auto inputs = def.getCVInputs();
-    for(auto const &input: inputs->names)
+    for(auto const &input: inputs->fNames)
       addCVInput(input);
   }
 
   // cv_outputs
   {
     auto outputs = def.getCVOutputs();
-    for(auto const &output: outputs->names)
+    for(auto const &output: outputs->fNames)
       addCVOutput(output);
   }
 
@@ -287,10 +287,10 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
   {
     explicit DefaultValueVisitor(Motherboard *motherboard) : fMotherboard(motherboard) {}
 
-    TJBox_Value operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return JBox_MakeBoolean(o->default_value); }
-    TJBox_Value operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return JBox_MakeNumber(o->default_value); }
+    TJBox_Value operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return JBox_MakeBoolean(o->fDefaultValue); }
+    TJBox_Value operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return JBox_MakeNumber(o->fDefaultValue); }
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_native_object>& o) const {
-      if(!o->default_value.operation.empty())
+      if(!o->fDefaultValue.operation.empty())
       {
         struct TJBox_Value_Visitor {
           TJBox_Value operator()(bool v) const { return JBox_MakeBoolean(v); }
@@ -298,12 +298,12 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
         };
 
         std::vector<TJBox_Value> params{};
-        std::transform(o->default_value.params.begin(),
-                       o->default_value.params.end(),
+        std::transform(o->fDefaultValue.params.begin(),
+                       o->fDefaultValue.params.end(),
                        std::back_inserter(params),
                        [](auto &v) { return std::visit(TJBox_Value_Visitor{}, v); });
 
-        return fMotherboard->makeNativeObjectRW(o->default_value.operation, params);
+        return fMotherboard->makeNativeObjectRW(o->fDefaultValue.operation, params);
       }
       else
         return JBox_MakeNil();
@@ -311,7 +311,7 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
     Motherboard *fMotherboard;
   };
 
-  auto propertyTag = std::visit([](auto &p) { return p->property_tag; }, iProperty);
+  auto propertyTag = std::visit([](auto &p) { return p->fPropertyTag; }, iProperty);
   auto defaultValue = std::visit(DefaultValueVisitor{this}, iProperty);
 
   fJboxObjects.get(iParentObject)->addProperty(iPropertyName,

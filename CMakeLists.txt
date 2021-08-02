@@ -14,21 +14,13 @@
 #
 # @author Yan Pujante
 
-# The purpose of this file is to be able to work on re-mock... include re-mock.cmake in your project instead!
-
 cmake_minimum_required(VERSION 3.17)
 
 # Setting up project (note that the version is defined in lua.info)
 project(re-mock LANGUAGES CXX)
 
-if(APPLE)
-  # Using C++17
-  set(CMAKE_CXX_STANDARD 17)
-else()
-  # Using C++20 (designated initializers not working on windows if not)
-  set(CMAKE_CXX_STANDARD 20)
-endif()
-
+# Using C++17
+set(CMAKE_CXX_STANDARD 17)
 
 # Determines whether we are working on re-mock or using it
 if(${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})

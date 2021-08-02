@@ -438,7 +438,7 @@ TEST(Rack, Diff)
   auto c = DeviceConfig<Device>::fromSkeleton()
     .mdef(Config::audio_in("input"))
     .mdef(Config::cv_in("cv"))
-    .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{ .default_value = 0.8 }))
+    .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}))
     .mdef(Config::document_owner_property("prop_untracked", lua::jbox_boolean_property{}))
     .rtc_string(R"(

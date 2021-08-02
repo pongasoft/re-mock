@@ -38,10 +38,10 @@ TEST(MotherboardDef, Empty)
 
   ASSERT_EQ(def->getStackString(), "<empty>");
 
-  ASSERT_EQ(0, def->getAudioInputs()->names.size());
-  ASSERT_EQ(0, def->getAudioOutputs()->names.size());
-  ASSERT_EQ(0, def->getCVInputs()->names.size());
-  ASSERT_EQ(0, def->getCVOutputs()->names.size());
+  ASSERT_EQ(0, def->getAudioInputs()->fNames.size());
+  ASSERT_EQ(0, def->getAudioOutputs()->fNames.size());
+  ASSERT_EQ(0, def->getCVInputs()->fNames.size());
+  ASSERT_EQ(0, def->getCVOutputs()->fNames.size());
   auto customProperties = def->getCustomProperties();
   ASSERT_EQ(0, customProperties->document_owner.size());
   ASSERT_EQ(0, customProperties->rtc_owner.size());
@@ -58,10 +58,10 @@ TEST(MotherboardDef, BlankEffect)
 
   ASSERT_EQ(def->getStackString(), "<empty>");
 
-  ASSERT_THAT(def->getAudioInputs()->names, UnorderedElementsAre("MainInLeft", "MainInRight"));
-  ASSERT_THAT(def->getAudioOutputs()->names, UnorderedElementsAre("MainOutLeft", "MainOutRight"));
-  ASSERT_EQ(0, def->getCVInputs()->names.size());
-  ASSERT_EQ(0, def->getCVOutputs()->names.size());
+  ASSERT_THAT(def->getAudioInputs()->fNames, UnorderedElementsAre("MainInLeft", "MainInRight"));
+  ASSERT_THAT(def->getAudioOutputs()->fNames, UnorderedElementsAre("MainOutLeft", "MainOutRight"));
+  ASSERT_EQ(0, def->getCVInputs()->fNames.size());
+  ASSERT_EQ(0, def->getCVOutputs()->fNames.size());
   auto customProperties = def->getCustomProperties();
   ASSERT_EQ(0, customProperties->document_owner.size());
   ASSERT_EQ(1, customProperties->rtc_owner.size());
@@ -79,47 +79,47 @@ TEST(MotherboardDef, All)
 
   ASSERT_EQ(def->getStackString(), "<empty>");
 
-  ASSERT_THAT(def->getAudioInputs()->names, UnorderedElementsAre("au_in"));
-  ASSERT_THAT(def->getAudioOutputs()->names, UnorderedElementsAre("au_out"));
-  ASSERT_THAT(def->getCVInputs()->names, UnorderedElementsAre("cv_in"));
-  ASSERT_THAT(def->getCVOutputs()->names, UnorderedElementsAre("cv_out"));
+  ASSERT_THAT(def->getAudioInputs()->fNames, UnorderedElementsAre("au_in"));
+  ASSERT_THAT(def->getAudioOutputs()->fNames, UnorderedElementsAre("au_out"));
+  ASSERT_THAT(def->getCVInputs()->fNames, UnorderedElementsAre("cv_in"));
+  ASSERT_THAT(def->getCVOutputs()->fNames, UnorderedElementsAre("cv_out"));
   auto customProperties = def->getCustomProperties();
 
   // document_owner
   ASSERT_EQ(2, customProperties->document_owner.size());
   {
     auto ptr = std::get<std::shared_ptr<jbox_boolean_property>>(customProperties->document_owner["doc_boolean"]);
-    ASSERT_EQ(ptr->property_tag, 100);
-    ASSERT_TRUE(ptr->default_value);
+    ASSERT_EQ(ptr->fPropertyTag, 100);
+    ASSERT_TRUE(ptr->fDefaultValue);
   }
   {
     auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->document_owner["doc_number"]);
-    ASSERT_EQ(ptr->property_tag, 101);
-    ASSERT_FLOAT_EQ(ptr->default_value, 3);
+    ASSERT_EQ(ptr->fPropertyTag, 101);
+    ASSERT_FLOAT_EQ(ptr->fDefaultValue, 3);
   }
 
   // rtc_owner
   ASSERT_EQ(2, customProperties->rtc_owner.size());
   {
     auto ptr = std::get<std::shared_ptr<jbox_native_object>>(customProperties->rtc_owner["instance"]);
-    ASSERT_EQ(ptr->default_value.operation, "");
-    ASSERT_EQ(ptr->default_value.params.size(), 0);
+    ASSERT_EQ(ptr->fDefaultValue.operation, "");
+    ASSERT_EQ(ptr->fDefaultValue.params.size(), 0);
   }
   {
     auto ptr = std::get<std::shared_ptr<jbox_native_object>>(customProperties->rtc_owner["instance_with_default"]);
-    ASSERT_EQ(ptr->default_value.operation, "Operation");
-    ASSERT_EQ(ptr->default_value.params.size(), 3);
-    ASSERT_FLOAT_EQ(std::get<TJBox_Float64>(ptr->default_value.params[0]), 0.5);
-    ASSERT_EQ(std::get<bool>(ptr->default_value.params[1]), true);
-    ASSERT_FLOAT_EQ(std::get<TJBox_Float64>(ptr->default_value.params[2]), 48000);
+    ASSERT_EQ(ptr->fDefaultValue.operation, "Operation");
+    ASSERT_EQ(ptr->fDefaultValue.params.size(), 3);
+    ASSERT_FLOAT_EQ(std::get<TJBox_Float64>(ptr->fDefaultValue.params[0]), 0.5);
+    ASSERT_EQ(std::get<bool>(ptr->fDefaultValue.params[1]), true);
+    ASSERT_FLOAT_EQ(std::get<TJBox_Float64>(ptr->fDefaultValue.params[2]), 48000);
   }
 
   // rt_owner
   ASSERT_EQ(1, customProperties->rt_owner.size());
   {
     auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->rt_owner["rt_number"]);
-    ASSERT_EQ(ptr->property_tag, 102);
-    ASSERT_EQ(ptr->default_value, 0);
+    ASSERT_EQ(ptr->fPropertyTag, 102);
+    ASSERT_EQ(ptr->fDefaultValue, 0);
   }
 
   ASSERT_EQ(def->getStackString(), "<empty>");
@@ -133,7 +133,7 @@ TEST(MotherboardDef, Multiple)
   def.loadString("audio_outputs={}");
   def.loadString(R"(audio_outputs["au_out1"] = jbox.audio_output { })");
   def.loadString(R"(audio_outputs["au_out2"] = jbox.audio_output { })");
-  ASSERT_THAT(def.getAudioOutputs()->names, UnorderedElementsAre("au_out1", "au_out2"));
+  ASSERT_THAT(def.getAudioOutputs()->fNames, UnorderedElementsAre("au_out1", "au_out2"));
 }
 
 }

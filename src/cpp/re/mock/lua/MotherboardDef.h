@@ -37,29 +37,43 @@ namespace re::mock::lua {
 struct jbox_native_object {
   using param_t = std::variant<TJBox_Float64, bool>;
 
-  int property_tag{};
+  int fPropertyTag{};
 
   struct {
     std::string operation;
     std::vector<param_t> params;
-  } default_value{};
+  } fDefaultValue{};
+
+  jbox_native_object &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
+  jbox_native_object &default_value(std::string iOperation, std::vector<param_t> const &iParams)
+  {
+    fDefaultValue.operation = iOperation;
+    fDefaultValue.params = iParams;
+    return *this;
+  }
+
 };
 
 struct jbox_boolean_property {
-  int property_tag{};
-  bool default_value{};
+  int fPropertyTag{};
+  bool fDefaultValue{};
+
+  jbox_boolean_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
+  jbox_boolean_property &default_value(bool iValue) { fDefaultValue = iValue; return *this;}
 };
 
 struct jbox_number_property {
-  int property_tag{};
-  TJBox_Float64 default_value{};
+  int fPropertyTag{};
+  TJBox_Float64 fDefaultValue{};
+  jbox_number_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
+  jbox_number_property &default_value(TJBox_Float64 iValue) { fDefaultValue = iValue; return *this;}
 };
 
 struct jbox_sockets {
   enum Type { UNKNOWN, AUDIO_INPUT, AUDIO_OUTPUT, CV_INPUT, CV_OUTPUT };
 
-  Type type{UNKNOWN};
-  std::vector<std::string> names{};
+  Type fType{UNKNOWN};
+  std::vector<std::string> fNames{};
 };
 
 namespace impl {
@@ -67,8 +81,8 @@ namespace impl {
 struct jbox_ignored {};
 
 struct jbox_property_set {
-  int property_tag{};
-  int custom_properties_ref{LUA_NOREF};
+  int fPropertyTag{};
+  int fCustomPropertiesRef{LUA_NOREF};
 
   jbox_property_set(lua_State *iLuaState);
   ~jbox_property_set();
@@ -77,8 +91,8 @@ private:
 };
 
 struct jbox_socket {
-  int property_tag{};
-  jbox_sockets::Type type{jbox_sockets::Type::UNKNOWN};
+  int fPropertyTag{};
+  jbox_sockets::Type fType{jbox_sockets::Type::UNKNOWN};
 };
 
 using jbox_object = std::variant<
