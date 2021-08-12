@@ -161,6 +161,7 @@ void JBox_TraceValues(
 {
   std::vector<std::string> values{};
   auto const &motherboard = re::mock::Rack::currentMotherboard();
+  values.reserve(iValueCount);
   for(int i = 0; i < iValueCount; i++)
     values.emplace_back(motherboard.toString(iValues[i]));
   char buf[1024];
