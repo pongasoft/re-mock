@@ -74,6 +74,12 @@ public: // used by regular code
     setValue(iPropertyPath, JBox_MakeNumber(iValue));
   }
 
+  std::string getRTString(std::string const &iPropertyPath) const;
+  void setRTString(std::string const &iPropertyPath, std::string const &iValue);
+
+  std::string getString(std::string const &iPropertyPath) const;
+  void setString(std::string const &iPropertyPath, std::string iValue);
+
   inline TJBox_Float64 getCVSocketValue(std::string const &iSocketPath) const {
     return getNum(fmt::printf("%s/value", iSocketPath.c_str()));
   }
@@ -119,6 +125,9 @@ public: // used by Jukebox.cpp (need to be public)
   TJBox_Value makeNativeObjectRO(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
   const void *getNativeObjectRO(TJBox_Value const &iValue) const;
   void *getNativeObjectRW(TJBox_Value const &iValue) const;
+  void setRTStringData(TJBox_PropertyRef const &iProperty, TJBox_SizeT iSize, const TJBox_UInt8 iData[]);
+  TJBox_UInt32 getStringLength(TJBox_Value const &iValue) const;
+  void getSubstring(TJBox_Value iValue, TJBox_SizeT iStart, TJBox_SizeT iEnd, char oString[]) const;
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
@@ -139,6 +148,7 @@ protected:
   impl::JboxObject *addObject(std::string const &iObjectPath);
   inline impl::JboxObject *getObject(std::string const &iObjectPath) const { return getObject(getObjectRef(iObjectPath)); }
   impl::JboxObject *getObject(TJBox_ObjectRef iObjectRef) const;
+  impl::JboxProperty *getProperty(std::string const &iPropertyPath) const;
 
   void addAudioInput(std::string const &iSocketName);
   void addAudioOutput(std::string const &iSocketName);
@@ -148,6 +158,8 @@ protected:
   void registerRTCNotify(std::string const &iPropertyPath);
   TJBox_PropertyDiff registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingName);
   void handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iPropertyDiff);
+  TJBox_Value makeRTString(int iMaxSize);
+  TJBox_Value makeString(std::string iValue);
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
   std::string getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const;
@@ -191,6 +203,8 @@ protected:
   std::unique_ptr<lua::RealtimeController> fRealtimeController{};
   Realtime fRealtime{};
   ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};
+  ObjectManager<std::string> fStrings{};
+  ObjectManager<std::unique_ptr<impl::RTString>> fRTStrings{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
 };

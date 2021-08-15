@@ -44,6 +44,11 @@ static int lua_number(lua_State *L)
   return MotherboardDef::loadFromRegistry(L)->luaNumber();
 }
 
+static int lua_string(lua_State *L)
+{
+  return MotherboardDef::loadFromRegistry(L)->luaString();
+}
+
 static int lua_audio_input(lua_State *L)
 {
   return MotherboardDef::loadFromRegistry(L)->luaSocket(jbox_sockets::Type::AUDIO_INPUT);
@@ -98,7 +103,7 @@ MotherboardDef::MotherboardDef()
     {"native_object",                      lua_native_object},
     {"boolean",                            lua_boolean},
     {"number" ,                            lua_number},
-    {"string",                             lua_ignored},
+    {"string",                             lua_string},
     {"audio_input",                        lua_audio_input},
     {"audio_output",                       lua_audio_output},
     {"cv_input",                           lua_cv_input},
@@ -257,6 +262,19 @@ int MotherboardDef::luaNumber()
 }
 
 //------------------------------------------------------------------------
+// MotherboardDef::luaString
+//------------------------------------------------------------------------
+int MotherboardDef::luaString()
+{
+  auto p = std::make_shared<jbox_string_property>();
+  populatePropertyTag(p);
+  p->fDefaultValue = L.getTableValueAsString("default", 1);
+  p->fMaxSize = L.getTableValueAsNumber("max_size", 1);
+  return addObjectOnTopOfStack(std::move(p));
+}
+
+
+//------------------------------------------------------------------------
 // MotherboardDef::luaSocket
 //------------------------------------------------------------------------
 int MotherboardDef::luaSocket(jbox_sockets::Type iSocketType)
@@ -306,6 +324,7 @@ std::optional<jbox_property> toJBoxProperty(std::optional<impl::jbox_object> iOb
     std::optional<jbox_property> operator()(std::shared_ptr<jbox_native_object> o) { return o; }
     std::optional<jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) { return o; }
     std::optional<jbox_property> operator()(std::shared_ptr<jbox_number_property> o) { return o; }
+    std::optional<jbox_property> operator()(std::shared_ptr<jbox_string_property> o) { return o; }
     std::optional<jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
     std::optional<jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
   };

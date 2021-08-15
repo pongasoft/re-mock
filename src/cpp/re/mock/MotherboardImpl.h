@@ -117,6 +117,12 @@ struct NativeObject
   }
 };
 
+struct RTString
+{
+  int fMaxSize{};
+  std::string fValue{};
+};
+
 }
 }
 

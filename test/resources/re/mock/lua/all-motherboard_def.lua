@@ -3,10 +3,12 @@ format_version = "2.0"
 local documentOwnerProperties = {
   doc_boolean = jbox.boolean { property_tag = 100, default = true },
   doc_number = jbox.number { property_tag = 101, default = 3 },
+  doc_string = jbox.string { property_tag = 103, default = "abcd" }
 }
 
 local rtOwnerProperties = {
   rt_number = jbox.number { property_tag = 102 },
+  rt_string = jbox.string { max_size = 100 }
 }
 
 -- ignored

@@ -58,6 +58,8 @@ global_rtc = {
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.property_tag(100).default_value(0.7)))
     .mdef(Config::document_owner_property("prop_bool_default", lua::jbox_boolean_property{}))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}.default_value(true)))
+    .mdef(Config::document_owner_property("prop_string_default", lua::jbox_string_property{}))
+    .mdef(Config::document_owner_property("prop_string", lua::jbox_string_property{}.default_value("abcd")))
     .mdef(Config::document_owner_property("prop_volume_ro", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_volume_rw", lua::jbox_number_property{}.default_value(0.9)))
 
@@ -66,6 +68,9 @@ global_rtc = {
                                      lua::jbox_native_object{}.default_value("Gain", { 0.7 })))
     .mdef(Config::rtc_owner_property("prop_gain_ro", lua::jbox_native_object{ }))
     .mdef(Config::rtc_owner_property("prop_gain_rw", lua::jbox_native_object{ }))
+
+    .mdef(Config::rt_owner_property("prop_rt_string", lua::jbox_string_property{}.max_size(100)))
+
     .rtc_string(rtc)
     .rt([](Realtime &rt) {
       rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount) -> void * {
@@ -99,6 +104,29 @@ global_rtc = {
 
     ASSERT_FALSE(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_bool_default"))));
     ASSERT_TRUE(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_bool"))));
+
+    {
+      auto sValue = JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_string_default"));
+      ASSERT_EQ(0, JBox_GetStringLength(sValue));
+      std::array<char, 1> a{'K'};
+      JBox_GetSubstring(sValue, 0, 0, a.data());
+      ASSERT_EQ(0, a[0]);
+    }
+
+    {
+      auto sValue = JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_string"));
+      ASSERT_EQ(4, JBox_GetStringLength(sValue));
+      std::array<char, 5> a{'K', 'K', 'K', 'K', 'K'};
+      JBox_GetSubstring(sValue, 0, 0, a.data());
+      ASSERT_EQ(0, a[0]);
+      JBox_GetSubstring(sValue, 1, 2, a.data());
+      ASSERT_EQ('b', a[0]);
+      ASSERT_EQ('c', a[1]);
+      ASSERT_EQ('\0', a[2]);
+    }
+
+    auto s = std::array<TJBox_UInt8, 4>{'a', 'b', 0, 'c'};
+    JBox_SetRTStringData(JBox_MakePropertyRef(customProperties, "prop_rt_string"), s.size(), s.data());
 
     ASSERT_TRUE(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_default"))) == nullptr);
     ASSERT_TRUE(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_default"))) == nullptr);
@@ -141,7 +169,20 @@ global_rtc = {
 
     ASSERT_THROW(JBox_GetPropertyTag(JBox_MakePropertyRef(customProperties, "invalid")), Exception);
     ASSERT_THROW(JBox_FindPropertyByTag(customProperties, 200), Exception);
+
+    auto tooBig = std::array<TJBox_UInt8, 101>{};
+    ASSERT_THROW(JBox_SetRTStringData(JBox_MakePropertyRef(customProperties, "prop_rt_string"), tooBig.size(), tooBig.data()), Exception);
   });
+
+  std::string expected = "ab";
+  expected.push_back('\0');
+  expected.push_back('c');
+  ASSERT_EQ(expected, re.getRTString("/custom_properties/prop_rt_string"));
+
+  ASSERT_THROW(rack.newExtension(
+    Config::fromSkeleton()
+      .mdef(Config::rt_owner_property("prop_rt_string", lua::jbox_string_property{}.max_size(2049)))),
+               Exception);
 }
 
 constexpr size_t DSP_BUFFER_SIZE = 64;

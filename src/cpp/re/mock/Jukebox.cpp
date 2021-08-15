@@ -171,7 +171,7 @@ void JBox_TraceValues(
 
 TJBox_UInt32 JBox_GetStringLength(TJBox_Value iValue)
 {
-  throw re::mock::Exception("JBox_GetStringLength: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getStringLength(iValue);
 }
 
 void JBox_GetSubstring(
@@ -180,7 +180,7 @@ void JBox_GetSubstring(
   TJBox_SizeT iEnd,
   char oString[])
 {
-  throw re::mock::Exception("JBox_GetSubstring: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getSubstring(iValue, iStart, iEnd, oString);
 }
 
 
@@ -229,7 +229,7 @@ void JBox_GetBLOBData(
 
 void JBox_SetRTStringData(TJBox_PropertyRef iProperty, TJBox_SizeT iSize, const TJBox_UInt8 iData[])
 {
-  throw re::mock::Exception("JBox_SetRTStringData: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().setRTStringData(iProperty, iSize, iData);
 }
 
 void JBox_OutputNoteEvent(TJBox_NoteEvent iNoteEvent)

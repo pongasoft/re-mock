@@ -74,11 +74,14 @@ struct Config
 
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty);
   static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
 
   static ConfigString audio_out(std::string const &iSocketName);
   static ConfigString stereo_audio_out(char const *iLeftSocketName = LEFT_SOCKET, char const *iRightSocketName = RIGHT_SOCKET);

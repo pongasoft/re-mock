@@ -147,9 +147,12 @@ bool LuaState::getTableValueAsBoolean(char const *iKey, int idx)
 //------------------------------------------------------------------------
 std::string LuaState::getTableValueAsString(char const *iKey, int idx)
 {
+  std::string res{};
   luaL_checktype(L, idx, LUA_TTABLE);
   lua_getfield(L, idx, iKey);
-  auto res = std::string(lua_tostring(L, -1));
+  auto s = lua_tostring(L, -1);
+  if(s != nullptr)
+    res = std::string(s);
   lua_pop(L, 1);
   return res;
 }

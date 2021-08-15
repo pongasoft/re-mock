@@ -86,7 +86,7 @@ TEST(MotherboardDef, All)
   auto customProperties = def->getCustomProperties();
 
   // document_owner
-  ASSERT_EQ(2, customProperties->document_owner.size());
+  ASSERT_EQ(3, customProperties->document_owner.size());
   {
     auto ptr = std::get<std::shared_ptr<jbox_boolean_property>>(customProperties->document_owner["doc_boolean"]);
     ASSERT_EQ(ptr->fPropertyTag, 100);
@@ -96,6 +96,11 @@ TEST(MotherboardDef, All)
     auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->document_owner["doc_number"]);
     ASSERT_EQ(ptr->fPropertyTag, 101);
     ASSERT_FLOAT_EQ(ptr->fDefaultValue, 3);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_string_property>>(customProperties->document_owner["doc_string"]);
+    ASSERT_EQ(ptr->fPropertyTag, 103);
+    ASSERT_EQ(ptr->fDefaultValue, "abcd");
   }
 
   // rtc_owner
@@ -115,11 +120,18 @@ TEST(MotherboardDef, All)
   }
 
   // rt_owner
-  ASSERT_EQ(1, customProperties->rt_owner.size());
+  ASSERT_EQ(2, customProperties->rt_owner.size());
   {
     auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->rt_owner["rt_number"]);
     ASSERT_EQ(ptr->fPropertyTag, 102);
     ASSERT_EQ(ptr->fDefaultValue, 0);
+  }
+
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_string_property>>(customProperties->rt_owner["rt_string"]);
+    ASSERT_EQ(ptr->fPropertyTag, 0);
+    ASSERT_EQ(ptr->fMaxSize, 100);
+    ASSERT_EQ(ptr->fDefaultValue, "");
   }
 
   ASSERT_EQ(def->getStackString(), "<empty>");

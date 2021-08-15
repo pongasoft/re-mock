@@ -285,8 +285,6 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 {
   struct DefaultValueVisitor
   {
-    explicit DefaultValueVisitor(Motherboard *motherboard) : fMotherboard(motherboard) {}
-
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return JBox_MakeBoolean(o->fDefaultValue); }
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return JBox_MakeNumber(o->fDefaultValue); }
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_native_object>& o) const {
@@ -308,11 +306,24 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
       else
         return JBox_MakeNil();
     }
+    TJBox_Value operator()(const std::shared_ptr<lua::jbox_string_property>& o) const {
+      switch(fOwner)
+      {
+        case PropertyOwner::kRTOwner:
+          RE_MOCK_ASSERT(o->fPropertyTag == 0, "[RTString] property_tag not available");
+          return fMotherboard->makeRTString(o->fMaxSize);
+
+        default:
+          RE_MOCK_ASSERT(o->fMaxSize == 0, "[String] max_size not available");
+          return fMotherboard->makeString(o->fDefaultValue);
+      }
+    }
     Motherboard *fMotherboard;
+    PropertyOwner fOwner;
   };
 
   auto propertyTag = std::visit([](auto &p) { return p->fPropertyTag; }, iProperty);
-  auto defaultValue = std::visit(DefaultValueVisitor{this}, iProperty);
+  auto defaultValue = std::visit(DefaultValueVisitor{this, iOwner}, iProperty);
 
   fJboxObjects.get(iParentObject)->addProperty(iPropertyName,
                                                iOwner,
@@ -394,6 +405,16 @@ impl::JboxObject *Motherboard::getObject(TJBox_ObjectRef iObjectRef) const
 }
 
 //------------------------------------------------------------------------
+// Motherboard::getProperty
+//------------------------------------------------------------------------
+impl::JboxProperty *Motherboard::getProperty(std::string const &iPropertyPath) const
+{
+  auto ref = getPropertyRef(iPropertyPath);
+  return getObject(ref.fObject)->getProperty(ref.fKey);
+}
+
+
+//------------------------------------------------------------------------
 // Motherboard::addObject
 //------------------------------------------------------------------------
 impl::JboxObject *Motherboard::addObject(std::string const &iObjectPath)
@@ -432,6 +453,14 @@ inline int jbox_get_dsp_id(TJBox_Value const &iJboxValue)
 inline int jbox_get_native_object_id(TJBox_Value const &iJboxValue)
 {
   return impl::jbox_get_value<int>(kJBox_NativeObject, iJboxValue);
+}
+
+//------------------------------------------------------------------------
+// jbox_get_string_id
+//------------------------------------------------------------------------
+inline int jbox_get_string_id(TJBox_Value const &iJboxValue)
+{
+  return impl::jbox_get_value<int>(kJBox_String, iJboxValue);
 }
 
 //------------------------------------------------------------------------
@@ -556,6 +585,26 @@ TJBox_Value Motherboard::makeNativeObject(std::string const &iOperation,
   return JBox_MakeNil();
 }
 
+//------------------------------------------------------------------------
+// Motherboard::makeString
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::makeString(std::string iValue)
+{
+  return impl::jbox_make_value<int>(kJBox_String, fStrings.add(std::move(iValue)));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::makeRTString
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::makeRTString(int iMaxSize)
+{
+  RE_MOCK_ASSERT(iMaxSize > 0 && iMaxSize <= 2048, "RTString invalid max_size [%d]", iMaxSize);
+  auto rtString = std::unique_ptr<impl::RTString>(new impl::RTString{
+    /* .fMaxSize */ iMaxSize,
+    /* .fValue */ {}
+  });
+  return impl::jbox_make_value<int>(kJBox_String, fRTStrings.add(std::move(rtString)));
+}
 
 //------------------------------------------------------------------------
 // Motherboard::makeNativeObjectRO
@@ -597,6 +646,21 @@ void *Motherboard::getNativeObjectRW(TJBox_Value const &iValue) const
     RE_MOCK_ASSERT(no->fAccessMode == impl::NativeObject::kReadWrite, "Trying to access RO native object in RW mode");
     return no->fNativeObject;
   }
+}
+
+//------------------------------------------------------------------------
+// Motherboard::setRTStringData
+//------------------------------------------------------------------------
+void Motherboard::setRTStringData(TJBox_PropertyRef const &iProperty,
+                                  TJBox_SizeT iSize,
+                                  TJBox_UInt8 const *iData)
+{
+  auto property = getObject(iProperty.fObject)->getProperty(iProperty.fKey);
+  RE_MOCK_ASSERT(property->fOwner == PropertyOwner::kRTOwner);
+  auto &rtString = fRTStrings.get(jbox_get_string_id(property->loadValue()));
+  RE_MOCK_ASSERT(iSize >= 0 && iSize <= rtString->fMaxSize);
+  rtString->fValue.clear();
+  std::copy(iData, iData + iSize, std::back_inserter(rtString->fValue));
 }
 
 //------------------------------------------------------------------------
@@ -701,6 +765,77 @@ TJBox_Value Motherboard::clone(TJBox_Value const &iValue)
   TJBox_Value v{};
   copy(iValue, v);
   return v;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getRTString
+//------------------------------------------------------------------------
+std::string Motherboard::getRTString(std::string const &iPropertyPath) const
+{
+  auto property = getProperty(iPropertyPath);
+  RE_MOCK_ASSERT(property->fOwner == PropertyOwner::kRTOwner);
+  return fRTStrings.get(jbox_get_string_id(property->loadValue()))->fValue;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::setRTString
+//------------------------------------------------------------------------
+void Motherboard::setRTString(std::string const &iPropertyPath, std::string const &iValue)
+{
+  auto property = getProperty(iPropertyPath);
+  RE_MOCK_ASSERT(property->fOwner == PropertyOwner::kRTOwner);
+  std::vector<TJBox_UInt8> buf{};
+  buf.reserve(iValue.size());
+  std::copy(iValue.begin(), iValue.end(), std::back_inserter(buf));
+  setRTStringData(property->fPropertyRef, buf.size(), buf.data());
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getString
+//------------------------------------------------------------------------
+std::string Motherboard::getString(std::string const &iPropertyPath) const
+{
+  auto property = getProperty(iPropertyPath);
+  RE_MOCK_ASSERT(property->fOwner != PropertyOwner::kRTOwner);
+  return fStrings.get(jbox_get_string_id(property->loadValue()));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::setString
+//------------------------------------------------------------------------
+void Motherboard::setString(std::string const &iPropertyPath, std::string iValue)
+{
+  auto property = getProperty(iPropertyPath);
+  RE_MOCK_ASSERT(property->fOwner != PropertyOwner::kRTOwner);
+  auto id = jbox_get_string_id(loadProperty(property->fPropertyRef));
+  fStrings.replace(id, std::move(iValue));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getStringLength
+//------------------------------------------------------------------------
+TJBox_UInt32 Motherboard::getStringLength(TJBox_Value const &iValue) const
+{
+  return fStrings.get(jbox_get_string_id(iValue)).size();
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getSubstring
+//------------------------------------------------------------------------
+void Motherboard::getSubstring(TJBox_Value iValue, TJBox_SizeT iStart, TJBox_SizeT iEnd, char *oString) const
+{
+  RE_MOCK_ASSERT(iStart <= iEnd);
+  if(iStart == iEnd)
+  {
+    oString[0] = '\0';
+    return;
+  }
+
+  auto const &s = fStrings.get(jbox_get_string_id(iValue));
+  RE_MOCK_ASSERT(iStart >= 0 && iStart < s.size());
+  RE_MOCK_ASSERT(iEnd >= 0 && iEnd < s.size());
+  std::copy(s.begin() + iStart, s.begin() + iEnd + 1, oString);
+  oString[iEnd - iStart + 1] = '\0';
 }
 
 //------------------------------------------------------------------------

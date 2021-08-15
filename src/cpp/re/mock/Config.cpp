@@ -159,6 +159,18 @@ inline ConfigString custom_property(std::string const &iPropertyType,
                        iPropertyType, iPropertyName, iProperty.fDefaultValue, property_tag(iProperty.fPropertyTag)) };
 }
 
+inline ConfigString custom_property(std::string const &iPropertyType,
+                                    std::string const &iPropertyName,
+                                    lua::jbox_string_property const &iProperty)
+{
+  if(iProperty.fMaxSize > 0)
+    return { fmt::printf(R"(%s["%s"] = jbox.string{ max_size = %d })",
+                         iPropertyType, iPropertyName, iProperty.fMaxSize) };
+  else
+    return { fmt::printf(R"(%s["%s"] = jbox.string{ default = "%s"%s })",
+                         iPropertyType, iPropertyName, iProperty.fDefaultValue, property_tag(iProperty.fPropertyTag)) };
+}
+
 }
 
 //------------------------------------------------------------------------
@@ -173,6 +185,14 @@ ConfigString Config::document_owner_property(std::string const &iPropertyName, l
 // Config::document_owner_property
 //------------------------------------------------------------------------
 ConfigString Config::document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+{
+  return impl::custom_property("document_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::document_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::document_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
 {
   return impl::custom_property("document_owner_properties", iPropertyName, iProperty);
 }
@@ -194,6 +214,14 @@ ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jb
 }
 
 //------------------------------------------------------------------------
+// Config::rt_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
+{
+  return impl::custom_property("rt_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
 ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
@@ -205,6 +233,14 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
 ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+{
+  return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::rtc_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
 {
   return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
 }

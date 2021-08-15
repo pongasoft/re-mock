@@ -69,6 +69,15 @@ struct jbox_number_property {
   jbox_number_property &default_value(TJBox_Float64 iValue) { fDefaultValue = iValue; return *this;}
 };
 
+struct jbox_string_property {
+  int fPropertyTag{};
+  std::string fDefaultValue{};
+  int fMaxSize{};
+  jbox_string_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
+  jbox_string_property &default_value(std::string iValue) { fDefaultValue = std::move(iValue); return *this; }
+  jbox_string_property &max_size(int iMaxSize) { fMaxSize = iMaxSize; return *this; }
+};
+
 struct jbox_sockets {
   enum Type { UNKNOWN, AUDIO_INPUT, AUDIO_OUTPUT, CV_INPUT, CV_OUTPUT };
 
@@ -100,6 +109,7 @@ using jbox_object = std::variant<
   std::shared_ptr<jbox_native_object>,
   std::shared_ptr<jbox_boolean_property>,
   std::shared_ptr<jbox_number_property>,
+  std::shared_ptr<jbox_string_property>,
   std::shared_ptr<impl::jbox_property_set>,
   std::shared_ptr<impl::jbox_socket>
   >;
@@ -108,7 +118,8 @@ using jbox_object = std::variant<
 using jbox_property = std::variant<
   std::shared_ptr<jbox_native_object>,
   std::shared_ptr<jbox_boolean_property>,
-  std::shared_ptr<jbox_number_property>
+  std::shared_ptr<jbox_number_property>,
+  std::shared_ptr<jbox_string_property>
   >;
 
 struct JboxPropertySet {
@@ -126,6 +137,7 @@ public:
   int luaNativeObject();
   int luaBoolean();
   int luaNumber();
+  int luaString();
   int luaSocket(jbox_sockets::Type iSocketType);
   int luaPropertySet();
 

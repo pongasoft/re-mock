@@ -56,12 +56,20 @@ TEST(RackExtension, Motherboard)
       fFloat = static_cast<float>(JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float"))));
       fInt = static_cast<int>(JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_int"))));
       fBool = JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_bool")));
+
+      std::array<char, 10> ar{};
+      JBox_GetSubstring(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_string")), 0, 3, ar.data());
+      fString = std::string(ar.data());
+
+      std::array<TJBox_UInt8 , 3> ar2{'e', 'f', 'g'};
+      JBox_SetRTStringData(JBox_MakePropertyRef(customProperties, "prop_rt_string"), ar2.size(), ar2.data());
     }
 
     TJBox_Float64 fNumber{};
     float fFloat{};
     int fInt{};
     bool fBool{};
+    std::string fString{};
   };
 
   auto c = DeviceConfig<Device>::fromSkeleton()
@@ -73,11 +81,14 @@ TEST(RackExtension, Motherboard)
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_int", lua::jbox_number_property{}.default_value(4)))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}.default_value(true)))
+    .mdef(Config::document_owner_property("prop_string", lua::jbox_string_property{}.default_value("abcd")))
     .mdef(Config::document_owner_property("volume_ro", lua::jbox_number_property{}.default_value(0.7)))
     .mdef(Config::document_owner_property("volume_rw", lua::jbox_number_property{}.default_value(0.75)))
 
     .mdef(Config::rtc_owner_property("gain_ro", lua::jbox_native_object{ }))
     .mdef(Config::rtc_owner_property("gain_rw", lua::jbox_native_object{ }))
+
+    .mdef(Config::rt_owner_property("prop_rt_string", lua::jbox_string_property{}.max_size(100)))
 
     .rtc(Config::rtc_binding("/custom_properties/volume_ro", "/global_rtc/new_gain_ro"))
     .rtc(Config::rtc_binding("/custom_properties/volume_rw", "/global_rtc/new_gain_rw"))
@@ -146,12 +157,15 @@ end
   ASSERT_TRUE(re->fBool);
   ASSERT_EQ(re->fBuffer, MockAudioDevice::buffer(4.0, 6.0));
   ASSERT_FLOAT_EQ(12.0, re->fValue);
+  ASSERT_EQ("abcd", re->fString);
 
   // check the motherboard apis - get
   ASSERT_FLOAT_EQ(0.1, JBox_GetNumber(re.getValue("/custom_properties/prop_number")));
   ASSERT_FLOAT_EQ(0.8, re.getNum<float>("/custom_properties/prop_float"));
   ASSERT_EQ(4, re.getNum<int>("/custom_properties/prop_int"));
   ASSERT_TRUE(re.getBool("/custom_properties/prop_bool"));
+  ASSERT_EQ("abcd", re.getString("/custom_properties/prop_string"));
+  ASSERT_EQ("efg", re.getRTString("/custom_properties/prop_rt_string"));
   {
     auto buffer = MockAudioDevice::StereoBuffer{
       /* .fLeft = */  re.getDSPBuffer("/audio_inputs/L"),
@@ -186,6 +200,13 @@ end
   ASSERT_EQ(104, re.getNum<int>("/custom_properties/prop_int"));
   re.setBool("/custom_properties/prop_bool", false);
   ASSERT_FALSE(re.getBool("/custom_properties/prop_bool"));
+  re.setString("/custom_properties/prop_string", "jkl");
+  ASSERT_EQ("jkl", re.getString("/custom_properties/prop_string"));
+  re.setRTString("/custom_properties/prop_rt_string", "mno");
+  ASSERT_EQ("mno", re.getRTString("/custom_properties/prop_rt_string"));
+
+  ASSERT_THROW(re.getRTString("/custom_properties/prop_string"), Exception);
+  ASSERT_THROW(re.getString("/custom_properties/prop_rt_string"), Exception);
 
   {
     auto buffer = MockAudioDevice::buffer(101.0, 102.0);
