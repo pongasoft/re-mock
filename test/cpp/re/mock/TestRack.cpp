@@ -444,8 +444,7 @@ TEST(Rack, Diff)
     .rtc_string(R"(
 rt_input_setup = {
   notify = {
-    "/cv_inputs/cv/connected",
-    "/cv_inputs/cv/value",
+    "/cv_inputs/cv/*",
 
     "/audio_inputs/input/connected",
 

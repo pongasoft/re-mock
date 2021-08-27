@@ -336,12 +336,25 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 //------------------------------------------------------------------------
 void Motherboard::registerRTCNotify(std::string const &iPropertyPath)
 {
-  if(iPropertyPath.find_last_of('*') != std::string::npos)
-    throw Exception(fmt::printf("wildcard properties not implemented yet: [%s]", iPropertyPath));
+  auto wildcardProperty = iPropertyPath.rfind("/*");
 
-  auto ref = getPropertyRef(iPropertyPath);
-  fCurrentFramePropertyDiffs.emplace_back(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
-  fRTCNotify.emplace(ref);
+  if(wildcardProperty != std::string::npos)
+  {
+    // handle listening to ALL properties for an object
+    auto objectRef = getObject(iPropertyPath.substr(0, wildcardProperty));
+    auto diffs = objectRef->watchAllPropertiesForChange();
+    for(auto &diff: diffs)
+    {
+      fCurrentFramePropertyDiffs.emplace_back(diff);
+      fRTCNotify.emplace(diff.fPropertyRef);
+    }
+  }
+  else
+  {
+    auto ref = getPropertyRef(iPropertyPath);
+    fCurrentFramePropertyDiffs.emplace_back(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
+    fRTCNotify.emplace(ref);
+  }
 }
 
 //------------------------------------------------------------------------
@@ -922,6 +935,19 @@ TJBox_PropertyDiff impl::JboxObject::watchPropertyForChange(std::string const &i
 {
   RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
   return fProperties[iPropertyName]->watchForChange();
+}
+
+//------------------------------------------------------------------------
+// JboxObject::watchAllPropertiesForChange
+//------------------------------------------------------------------------
+std::vector<TJBox_PropertyDiff> impl::JboxObject::watchAllPropertiesForChange()
+{
+  std::vector<TJBox_PropertyDiff> res{};
+
+  for(auto &[k, property] : fProperties)
+    res.emplace_back(property->watchForChange());
+
+  return res;
 }
 
 //------------------------------------------------------------------------

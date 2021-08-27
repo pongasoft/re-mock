@@ -85,6 +85,7 @@ struct JboxObject
   TJBox_Value loadValue(TJBox_Tag iPropertyTag) const;
   std::optional<TJBox_PropertyDiff> storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
   std::optional<TJBox_PropertyDiff> storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue);
+  std::vector<TJBox_PropertyDiff> watchAllPropertiesForChange();
   TJBox_PropertyDiff watchPropertyForChange(std::string const &iPropertyName);
 
   const std::string fObjectPath;
