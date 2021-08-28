@@ -128,6 +128,12 @@ global_rtc = {
     auto s = std::array<TJBox_UInt8, 4>{'a', 'b', 0, 'c'};
     JBox_SetRTStringData(JBox_MakePropertyRef(customProperties, "prop_rt_string"), s.size(), s.data());
 
+    {
+      auto noteStatesRef = JBox_GetMotherboardObjectRef("/note_states");
+      auto noteValue = JBox_LoadMOMProperty(JBox_MakePropertyRef(noteStatesRef, "69"));
+      ASSERT_FLOAT_EQ(0, JBox_GetNumber(noteValue));
+    }
+
     ASSERT_TRUE(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_default"))) == nullptr);
     ASSERT_TRUE(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_default"))) == nullptr);
 

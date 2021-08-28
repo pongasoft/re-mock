@@ -450,6 +450,8 @@ rt_input_setup = {
 
     "/custom_properties/prop_float",
     "/custom_properties/prop_bool",
+
+    "/note_states/69"
   }
 }
 )");
@@ -458,26 +460,37 @@ rt_input_setup = {
   auto re = rack.newDevice(c);
 
   rack.wire(src.getAudioOutSocket(MAUSrc::LEFT_SOCKET), re.getAudioInSocket("input"));
+  re.setNoteEvent(69, 100, 25);
 
   rack.nextFrame();
 
-  // there are 6 diffs because /audio_inputs/input/connected gets "initialized" with false
-  // then get updated with true when wiring happens => 2 updates
-  ASSERT_EQ(6, re->fDiffs.size());
+  // there are 8 diffs because
+  // 1. /audio_inputs/input/connected gets "initialized" with false then get updated with true when wiring happens => 2 updates
+  // 2. /note_states/69 gets "initialized" with 0 then get updated with 100 => 2 updates
+  ASSERT_EQ(8, re->fDiffs.size());
 
   std::map<std::string, std::string> diffMap{};
 
   for(auto &diff: re->fDiffs)
-    diffMap[re.toString(diff.fPropertyRef)] = re.toString(diff.fCurrentValue);
+    diffMap[re.toString(diff.fPropertyRef)] = re.toString(diff.fCurrentValue) + "|" + std::to_string(diff.fAtFrameIndex);
 
   std::map<std::string, std::string> expected{};
-  expected["/audio_inputs/input/connected"] = "true";
-  expected["/custom_properties/prop_bool"] = "false";
-  expected["/custom_properties/prop_float"] = "0.800000";
-  expected["/cv_inputs/cv/connected"] = "false";
-  expected["/cv_inputs/cv/value"] = "0.000000";
+  expected["/audio_inputs/input/connected"] = "true|0";
+  expected["/custom_properties/prop_bool"] = "false|0";
+  expected["/custom_properties/prop_float"] = "0.800000|0";
+  expected["/cv_inputs/cv/connected"] = "false|0";
+  expected["/cv_inputs/cv/value"] = "0.000000|0";
+  expected["/note_states/69"] = "100.000000|25";
 
   ASSERT_EQ(expected, diffMap);
+
+  auto noteStateDiff = re->fDiffs[re->fDiffs.size() - 1];
+  re.use([&noteStateDiff] {
+    auto noteEvent = JBox_AsNoteEvent(noteStateDiff);
+    ASSERT_EQ(69, noteEvent.fNoteNumber);
+    ASSERT_EQ(100, noteEvent.fVelocity);
+    ASSERT_EQ(25, noteEvent.fAtFrameIndex);
+  });
 }
 
 // Rack.InstanceID

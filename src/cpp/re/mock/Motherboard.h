@@ -44,6 +44,8 @@ class Motherboard
 {
 public:
   constexpr static size_t DSP_BUFFER_SIZE = 64;
+  constexpr static int FIRST_MIDI_NOTE = 0;
+  constexpr static int LAST_MIDI_NOTE = 127;
   using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
 
 public: // used by regular code
@@ -87,6 +89,8 @@ public: // used by regular code
     setNum(fmt::printf("%s/value", iSocketPath.c_str()), iValue);
   }
 
+  void setNoteEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0);
+
   void setDSPBuffer(std::string const &iAudioSocketPath, DSPBuffer iBuffer);
   DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const;
 
@@ -116,8 +120,8 @@ public: // used by Jukebox.cpp (need to be public)
   TJBox_PropertyRef getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
   TJBox_Value loadProperty(TJBox_PropertyRef const &iProperty) const;
   TJBox_Value loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
-  void storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue);
-  void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue);
+  void storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
+  void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
   void getDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, TJBox_AudioSample oAudio[]) const;
   void setDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, const TJBox_AudioSample iAudio[]);
   TJBox_DSPBufferInfo getDSPBufferInfo(TJBox_Value const &iValue) const;
@@ -128,6 +132,7 @@ public: // used by Jukebox.cpp (need to be public)
   void setRTStringData(TJBox_PropertyRef const &iProperty, TJBox_SizeT iSize, const TJBox_UInt8 iData[]);
   TJBox_UInt32 getStringLength(TJBox_Value const &iValue) const;
   void getSubstring(TJBox_Value iValue, TJBox_SizeT iStart, TJBox_SizeT iEnd, char oString[]) const;
+  TJBox_NoteEvent asNoteEvent(const TJBox_PropertyDiff &iPropertyDiff);
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
@@ -198,6 +203,7 @@ protected:
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
+  TJBox_ObjectRef fNoteStatesRef{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};
   std::unique_ptr<lua::RealtimeController> fRealtimeController{};

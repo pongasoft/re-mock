@@ -40,7 +40,15 @@ Motherboard::Motherboard()
   addObject("/global_rtc");
 
   // note_states
-  addObject("/note_states");
+  auto noteStates = addObject("/note_states");
+  fNoteStatesRef = noteStates->fObjectRef;
+  for(int i = FIRST_MIDI_NOTE; i <= LAST_MIDI_NOTE; i++)
+  {
+    noteStates->addProperty(std::to_string(i),
+                            PropertyOwner::kHostOwner,
+                            JBox_MakeNumber(0),
+                            static_cast<TJBox_Tag>(i));
+  }
 }
 
 //------------------------------------------------------------------------
@@ -116,17 +124,23 @@ TJBox_Value Motherboard::loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) c
 //------------------------------------------------------------------------
 // Motherboard::storeProperty
 //------------------------------------------------------------------------
-void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue)
+void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex)
 {
-  handlePropertyDiff(fJboxObjects.get(iProperty.fObject)->storeValue(iProperty.fKey, iValue));
+  auto diff = fJboxObjects.get(iProperty.fObject)->storeValue(iProperty.fKey, iValue);
+  if(diff)
+    diff.value().fAtFrameIndex = iAtFrameIndex;
+  handlePropertyDiff(diff);
 }
 
 //------------------------------------------------------------------------
 // Motherboard::storeProperty
 //------------------------------------------------------------------------
-void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue)
+void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex)
 {
-  handlePropertyDiff(getObject(iObject)->storeValue(iTag, iValue));
+  auto diff = getObject(iObject)->storeValue(iTag, iValue);
+  if(diff)
+    diff.value().fAtFrameIndex = iAtFrameIndex;
+  handlePropertyDiff(diff);
 }
 
 //------------------------------------------------------------------------
@@ -677,6 +691,15 @@ void Motherboard::setRTStringData(TJBox_PropertyRef const &iProperty,
 }
 
 //------------------------------------------------------------------------
+// Motherboard::setNoteEvent
+//------------------------------------------------------------------------
+void Motherboard::setNoteEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex)
+{
+  auto const &ref = getPropertyRef(fmt::printf("/note_states/%d", iNoteNumber));
+  storeProperty(ref, JBox_MakeNumber(iVelocity), iAtFrameIndex);
+}
+
+//------------------------------------------------------------------------
 // Motherboard::connectSocket
 //------------------------------------------------------------------------
 void Motherboard::connectSocket(TJBox_ObjectRef iSocket)
@@ -849,6 +872,21 @@ void Motherboard::getSubstring(TJBox_Value iValue, TJBox_SizeT iStart, TJBox_Siz
   RE_MOCK_ASSERT(iEnd >= 0 && iEnd < s.size());
   std::copy(s.begin() + iStart, s.begin() + iEnd + 1, oString);
   oString[iEnd - iStart + 1] = '\0';
+}
+
+//------------------------------------------------------------------------
+// Motherboard::asNoteEvent
+//------------------------------------------------------------------------
+TJBox_NoteEvent Motherboard::asNoteEvent(TJBox_PropertyDiff const &iPropertyDiff)
+{
+  RE_MOCK_ASSERT(iPropertyDiff.fPropertyRef.fObject == fNoteStatesRef);
+  RE_MOCK_ASSERT(iPropertyDiff.fPropertyTag >= FIRST_MIDI_NOTE && iPropertyDiff.fPropertyTag <= LAST_MIDI_NOTE);
+
+  return {
+    /* .fNoteNumber = */   static_cast<TJBox_UInt8>(iPropertyDiff.fPropertyTag),
+    /* .fVelocity = */     static_cast<TJBox_UInt8>(JBox_GetNumber(iPropertyDiff.fCurrentValue)),
+    /* .fAtFrameIndex = */ iPropertyDiff.fAtFrameIndex
+  };
 }
 
 //------------------------------------------------------------------------

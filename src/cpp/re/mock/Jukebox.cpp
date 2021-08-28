@@ -239,7 +239,7 @@ void JBox_OutputNoteEvent(TJBox_NoteEvent iNoteEvent)
 
 TJBox_NoteEvent JBox_AsNoteEvent(const TJBox_PropertyDiff &iPropertyDiff)
 {
-  throw re::mock::Exception("JBox_AsNoteEvent: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().asNoteEvent(iPropertyDiff);
 }
 
 TJBox_Int32 JBox_GetOptimalFFTAlignment()
