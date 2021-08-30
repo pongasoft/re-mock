@@ -94,21 +94,53 @@ void ExtensionInstrumentTester::setMainOut(std::string const &iLeftOutSocketName
 //------------------------------------------------------------------------
 // ExtensionInstrumentTester::nextFrame
 //------------------------------------------------------------------------
-MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextFrame()
+void ExtensionInstrumentTester::nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer)
+{
+  nextFrame({}, oOutputBuffer);
+}
+
+//------------------------------------------------------------------------
+// ExtensionInstrumentTester::nextFrame
+//------------------------------------------------------------------------
+MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents)
 {
   MockAudioDevice::StereoBuffer output{};
-  nextFrame(output);
+  nextFrame(iNoteEvents, output);
   return output;
 }
 
 //------------------------------------------------------------------------
 // ExtensionInstrumentTester::nextFrame
 //------------------------------------------------------------------------
-void ExtensionInstrumentTester::nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer)
+void ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents,
+                                          MockAudioDevice::StereoBuffer &oOutputBuffer)
 {
+  fDevice.setNoteInEvents(iNoteEvents.events());
   fRack.nextFrame();
   oOutputBuffer = fDst->fBuffer;
 }
 
+
+//------------------------------------------------------------------------
+// ExtensionNotePlayerTester::ExtensionNotePlayerTester
+//------------------------------------------------------------------------
+ExtensionNotePlayerTester::ExtensionNotePlayerTester(Config const &iDeviceConfig) :
+  DeviceTester(iDeviceConfig),
+  fSrc{fRack.newDevice<MNPSrc>(MNPSrc::CONFIG)},
+  fDst{fRack.newDevice<MNPDst>(MNPDst::CONFIG)}
+{
+  MockNotePlayer::wire(fRack, fSrc, fDevice);
+  MockNotePlayer::wire(fRack, fDevice, fDst);
+}
+
+//------------------------------------------------------------------------
+// ExtensionNotePlayerTester::nextFrame
+//------------------------------------------------------------------------
+MockDevice::NoteEvents ExtensionNotePlayerTester::nextFrame(MockDevice::NoteEvents iSourceEvents)
+{
+  fSrc->fNoteEvents = std::move(iSourceEvents);
+  fRack.nextFrame();
+  return fDst->fNoteEvents;
+}
 
 }

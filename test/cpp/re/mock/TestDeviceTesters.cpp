@@ -66,4 +66,28 @@ TEST(InstrumentTester, Usage)
   ASSERT_EQ(tester.nextFrame(), MockAudioDevice::buffer(3.0, 4.0));
 }
 
+// NotePlayerTester.Usage
+TEST(NotePlayerTester, Usage)
+{
+  NotePlayerTester<MNPPst> tester(MNPPst::CONFIG);
+
+  ASSERT_EQ(MockDevice::NoteEvents{}, tester.getNotePlayer()->fNoteEvents);
+
+  ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.nextFrame());
+  ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.getNotePlayer()->fNoteEvents);
+
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(69), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(69)));
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(69), tester.getNotePlayer()->fNoteEvents);
+
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(69, 25), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOff(69, 25)));
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(69, 25), tester.getNotePlayer()->fNoteEvents);
+
+  // simulating sequencer note
+  tester.getNotePlayer().use([](Motherboard &m) {
+    m.setNoteInEvent(70, 120, 3);
+  });
+
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(70, 120, 3), tester.nextFrame());
+}
+
 }

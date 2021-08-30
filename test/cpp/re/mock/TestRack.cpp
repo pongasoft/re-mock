@@ -441,26 +441,17 @@ TEST(Rack, Diff)
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}))
     .mdef(Config::document_owner_property("prop_untracked", lua::jbox_boolean_property{}))
-    .rtc_string(R"(
-rt_input_setup = {
-  notify = {
-    "/cv_inputs/cv/*",
-
-    "/audio_inputs/input/connected",
-
-    "/custom_properties/prop_float",
-    "/custom_properties/prop_bool",
-
-    "/note_states/69"
-  }
-}
-)");
+    .rtc(Config::rt_input_setup_notify("/cv_inputs/cv/*"))
+    .rtc(Config::rt_input_setup_notify("/audio_inputs/input/connected"))
+    .rtc(Config::rt_input_setup_notify("/custom_properties/prop_float"))
+    .rtc(Config::rt_input_setup_notify("/custom_properties/prop_bool"))
+    .rtc(Config::rt_input_setup_notify("/note_states/69"));
 
   auto src = rack.newDevice(MAUSrc::CONFIG);
   auto re = rack.newDevice(c);
 
   rack.wire(src.getAudioOutSocket(MAUSrc::LEFT_SOCKET), re.getAudioInSocket("input"));
-  re.setNoteEvent(69, 100, 25);
+  re.setNoteInEvent(69, 100, 25);
 
   rack.nextFrame();
 

@@ -64,6 +64,15 @@ public:
       static bool overlap(CVWire const &iWire1, CVWire const &iWire2);
     };
 
+    struct NoteSocket { int fExtensionId{}; };
+    struct NoteOutSocket : public NoteSocket{};
+    struct NoteInSocket : public NoteSocket{};
+
+    struct NoteWire{
+      NoteOutSocket fFromSocket{};
+      NoteInSocket fToSocket{};
+    };
+
   public:
     inline void use(std::function<void (Motherboard &)> iCallback) { fImpl->use(std::move(iCallback)); }
     inline void use(std::function<void ()> iCallback) {
@@ -76,6 +85,8 @@ public:
     StereoAudioInSocket getStereoAudioInSocket(std::string const &iLeftSocketName, std::string const &iRightSocketName) const;
     CVOutSocket getCVOutSocket(std::string const &iSocketName) const;
     CVInSocket getCVInSocket(std::string const &iSocketName) const;
+    NoteOutSocket getNoteOutSocket() const;
+    NoteInSocket getNoteInSocket() const;
 
     inline TJBox_Value getValue(std::string const &iPropertyPath) const { return motherboard().getValue(iPropertyPath); }
     inline void setValue(std::string const &iPropertyPath, TJBox_Value const &iValue) { motherboard().setValue(iPropertyPath, iValue); }
@@ -98,7 +109,9 @@ public:
     std::string getRTString(std::string const &iPropertyPath) const { return motherboard().getRTString(iPropertyPath); }
     void setRTString(std::string const &iPropertyPath, std::string const &iValue) { motherboard().setRTString(iPropertyPath, iValue); }
 
-    void setNoteEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0) { motherboard().setNoteEvent(iNoteNumber, iVelocity, iAtFrameIndex); }
+    void setNoteInEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0) { motherboard().setNoteInEvent(iNoteNumber, iVelocity, iAtFrameIndex); }
+    void setNoteInEvent(TJBox_NoteEvent const &iNoteEvent) { motherboard().setNoteInEvent(iNoteEvent); }
+    inline void setNoteInEvents(Motherboard::NoteEvents const &iNoteEvents) { motherboard().setNoteInEvents(iNoteEvents); }
 
     inline TJBox_Float64 getCVSocketValue(std::string const &iSocketPath) const { return motherboard().getCVSocketValue(iSocketPath); }
     inline void setCVSocketValue(std::string const &iSocketPath, TJBox_Float64 iValue) { motherboard().setCVSocketValue(iSocketPath, iValue); }
@@ -162,10 +175,13 @@ protected:
 
     void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
     void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
+    void wire(Extension::NoteOutSocket const &iOutSocket, Extension::NoteInSocket const &iInSocket);
     std::optional<Extension::AudioInSocket> unwire(Extension::AudioOutSocket const &iOutSocket);
     std::optional<Extension::AudioOutSocket> unwire(Extension::AudioInSocket const &iInSocket);
     std::optional<Extension::CVInSocket> unwire(Extension::CVOutSocket const &iOutSocket);
     std::optional<Extension::CVOutSocket> unwire(Extension::CVInSocket const &iInSocket);
+    std::optional<Extension::NoteInSocket> unwire(Extension::NoteOutSocket const &iOutSocket);
+    std::optional<Extension::NoteOutSocket> unwire(Extension::NoteInSocket const &iInSocket);
 
     std::set<int> const &getDependents() const;
 
@@ -177,6 +193,8 @@ protected:
     std::vector<Extension::AudioWire> fAudioInWires{};
     std::vector<Extension::CVWire> fCVOutWires{};
     std::vector<Extension::CVWire> fCVInWires{};
+    std::optional<Extension::NoteWire> fNoteOutWire{};
+    std::optional<Extension::NoteWire> fNoteInWire{};
     mutable std::optional<std::set<int>> fDependents{};
   };
 
@@ -194,6 +212,8 @@ public:
   void unwire(Extension::StereoAudioOutSocket const &iOutSocket);
   void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
   void unwire(Extension::CVOutSocket const &iOutSocket);
+  void wire(Extension::NoteOutSocket const &iOutSocket, Extension::NoteInSocket const &iInSocket);
+  void unwire(Extension::NoteOutSocket const &iOutSocket);
 
   void nextFrame();
 
@@ -205,6 +225,7 @@ public:
 protected:
   void copyAudioBuffers(Extension::AudioWire const &iWire);
   void copyCVValue(Extension::CVWire const &iWire);
+  void copyNoteEvents(Extension::NoteWire const &iWire);
   void nextFrame(ExtensionImpl &iExtension);
   void nextFrame(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensions);
 

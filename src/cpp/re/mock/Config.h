@@ -90,6 +90,8 @@ struct Config
   static ConfigString cv_out(char const *iSocketName = SOCKET);
   static ConfigString cv_in(char const *iSocketName = SOCKET);
   static ConfigString rtc_binding(std::string const &iSource, std::string const &iDest);
+  static ConfigString rt_input_setup_notify(std::string const &iPropertyName);
+  static ConfigString rt_input_setup_notify_all_notes();
 
   Config &debug(bool iDebug = true)
   {
@@ -158,6 +160,8 @@ struct Config
     }
     return *this;
   }
+
+  Config clone() const { return *this; }
 
   template<typename T>
   Config &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
@@ -242,6 +246,8 @@ struct DeviceConfig
     fConfig.template rt_jbox_export<T>(iDestroyNativeObject);
     return *this;
   }
+
+  DeviceConfig clone() const { return *this; }
 
   static DeviceConfig fromJBoxExport(std::string const &iMotherboardDefFile,
                                      std::string const &iRealtimeControllerFile,

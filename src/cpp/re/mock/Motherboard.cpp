@@ -21,6 +21,42 @@
 #include <Jukebox.h>
 #include <algorithm>
 
+//------------------------------------------------------------------------
+// TJBox_NoteEvent::operator==
+//------------------------------------------------------------------------
+bool operator==(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs)
+{
+  return lhs.fNoteNumber == rhs.fNoteNumber &&
+         lhs.fVelocity == rhs.fVelocity &&
+         lhs.fAtFrameIndex == rhs.fAtFrameIndex;
+}
+
+//------------------------------------------------------------------------
+// TJBox_NoteEvent::operator!=
+//------------------------------------------------------------------------
+bool operator!=(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs)
+{
+  return !(rhs == lhs);
+}
+
+//------------------------------------------------------------------------
+// TJBox_NoteEvent::operator<<
+//------------------------------------------------------------------------
+std::ostream &operator<<(std::ostream &os, TJBox_NoteEvent const &event)
+{
+  os << re::mock::fmt::printf("{.fNoteNumber=%d,.fVelocity=%d,.fAtFrameIndex=%d}",
+                              event.fNoteNumber, event.fVelocity, event.fAtFrameIndex);
+  return os;
+}
+
+//------------------------------------------------------------------------
+// TJBox_NoteEvent::compare
+//------------------------------------------------------------------------
+bool compare(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r)
+{
+  return std::tuple(l.fNoteNumber, l.fVelocity, l.fAtFrameIndex) < std::tuple(r.fNoteNumber, r.fVelocity, r.fAtFrameIndex);
+}
+
 namespace re::mock {
 
 //------------------------------------------------------------------------
@@ -458,6 +494,8 @@ impl::JboxObject *Motherboard::addObject(std::string const &iObjectPath)
 //------------------------------------------------------------------------
 void Motherboard::nextFrame()
 {
+  fNoteOutEvents.clear();
+
   if(fRealtime.render_realtime)
     fRealtime.render_realtime(getInstance<void *>(),
                               fCurrentFramePropertyDiffs.data(),
@@ -691,12 +729,24 @@ void Motherboard::setRTStringData(TJBox_PropertyRef const &iProperty,
 }
 
 //------------------------------------------------------------------------
-// Motherboard::setNoteEvent
+// Motherboard::setNoteInEvent
 //------------------------------------------------------------------------
-void Motherboard::setNoteEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex)
+void Motherboard::setNoteInEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex)
 {
+  RE_MOCK_ASSERT(iNoteNumber >= FIRST_MIDI_NOTE && iNoteNumber <= LAST_MIDI_NOTE);
+  RE_MOCK_ASSERT(iVelocity >= 0 && iVelocity <= 127);
+  RE_MOCK_ASSERT(iAtFrameIndex >= 0 && iAtFrameIndex <= 63);
   auto const &ref = getPropertyRef(fmt::printf("/note_states/%d", iNoteNumber));
   storeProperty(ref, JBox_MakeNumber(iVelocity), iAtFrameIndex);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::setNoteInEvents
+//------------------------------------------------------------------------
+void Motherboard::setNoteInEvents(Motherboard::NoteEvents const &iNoteEvents)
+{
+  for(auto &event: iNoteEvents)
+    setNoteInEvent(event);
 }
 
 //------------------------------------------------------------------------
@@ -887,6 +937,18 @@ TJBox_NoteEvent Motherboard::asNoteEvent(TJBox_PropertyDiff const &iPropertyDiff
     /* .fVelocity = */     static_cast<TJBox_UInt8>(JBox_GetNumber(iPropertyDiff.fCurrentValue)),
     /* .fAtFrameIndex = */ iPropertyDiff.fAtFrameIndex
   };
+}
+
+//------------------------------------------------------------------------
+// Motherboard::outputNoteEvent
+//------------------------------------------------------------------------
+void Motherboard::outputNoteEvent(TJBox_NoteEvent const &iNoteEvent)
+{
+  RE_MOCK_ASSERT(iNoteEvent.fNoteNumber >= FIRST_MIDI_NOTE && iNoteEvent.fNoteNumber <= LAST_MIDI_NOTE);
+  RE_MOCK_ASSERT(iNoteEvent.fVelocity >= 0 && iNoteEvent.fVelocity <= 127);
+  RE_MOCK_ASSERT(iNoteEvent.fAtFrameIndex >= 0 && iNoteEvent.fAtFrameIndex <= 63);
+
+  fNoteOutEvents.emplace_back(iNoteEvent);
 }
 
 //------------------------------------------------------------------------

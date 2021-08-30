@@ -73,7 +73,8 @@ public:
 
   void setMainOut(std::string const &iLeftOutSocketName, std::string const &iRightOutSocketName);
 
-  MockAudioDevice::StereoBuffer nextFrame();
+  MockAudioDevice::StereoBuffer nextFrame(MockDevice::NoteEvents iNoteEvents = {});
+  void nextFrame(MockDevice::NoteEvents iNoteEvents, MockAudioDevice::StereoBuffer &oOutputBuffer);
   void nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer);
 
 protected:
@@ -88,6 +89,25 @@ public:
   Rack::ExtensionDevice<Instrument> getInstrument() { return getExtensionDevice<Instrument>(); }
 };
 
+class ExtensionNotePlayerTester : public DeviceTester
+{
+public:
+  explicit ExtensionNotePlayerTester(Config const &iDeviceConfig);
+
+  MockDevice::NoteEvents nextFrame(MockDevice::NoteEvents iSourceEvents = {});
+
+protected:
+  Rack::ExtensionDevice<MNPSrc> fSrc;
+  Rack::ExtensionDevice<MNPDst> fDst;
+};
+
+template<typename NotePlayer>
+class NotePlayerTester : public ExtensionNotePlayerTester
+{
+public:
+  explicit NotePlayerTester(DeviceConfig<NotePlayer> const &iDeviceConfig) : ExtensionNotePlayerTester(iDeviceConfig.getConfig()) {}
+  Rack::ExtensionDevice<NotePlayer> getNotePlayer() { return getExtensionDevice<NotePlayer>(); }
+};
 
 //------------------------------------------------------------------------
 // DeviceTester::getExtensionDevice

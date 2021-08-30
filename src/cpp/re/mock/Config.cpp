@@ -58,6 +58,7 @@ global_rtc = {
     jbox.store_property("/custom_properties/instance", new_no);
   end,
 }
+rt_input_setup = { notify = { } }
 )"};
 }
 
@@ -132,6 +133,23 @@ ConfigString Config::rtc_binding(std::string const &iSource, std::string const &
 {
   return {fmt::printf(R"(rtc_bindings[#rtc_bindings + 1] = { source ="%s", dest = "%s"})", iSource, iDest)};
 }
+
+//------------------------------------------------------------------------
+// Config::rt_input_setup_notify
+//------------------------------------------------------------------------
+ConfigString Config::rt_input_setup_notify(std::string const &iPropertyName)
+{
+  return {fmt::printf(R"(do local _x = rt_input_setup["notify"];_x[#_x + 1] = "%s" end)", iPropertyName)};
+}
+
+//------------------------------------------------------------------------
+// Config::rt_input_setup_notify_all_notes
+//------------------------------------------------------------------------
+ConfigString Config::rt_input_setup_notify_all_notes()
+{
+  return rt_input_setup_notify("/note_states/*");
+}
+
 
 namespace impl {
 
@@ -274,6 +292,5 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
   return { fmt::printf(R"(rtc_owner_properties["%s"] = jbox.native_object { %s%s })",
                        iPropertyName, defaultValue, impl::property_tag(iProperty.fPropertyTag)) };
 }
-
 
 }

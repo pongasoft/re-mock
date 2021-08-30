@@ -101,6 +101,9 @@ void Rack::nextFrame(ExtensionImpl &iExtension)
 
   for(auto &wire: iExtension.fCVOutWires)
     copyCVValue(wire);
+
+  if(iExtension.fNoteOutWire)
+    copyNoteEvents(iExtension.fNoteOutWire.value());
 }
 
 //------------------------------------------------------------------------
@@ -125,6 +128,20 @@ void Rack::copyCVValue(Extension::CVWire const &iWire)
 
   auto value = outExtension->fMotherboard->getCVSocketValue(iWire.fFromSocket.fSocketRef);
   inExtension->fMotherboard->setCVSocketValue(iWire.fToSocket.fSocketRef, value);
+}
+
+//------------------------------------------------------------------------
+// Rack::copyNoteEvents
+//------------------------------------------------------------------------
+void Rack::copyNoteEvents(Rack::Extension::NoteWire const &iWire)
+{
+  auto outExtension = fExtensions.get(iWire.fFromSocket.fExtensionId);
+  auto inExtension = fExtensions.get(iWire.fToSocket.fExtensionId);
+
+  auto noteEvents = outExtension->fMotherboard->getNoteOutEvents();
+  for(auto &noteEvent: noteEvents)
+    inExtension->fMotherboard->setNoteInEvent(noteEvent);
+
 }
 
 //------------------------------------------------------------------------
@@ -214,6 +231,33 @@ void Rack::unwire(Rack::Extension::CVOutSocket const &iOutSocket)
 }
 
 //------------------------------------------------------------------------
+// Rack::wire
+//------------------------------------------------------------------------
+void Rack::wire(Extension::NoteOutSocket const &iOutSocket, Extension::NoteInSocket const &iInSocket)
+{
+  auto inExtension = fExtensions.get(iInSocket.fExtensionId);
+  inExtension->wire(iOutSocket, iInSocket);
+
+  auto outExtension = fExtensions.get(iOutSocket.fExtensionId);
+  outExtension->wire(iOutSocket, iInSocket);
+}
+
+//------------------------------------------------------------------------
+// Rack::unwire
+//------------------------------------------------------------------------
+void Rack::unwire(Extension::NoteOutSocket const &iOutSocket)
+{
+  auto outExtension = fExtensions.get(iOutSocket.fExtensionId);
+  auto inSocket = outExtension->unwire(iOutSocket);
+  if(inSocket)
+  {
+    auto inExtension = fExtensions.get(inSocket->fExtensionId);
+    inExtension->unwire(*inSocket);
+  }
+}
+
+
+//------------------------------------------------------------------------
 // InternalThreadLocalRAII - to add/remove the "current" motherboard
 //------------------------------------------------------------------------
 struct InternalThreadLocalRAII
@@ -283,6 +327,22 @@ Rack::Extension::StereoAudioInSocket Rack::Extension::getStereoAudioInSocket(std
                                                                                std::string const &iRightSocketName) const
 {
   return { getAudioInSocket(iLeftSocketName), getAudioInSocket(iRightSocketName) };
+}
+
+//------------------------------------------------------------------------
+// Rack::Extension::getNoteOutSocket
+//------------------------------------------------------------------------
+Rack::Extension::NoteOutSocket Rack::Extension::getNoteOutSocket() const
+{
+  return {fImpl->fId};
+}
+
+//------------------------------------------------------------------------
+// Rack::Extension::getNoteInSocket
+//------------------------------------------------------------------------
+Rack::Extension::NoteInSocket Rack::Extension::getNoteInSocket() const
+{
+  return {fImpl->fId};
 }
 
 //------------------------------------------------------------------------
@@ -359,6 +419,8 @@ std::set<int> const &Rack::ExtensionImpl::getDependents() const
       s.emplace(w.fFromSocket.fExtensionId);
     for(auto &w: fCVInWires)
       s.emplace(w.fFromSocket.fExtensionId);
+    if(fNoteInWire)
+      s.emplace(fNoteInWire->fFromSocket.fExtensionId);
     fDependents = s;
   }
 
@@ -436,6 +498,30 @@ void Rack::ExtensionImpl::wire(Extension::CVOutSocket const &iOutSocket, Extensi
 }
 
 //------------------------------------------------------------------------
+// Rack::ExtensionImpl::wire
+//------------------------------------------------------------------------
+void Rack::ExtensionImpl::wire(Extension::NoteOutSocket const &iOutSocket, Extension::NoteInSocket const &iInSocket)
+{
+  RE_MOCK_ASSERT(iInSocket.fExtensionId == fId || iOutSocket.fExtensionId == fId); // sanity check...
+  RE_MOCK_ASSERT(iInSocket.fExtensionId != iOutSocket.fExtensionId); // sanity check...
+
+  // check for duplicate
+  RE_MOCK_ASSERT(!fNoteOutWire.has_value(), "Note socket in use");
+
+  auto newWire = Extension::NoteWire{ iOutSocket, iInSocket };
+
+  if(iOutSocket.fExtensionId == fId)
+    fNoteOutWire = newWire;
+
+  if(iOutSocket.fExtensionId != fId)
+  {
+    fNoteInWire = newWire;
+    fDependents = std::nullopt;
+  }
+
+}
+
+//------------------------------------------------------------------------
 // Rack::ExtensionImpl::unwire
 //------------------------------------------------------------------------
 std::optional<Rack::Extension::CVInSocket> Rack::ExtensionImpl::unwire(Extension::CVOutSocket const &iOutSocket)
@@ -475,5 +561,43 @@ std::optional<Rack::Extension::CVOutSocket> Rack::ExtensionImpl::unwire(Extensio
 
   return std::nullopt;
 }
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::unwire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::NoteInSocket> Rack::ExtensionImpl::unwire(Extension::NoteOutSocket const &iOutSocket)
+{
+  RE_MOCK_ASSERT(iOutSocket.fExtensionId == fId); // sanity check...
+
+  if(fNoteOutWire && fNoteOutWire->fFromSocket.fExtensionId == iOutSocket.fExtensionId)
+  {
+    auto wire = fNoteOutWire.value();
+    fNoteOutWire = std::nullopt;
+    return wire.fToSocket;
+  }
+
+  return std::nullopt;
+
+}
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::unwire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::NoteOutSocket> Rack::ExtensionImpl::unwire(Extension::NoteInSocket const &iInSocket)
+{
+  RE_MOCK_ASSERT(iInSocket.fExtensionId == fId); // sanity check...
+
+  if(fNoteInWire && fNoteInWire->fToSocket.fExtensionId == iInSocket.fExtensionId)
+  {
+    auto wire = fNoteInWire.value();
+    fNoteInWire = std::nullopt;
+    fDependents = std::nullopt;
+    return wire.fFromSocket;
+  }
+
+  return std::nullopt;
+
+}
+
 
 }

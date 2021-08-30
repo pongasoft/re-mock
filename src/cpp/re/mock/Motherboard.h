@@ -29,12 +29,18 @@
 #include <vector>
 #include <set>
 #include <array>
+#include <ostream>
 #include "fmt.h"
 #include "Config.h"
 #include "ObjectManager.hpp"
 #include "MotherboardImpl.h"
 #include "lua/MotherboardDef.h"
 #include "lua/RealtimeController.h"
+
+bool operator==(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
+bool operator!=(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
+std::ostream &operator<<(std::ostream &os, TJBox_NoteEvent const &event);
+static bool compare(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r);
 
 namespace re::mock {
 
@@ -47,6 +53,7 @@ public:
   constexpr static int FIRST_MIDI_NOTE = 0;
   constexpr static int LAST_MIDI_NOTE = 127;
   using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
+  using NoteEvents = std::vector<TJBox_NoteEvent>;
 
 public: // used by regular code
   ~Motherboard();
@@ -89,7 +96,9 @@ public: // used by regular code
     setNum(fmt::printf("%s/value", iSocketPath.c_str()), iValue);
   }
 
-  void setNoteEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0);
+  void setNoteInEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0);
+  inline void setNoteInEvent(TJBox_NoteEvent const &iNoteEvent) { setNoteInEvent(iNoteEvent.fNoteNumber, iNoteEvent.fVelocity, iNoteEvent.fAtFrameIndex); };
+  void setNoteInEvents(NoteEvents const &iNoteEvents);
 
   void setDSPBuffer(std::string const &iAudioSocketPath, DSPBuffer iBuffer);
   DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const;
@@ -133,6 +142,8 @@ public: // used by Jukebox.cpp (need to be public)
   TJBox_UInt32 getStringLength(TJBox_Value const &iValue) const;
   void getSubstring(TJBox_Value iValue, TJBox_SizeT iStart, TJBox_SizeT iEnd, char oString[]) const;
   TJBox_NoteEvent asNoteEvent(const TJBox_PropertyDiff &iPropertyDiff);
+  void outputNoteEvent(TJBox_NoteEvent const &iNoteEvent);
+  NoteEvents getNoteOutEvents() const { return fNoteOutEvents; }
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
@@ -213,6 +224,7 @@ protected:
   ObjectManager<std::unique_ptr<impl::RTString>> fRTStrings{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
+  NoteEvents fNoteOutEvents{};
 };
 
 }

@@ -234,7 +234,7 @@ void JBox_SetRTStringData(TJBox_PropertyRef iProperty, TJBox_SizeT iSize, const 
 
 void JBox_OutputNoteEvent(TJBox_NoteEvent iNoteEvent)
 {
-  throw re::mock::Exception("JBox_OutputNoteEvent: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().outputNoteEvent(iNoteEvent);
 }
 
 TJBox_NoteEvent JBox_AsNoteEvent(const TJBox_PropertyDiff &iPropertyDiff)

@@ -22,11 +22,33 @@
 
 #include "Rack.h"
 #include <array>
+#include <ostream>
 
 namespace re::mock {
 
 class MockDevice
 {
+public:
+  struct NoteEvents
+  {
+    NoteEvents &events(Motherboard::NoteEvents const &iNoteEvents);
+    NoteEvents &event(TJBox_NoteEvent const &iNoteEvent);
+    NoteEvents &noteOn(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity = 100, TJBox_UInt16 iAtFrameIndex = 0);
+    NoteEvents &noteOff(TJBox_UInt8 iNoteNumber, TJBox_UInt16 iAtFrameIndex = 0);
+    NoteEvents &allNotesOff();
+    NoteEvents &clear();
+
+    Motherboard::NoteEvents const &events() const { return fNoteEvents; }
+    operator Motherboard::NoteEvents const &() const { return fNoteEvents; }
+
+    friend std::ostream &operator<<(std::ostream &os, NoteEvents const &events);
+
+    friend bool operator==(MockDevice::NoteEvents const &lhs, MockDevice::NoteEvents const &rhs);
+    friend bool operator!=(MockDevice::NoteEvents const &lhs, MockDevice::NoteEvents const &rhs);
+
+    Motherboard::NoteEvents fNoteEvents{};
+  };
+
 public:
   explicit MockDevice(int iSampleRate);
   virtual ~MockDevice() = default; // allow for subclassing
@@ -215,6 +237,56 @@ protected:
 };
 
 //------------------------------------------------------------------------
+// Note Player
+//------------------------------------------------------------------------
+class MockNotePlayer : public MockDevice
+{
+public:
+  explicit MockNotePlayer(int iSampleRate);
+
+  static void wire(Rack &iRack, Rack::Extension const &iFromExtension, Rack::Extension const &iToExtension);
+
+public:
+  NoteEvents fNoteEvents{};
+
+protected:
+  TJBox_ObjectRef fNoteStatesRef;
+};
+
+/**
+ * Note player source device. Copy note events to output. */
+class MNPSrc : public MockNotePlayer
+{
+public:
+  explicit MNPSrc(int iSampleRate);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
+
+  static const DeviceConfig<MNPSrc> CONFIG;
+};
+
+/**
+ * Note player destination device. Extract note events from diffs and copy into fNoteEvents. */
+class MNPDst : public MockNotePlayer
+{
+public:
+  explicit MNPDst(int iSampleRate);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
+
+  static const DeviceConfig<MNPDst> CONFIG;
+};
+
+/**
+ * Note player pass through device. Extract note events from diffs, copy into fNoteEvents and to output. */
+class MNPPst : public MockNotePlayer
+{
+public:
+  explicit MNPPst(int iSampleRate);
+  void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
+
+  static const DeviceConfig<MNPPst> CONFIG;
+};
+
+//------------------------------------------------------------------------
 // MockAudioDevice::wire
 //------------------------------------------------------------------------
 template<typename From, typename To>
@@ -270,7 +342,7 @@ void MockCVDevice::wire(Rack &iRack,
 //------------------------------------------------------------------------
 template<typename From>
 void MockCVDevice::wire(Rack &iRack,
-                        Rack::ExtensionDevice <From> const &iFromExtension,
+                        Rack::ExtensionDevice<From> const &iFromExtension,
                         Rack::Extension::CVInSocket const &iToSocket)
 {
   static_assert(std::is_convertible<From*, MockCVDevice*>::value, "From must be a subclass of MockCVDevice");
@@ -282,7 +354,7 @@ void MockCVDevice::wire(Rack &iRack,
 //------------------------------------------------------------------------
 template<typename To>
 void MockCVDevice::wire(Rack &iRack, Rack::Extension::CVInSocket const &iFromSocket,
-                        Rack::ExtensionDevice <To> const &iToExtension)
+                        Rack::ExtensionDevice<To> const &iToExtension)
 {
   static_assert(std::is_convertible<To*, MockCVDevice*>::value, "To must be a subclass of MockCVDevice");
   iRack.wire(iFromSocket, iToExtension.getCVInSocket(SOCKET));

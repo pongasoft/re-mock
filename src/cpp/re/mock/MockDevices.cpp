@@ -376,4 +376,204 @@ void MCVPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
   storeValue(fOutSocket);
 }
 
+//------------------------------------------------------------------------
+// MockNotePlayer::MockNotePlayer
+//------------------------------------------------------------------------
+MockNotePlayer::MockNotePlayer(int iSampleRate) : MockDevice{iSampleRate},
+                                                  fNoteStatesRef{JBox_GetMotherboardObjectRef("/note_states")}
+{}
+
+//------------------------------------------------------------------------
+// MockNotePlayer::wire
+//------------------------------------------------------------------------
+void MockNotePlayer::wire(Rack &iRack,
+                          Rack::Extension const &iFromExtension,
+                          Rack::Extension const &iToExtension)
+{
+  iRack.wire(iFromExtension.getNoteOutSocket(), iToExtension.getNoteInSocket());
+}
+
+//------------------------------------------------------------------------
+// MCVPst::CONFIG
+//------------------------------------------------------------------------
+const DeviceConfig<MNPSrc> MNPSrc::CONFIG = DeviceConfig<MNPSrc>::fromSkeleton();
+
+//------------------------------------------------------------------------
+// MNPSrc::MNPSrc
+//------------------------------------------------------------------------
+MNPSrc::MNPSrc(int iSampleRate) : MockNotePlayer{iSampleRate}
+{}
+
+//------------------------------------------------------------------------
+// MNPSrc::renderBatch
+//------------------------------------------------------------------------
+void MNPSrc::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount)
+{
+  for(auto &event: fNoteEvents.events())
+    JBox_OutputNoteEvent(event);
+
+  fNoteEvents.clear();
+}
+
+//------------------------------------------------------------------------
+// MNPDst::CONFIG
+//------------------------------------------------------------------------
+const DeviceConfig<MNPDst> MNPDst::CONFIG = DeviceConfig<MNPDst>::fromSkeleton()
+  .rtc_string(R"(
+rt_input_setup = {
+  notify = {
+    "/note_states/*"
+  }
+}
+)");
+
+//------------------------------------------------------------------------
+// MNPDst::MNPDst
+//------------------------------------------------------------------------
+MNPDst::MNPDst(int iSampleRate) : MockNotePlayer{iSampleRate}
+{}
+
+//------------------------------------------------------------------------
+// MNPDst::renderBatch
+//------------------------------------------------------------------------
+void MNPDst::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount)
+{
+  fNoteEvents.clear();
+
+  for(int i = 0; i < iDiffCount; i++)
+  {
+    auto &diff = iPropertyDiffs[i];
+    if(diff.fPropertyRef.fObject == fNoteStatesRef)
+      fNoteEvents.event(JBox_AsNoteEvent(diff));
+  }
+}
+
+//------------------------------------------------------------------------
+// MNPPst::CONFIG
+//------------------------------------------------------------------------
+const DeviceConfig<MNPPst> MNPPst::CONFIG = DeviceConfig<MNPPst>::fromSkeleton()
+  .rtc(Config::rt_input_setup_notify_all_notes());
+
+//------------------------------------------------------------------------
+// MNPPst::MNPPst
+//------------------------------------------------------------------------
+MNPPst::MNPPst(int iSampleRate) : MockNotePlayer{iSampleRate}
+{}
+
+//------------------------------------------------------------------------
+// MNPPst::renderBatch
+//------------------------------------------------------------------------
+void MNPPst::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount)
+{
+  fNoteEvents.clear();
+
+  for(int i = 0; i < iDiffCount; i++)
+  {
+    auto &diff = iPropertyDiffs[i];
+    if(diff.fPropertyRef.fObject == fNoteStatesRef)
+    {
+      auto noteEvent = JBox_AsNoteEvent(diff);
+      fNoteEvents.event(noteEvent);
+      JBox_OutputNoteEvent(noteEvent);
+    }
+  }
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::events
+//------------------------------------------------------------------------
+MockDevice::NoteEvents &MockDevice::NoteEvents::events(Motherboard::NoteEvents const &iNoteEvents)
+{
+  for(auto &e: iNoteEvents)
+    event(e);
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::event
+//------------------------------------------------------------------------
+MockDevice::NoteEvents &MockDevice::NoteEvents::event(TJBox_NoteEvent const &iNoteEvent)
+{
+  RE_MOCK_ASSERT(iNoteEvent.fNoteNumber >= Motherboard::FIRST_MIDI_NOTE && iNoteEvent.fNoteNumber <= Motherboard::LAST_MIDI_NOTE);
+  RE_MOCK_ASSERT(iNoteEvent.fVelocity >= 0 && iNoteEvent.fVelocity <= 127);
+  RE_MOCK_ASSERT(iNoteEvent.fAtFrameIndex >= 0 && iNoteEvent.fAtFrameIndex <= 63);
+  fNoteEvents.emplace_back(iNoteEvent);
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::noteOn
+//------------------------------------------------------------------------
+MockDevice::NoteEvents &MockDevice::NoteEvents::noteOn(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex)
+{
+  return event({iNoteNumber, iVelocity, iAtFrameIndex});
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::noteOn
+//------------------------------------------------------------------------
+MockDevice::NoteEvents &MockDevice::NoteEvents::noteOff(TJBox_UInt8 iNoteNumber, TJBox_UInt16 iAtFrameIndex)
+{
+  return event({iNoteNumber, 0, iAtFrameIndex});
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::allNotesOff
+//------------------------------------------------------------------------
+MockDevice::NoteEvents &MockDevice::NoteEvents::allNotesOff()
+{
+  for(int i = Motherboard::FIRST_MIDI_NOTE; i <= Motherboard::LAST_MIDI_NOTE; i++)
+    noteOff(i);
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::clear
+//------------------------------------------------------------------------
+MockDevice::NoteEvents &MockDevice::NoteEvents::clear()
+{
+  fNoteEvents.clear();
+  return *this;
+}
+
+namespace impl {
+
+//------------------------------------------------------------------------
+// impl::compareTJBox_NoteEvent
+//------------------------------------------------------------------------
+bool compareTJBox_NoteEvent(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r)
+{
+  return std::tuple(l.fNoteNumber, l.fVelocity, l.fAtFrameIndex) < std::tuple(r.fNoteNumber, r.fVelocity, r.fAtFrameIndex);
+}
+
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::operator==
+//------------------------------------------------------------------------
+bool operator==(MockDevice::NoteEvents const &lhs, MockDevice::NoteEvents const &rhs)
+{
+  // implementation note: we are comparing note events as sets because the order does not matter
+  using TJBox_NoteEvent_set = std::set<TJBox_NoteEvent, decltype(&impl::compareTJBox_NoteEvent)>;
+  TJBox_NoteEvent_set ls{lhs.fNoteEvents.begin(), lhs.fNoteEvents.end(), impl::compareTJBox_NoteEvent};
+  TJBox_NoteEvent_set rs{rhs.fNoteEvents.begin(), rhs.fNoteEvents.end(), impl::compareTJBox_NoteEvent};
+  return ls == rs;
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::operator!=
+//------------------------------------------------------------------------
+bool operator!=(MockDevice::NoteEvents const &lhs, MockDevice::NoteEvents const &rhs)
+{
+  return !(rhs == lhs);
+}
+
+//------------------------------------------------------------------------
+// MockDevice::NoteEvents::operator<<
+//------------------------------------------------------------------------
+std::ostream &operator<<(std::ostream &os, MockDevice::NoteEvents const &events)
+{
+  return os << "[" << stl::Join(events.fNoteEvents, ", ") << "]";
+}
+
 }
