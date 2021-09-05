@@ -41,6 +41,15 @@ protected:
   Rack::Extension fDevice;
 };
 
+template<typename Helper>
+class HelperTester : public DeviceTester
+{
+public:
+  explicit HelperTester(DeviceConfig<Helper> const &iDeviceConfig) : DeviceTester(iDeviceConfig.getConfig()) {}
+  Rack::ExtensionDevice<Helper> getDevice() { return getExtensionDevice<Helper>(); }
+
+  void nextFrame() { fRack.nextFrame(); }
+};
 
 class ExtensionEffectTester : public DeviceTester
 {
@@ -63,7 +72,7 @@ class EffectTester : public ExtensionEffectTester
 {
 public:
   explicit EffectTester(DeviceConfig<Effect> const &iDeviceConfig) : ExtensionEffectTester(iDeviceConfig.getConfig()) {}
-  Rack::ExtensionDevice<Effect> getEffect() { return getExtensionDevice<Effect>(); }
+  Rack::ExtensionDevice<Effect> getDevice() { return getExtensionDevice<Effect>(); }
 };
 
 class ExtensionInstrumentTester : public DeviceTester
@@ -86,7 +95,7 @@ class InstrumentTester : public ExtensionInstrumentTester
 {
 public:
   explicit InstrumentTester(DeviceConfig<Instrument> const &iDeviceConfig) : ExtensionInstrumentTester(iDeviceConfig.getConfig()) {}
-  Rack::ExtensionDevice<Instrument> getInstrument() { return getExtensionDevice<Instrument>(); }
+  Rack::ExtensionDevice<Instrument> getDevice() { return getExtensionDevice<Instrument>(); }
 };
 
 class ExtensionNotePlayerTester : public DeviceTester
@@ -106,7 +115,7 @@ class NotePlayerTester : public ExtensionNotePlayerTester
 {
 public:
   explicit NotePlayerTester(DeviceConfig<NotePlayer> const &iDeviceConfig) : ExtensionNotePlayerTester(iDeviceConfig.getConfig()) {}
-  Rack::ExtensionDevice<NotePlayer> getNotePlayer() { return getExtensionDevice<NotePlayer>(); }
+  Rack::ExtensionDevice<NotePlayer> getDevice() { return getExtensionDevice<NotePlayer>(); }
 };
 
 //------------------------------------------------------------------------

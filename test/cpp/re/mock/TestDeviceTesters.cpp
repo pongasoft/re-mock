@@ -38,7 +38,7 @@ TEST(EffectTester, Usage)
   ASSERT_EQ(tester.nextFrame(MockAudioDevice::buffer(3.0, 4.0)), MockAudioDevice::buffer(0, 0));
 
   // that means the internal buffer of the effect gets the input, but does not send it to the output
-  ASSERT_EQ(tester.getEffect()->fBuffer, MockAudioDevice::buffer(3.0, 4.0));
+  ASSERT_EQ(tester.getDevice()->fBuffer, MockAudioDevice::buffer(3.0, 4.0));
 
   // wire main outputs
   tester.setMainOut(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
@@ -52,7 +52,7 @@ TEST(InstrumentTester, Usage)
 {
   InstrumentTester<MAUSrc> tester(MAUSrc::CONFIG);
 
-  tester.getInstrument()->fBuffer = MockAudioDevice::buffer(1.0, 2.0);
+  tester.getDevice()->fBuffer = MockAudioDevice::buffer(1.0, 2.0);
 
   // device is not wired yet!
   ASSERT_EQ(tester.nextFrame(), MockAudioDevice::buffer(0, 0));
@@ -60,7 +60,7 @@ TEST(InstrumentTester, Usage)
   // wire main outputs
   tester.setMainOut(MAUSrc::LEFT_SOCKET, MAUSrc::RIGHT_SOCKET);
 
-  tester.getInstrument()->fBuffer = MockAudioDevice::buffer(3.0, 4.0);
+  tester.getDevice()->fBuffer = MockAudioDevice::buffer(3.0, 4.0);
 
   // device is fully wired
   ASSERT_EQ(tester.nextFrame(), MockAudioDevice::buffer(3.0, 4.0));
@@ -71,19 +71,19 @@ TEST(NotePlayerTester, Usage)
 {
   NotePlayerTester<MNPPst> tester(MNPPst::CONFIG);
 
-  ASSERT_EQ(MockDevice::NoteEvents{}, tester.getNotePlayer()->fNoteEvents);
+  ASSERT_EQ(MockDevice::NoteEvents{}, tester.getDevice()->fNoteEvents);
 
   ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.nextFrame());
-  ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.getNotePlayer()->fNoteEvents);
+  ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.getDevice()->fNoteEvents);
 
   ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(69), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(69)));
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(69), tester.getNotePlayer()->fNoteEvents);
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(69), tester.getDevice()->fNoteEvents);
 
   ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(69, 25), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOff(69, 25)));
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(69, 25), tester.getNotePlayer()->fNoteEvents);
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(69, 25), tester.getDevice()->fNoteEvents);
 
   // simulating sequencer note
-  tester.getNotePlayer().use([](Motherboard &m) {
+  tester.getDevice().use([](Motherboard &m) {
     m.setNoteInEvent(70, 120, 3);
   });
 

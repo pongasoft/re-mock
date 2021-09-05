@@ -16,20 +16,24 @@
 
 cmake_minimum_required(VERSION 3.17)
 
-# Setting up project (note that the version is defined in lua.info)
+# Setting up project
 project(re-mock LANGUAGES CXX)
+set(re-mock_VERSION_MAJOR 0)
+set(re-mock_VERSION_MINOR 9)
+set(re-mock_VERSION_PATCH 0)
+set(re-mock_VERSION "${re-mock_VERSION_MAJOR}.${re-mock_VERSION_MINOR}.${re-mock_VERSION_PATCH}")
 
 # Using C++17
 set(CMAKE_CXX_STANDARD 17)
 
 # Determines whether we are working on re-mock or using it
 if(${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})
-  set(RE_MOCK_DEV_BUILD TRUE)
+  set(re-mock_DEV_BUILD TRUE)
 else()
-  set(RE_MOCK_DEV_BUILD FALSE)
+  set(re-mock_DEV_BUILD FALSE)
 endif()
 
-if(RE_MOCK_DEV_BUILD)
+if(re-mock_DEV_BUILD)
   enable_testing()
 
   # Using RE SDK version 4.2.0
@@ -51,41 +55,41 @@ endif()
 set(target "re-mock")
 
 # Defines the location of the sources
-set(RE_MOCK_CPP_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/src/cpp")
+set(re-mock_CPP_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/src/cpp")
 
 # Defines the headers if you want to include them in your project (optional)
 set(re-mock_BUILD_HEADERS
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Config.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/DeviceTesters.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Errors.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Motherboard.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/MotherboardImpl.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Rack.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/fmt.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/stl.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/LuaState.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/MockJBox.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.h
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/RealtimeController.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Config.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/DeviceTesters.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Errors.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/MotherboardImpl.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Rack.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/fmt.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/stl.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/LuaState.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/MockJBox.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/RealtimeController.h
     )
 
 # Defines the sources
 set(re-mock_BUILD_SOURCES
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Config.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/DeviceTesters.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Rack.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Jukebox.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/MockDevices.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/Motherboard.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/MockJBox.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.cpp
-    ${RE_MOCK_CPP_SRC_DIR}/re/mock/lua/RealtimeController.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/Config.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/DeviceTesters.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/Rack.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/Jukebox.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/MockJBox.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/RealtimeController.cpp
     )
 
 # Defines the include directories
-set(re-mock_INCLUDE_DIRECTORIES "${RE_MOCK_CPP_SRC_DIR}")
+set(re-mock_INCLUDE_DIRECTORIES "${re-mock_CPP_SRC_DIR}")
 
 # Including lua lib/headers
 add_subdirectory(external/lua-cmake)
@@ -99,7 +103,7 @@ if(NOT APPLE)
 #  target_compile_options(${target} PUBLIC "/std:c++latest")
 endif()
 
-if(RE_MOCK_DEV_BUILD)
+if(re-mock_DEV_BUILD)
 
   # Generate the re_cmake_build.h file
   set(GENERATED_FILES_DIR "${CMAKE_BINARY_DIR}/generated")
@@ -116,16 +120,16 @@ if(RE_MOCK_DEV_BUILD)
 
   set(target_test "${target}_test")
 
-  set(RE_MOCK_CPP_TST_DIR "${CMAKE_CURRENT_LIST_DIR}/test/cpp")
+  set(re-mock_CPP_TST_DIR "${CMAKE_CURRENT_LIST_DIR}/test/cpp")
 
   set(TEST_CASE_SOURCES
-      "${RE_MOCK_CPP_TST_DIR}/re/mock/TestDeviceTesters.cpp"
-      "${RE_MOCK_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
-      "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRack.cpp"
-      "${RE_MOCK_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
-      "${RE_MOCK_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"
-      "${RE_MOCK_CPP_TST_DIR}/re/mock/lua/TestMotherboardDef.cpp"
-      "${RE_MOCK_CPP_TST_DIR}/re/mock/lua/TestRealtimeController.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestDeviceTesters.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestRack.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/lua/TestMotherboardDef.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/lua/TestRealtimeController.cpp"
       )
 
   add_executable("${target_test}" "${TEST_CASE_SOURCES}")
