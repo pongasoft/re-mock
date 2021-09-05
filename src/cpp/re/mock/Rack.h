@@ -109,6 +109,12 @@ public:
     std::string getRTString(std::string const &iPropertyPath) const { return motherboard().getRTString(iPropertyPath); }
     void setRTString(std::string const &iPropertyPath, std::string const &iValue) { motherboard().setRTString(iPropertyPath, iValue); }
 
+    TJBox_OnOffBypassStates getEffectBypassState() const { return motherboard().getEffectBypassState(); }
+    void setEffectBypassState(TJBox_OnOffBypassStates iState) { motherboard().setEffectBypassState(iState); }
+
+    bool isNotePlayerBypassed() const { return motherboard().isNotePlayerBypassed(); }
+    void setNotePlayerBypassed(bool iBypassed) { motherboard().setNotePlayerBypassed(iBypassed); }
+
     void setNoteInEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0) { motherboard().setNoteInEvent(iNoteNumber, iVelocity, iAtFrameIndex); }
     void setNoteInEvent(TJBox_NoteEvent const &iNoteEvent) { motherboard().setNoteInEvent(iNoteEvent); }
     inline void setNoteInEvents(Motherboard::NoteEvents const &iNoteEvents) { motherboard().setNoteInEvents(iNoteEvents); }

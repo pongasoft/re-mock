@@ -195,7 +195,7 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 // MAUSrc::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MAUSrc> MAUSrc::CONFIG = 
-  DeviceConfig<MAUSrc>::fromSkeleton().mdef(Config::stereo_audio_out());
+  DeviceConfig<MAUSrc>::fromSkeleton().device_type(DeviceType::kHelper).mdef(Config::stereo_audio_out());
 
 //------------------------------------------------------------------------
 // MAUSrc::MAUSrc
@@ -217,7 +217,7 @@ void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 // MAUDst::Config
 //------------------------------------------------------------------------
 const DeviceConfig<MAUDst> MAUDst::CONFIG = 
-  DeviceConfig<MAUDst>::fromSkeleton().mdef(Config::stereo_audio_in());
+  DeviceConfig<MAUDst>::fromSkeleton().device_type(DeviceType::kHelper).mdef(Config::stereo_audio_in());
 
 //------------------------------------------------------------------------
 // MAUDst::MAUDst
@@ -239,6 +239,7 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 // MAUPst::Config
 //------------------------------------------------------------------------
 const DeviceConfig<MAUPst> MAUPst::CONFIG = DeviceConfig<MAUPst>::fromSkeleton()
+  .device_type(DeviceType::kStudioFX)
   .mdef(Config::stereo_audio_out())
   .mdef(Config::stereo_audio_in());
 
@@ -246,9 +247,28 @@ const DeviceConfig<MAUPst> MAUPst::CONFIG = DeviceConfig<MAUPst>::fromSkeleton()
 // MAUPst::MockAudioPassThrough
 //------------------------------------------------------------------------
 MAUPst::MAUPst(int iSampleRate) :
-  MockAudioDevice(iSampleRate), fInSocket{StereoSocket::input()}, fOutSocket{StereoSocket::output()}
+  MockAudioDevice(iSampleRate),
+  fCustomPropertiesRef{JBox_GetMotherboardObjectRef("/custom_properties")},
+  fInSocket{StereoSocket::input()}, fOutSocket{StereoSocket::output()}
 {
+}
 
+//------------------------------------------------------------------------
+// MAUPst::getBypassState
+//------------------------------------------------------------------------
+TJBox_OnOffBypassStates MAUPst::getBypassState() const
+{
+  return static_cast<TJBox_OnOffBypassStates>(JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(fCustomPropertiesRef,
+                                                                                                       "builtin_onoffbypass"))));
+}
+
+//------------------------------------------------------------------------
+// MAUPst::setBypassState
+//------------------------------------------------------------------------
+void MAUPst::setBypassState(TJBox_OnOffBypassStates iState)
+{
+  JBox_StoreMOMProperty(JBox_MakePropertyRef(fCustomPropertiesRef, "builtin_onoffbypass"),
+                        JBox_MakeNumber(iState));
 }
 
 //------------------------------------------------------------------------
@@ -257,7 +277,9 @@ MAUPst::MAUPst(int iSampleRate) :
 void MAUPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 {
   copyBuffer(fInSocket, fBuffer);
-  copyBuffer(fBuffer, fOutSocket);
+
+  if(getBypassState() != kJBox_EnabledOff) // On and Bypass are doing the same since MAUPst does not modify the signal...
+    copyBuffer(fBuffer, fOutSocket);
 }
 
 //------------------------------------------------------------------------
@@ -311,7 +333,7 @@ bool MockCVDevice::eq(TJBox_Float64 iCV1, TJBox_Float64 iCV2)
 // MCVSrc::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MCVSrc> MCVSrc::CONFIG =
-  DeviceConfig<MCVSrc>::fromSkeleton().mdef(Config::cv_out());
+  DeviceConfig<MCVSrc>::fromSkeleton().device_type(DeviceType::kHelper).mdef(Config::cv_out());
 
 //------------------------------------------------------------------------
 // MCVSrc::MCVSrc
@@ -333,7 +355,7 @@ void MCVSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 // MCVDst::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MCVDst> MCVDst::CONFIG =
-  DeviceConfig<MCVDst>::fromSkeleton().mdef(Config::cv_in());
+  DeviceConfig<MCVDst>::fromSkeleton().device_type(DeviceType::kHelper).mdef(Config::cv_in());
 
 //------------------------------------------------------------------------
 // MCVDst::MCVDst
@@ -355,7 +377,10 @@ void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 // MCVPst::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MCVPst> MCVPst::CONFIG = 
-  DeviceConfig<MCVPst>::fromSkeleton().mdef(Config::cv_out()).mdef(Config::cv_in());
+  DeviceConfig<MCVPst>::fromSkeleton()
+  .device_type(DeviceType::kHelper)
+  .mdef(Config::cv_out())
+  .mdef(Config::cv_in());
 
 //------------------------------------------------------------------------
 // MCVPst::MCVPst
@@ -380,8 +405,25 @@ void MCVPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 // MockNotePlayer::MockNotePlayer
 //------------------------------------------------------------------------
 MockNotePlayer::MockNotePlayer(int iSampleRate) : MockDevice{iSampleRate},
+                                                  fEnvironmentRef{JBox_GetMotherboardObjectRef("/environment")},
                                                   fNoteStatesRef{JBox_GetMotherboardObjectRef("/note_states")}
 {}
+
+//------------------------------------------------------------------------
+// MockNotePlayer::isBypassed
+//------------------------------------------------------------------------
+bool MockNotePlayer::isBypassed() const
+{
+  return JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(fEnvironmentRef, "player_bypassed")));
+}
+
+//------------------------------------------------------------------------
+// MockNotePlayer::setBypassed
+//------------------------------------------------------------------------
+void MockNotePlayer::setBypassed(bool iBypassed)
+{
+  JBox_StoreMOMProperty(JBox_MakePropertyRef(fEnvironmentRef, "player_bypassed"), JBox_MakeBoolean(iBypassed));
+}
 
 //------------------------------------------------------------------------
 // MockNotePlayer::wire
@@ -396,7 +438,7 @@ void MockNotePlayer::wire(Rack &iRack,
 //------------------------------------------------------------------------
 // MCVPst::CONFIG
 //------------------------------------------------------------------------
-const DeviceConfig<MNPSrc> MNPSrc::CONFIG = DeviceConfig<MNPSrc>::fromSkeleton();
+const DeviceConfig<MNPSrc> MNPSrc::CONFIG = DeviceConfig<MNPSrc>::fromSkeleton().device_type(DeviceType::kNotePlayer);
 
 //------------------------------------------------------------------------
 // MNPSrc::MNPSrc
@@ -409,8 +451,11 @@ MNPSrc::MNPSrc(int iSampleRate) : MockNotePlayer{iSampleRate}
 //------------------------------------------------------------------------
 void MNPSrc::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount)
 {
-  for(auto &event: fNoteEvents.events())
-    JBox_OutputNoteEvent(event);
+  if(!isBypassed())
+  {
+    for(auto &event: fNoteEvents.events())
+      JBox_OutputNoteEvent(event);
+  }
 
   fNoteEvents.clear();
 }
@@ -419,13 +464,8 @@ void MNPSrc::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 
 // MNPDst::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MNPDst> MNPDst::CONFIG = DeviceConfig<MNPDst>::fromSkeleton()
-  .rtc_string(R"(
-rt_input_setup = {
-  notify = {
-    "/note_states/*"
-  }
-}
-)");
+  .device_type(DeviceType::kNotePlayer)
+  .rtc(Config::rt_input_setup_notify_all_notes());
 
 //------------------------------------------------------------------------
 // MNPDst::MNPDst
@@ -452,6 +492,7 @@ void MNPDst::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 
 // MNPPst::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MNPPst> MNPPst::CONFIG = DeviceConfig<MNPPst>::fromSkeleton()
+  .device_type(DeviceType::kNotePlayer)
   .rtc(Config::rt_input_setup_notify_all_notes());
 
 //------------------------------------------------------------------------
@@ -474,7 +515,8 @@ void MNPPst::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 
     {
       auto noteEvent = JBox_AsNoteEvent(diff);
       fNoteEvents.event(noteEvent);
-      JBox_OutputNoteEvent(noteEvent);
+      if(!isBypassed())
+        JBox_OutputNoteEvent(noteEvent);
     }
   }
 }

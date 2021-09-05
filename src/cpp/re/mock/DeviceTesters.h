@@ -45,8 +45,12 @@ template<typename Helper>
 class HelperTester : public DeviceTester
 {
 public:
-  explicit HelperTester(DeviceConfig<Helper> const &iDeviceConfig) : DeviceTester(iDeviceConfig.getConfig()) {}
+  explicit HelperTester(DeviceConfig<Helper> const &iDeviceConfig) :
+    DeviceTester(iDeviceConfig.clone().device_type(DeviceType::kHelper).getConfig()) {}
   Rack::ExtensionDevice<Helper> getDevice() { return getExtensionDevice<Helper>(); }
+
+  Helper *operator->() { return getDevice().operator->(); };
+  Helper const *operator->() const { return getDevice().operator->(); };
 
   void nextFrame() { fRack.nextFrame(); }
 };
@@ -62,17 +66,36 @@ public:
   MockAudioDevice::StereoBuffer nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer);
   void nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
 
+  TJBox_OnOffBypassStates getBypassState() const { return fDevice.getEffectBypassState(); }
+  void setBypassState(TJBox_OnOffBypassStates iState) { fDevice.setEffectBypassState(iState); }
+
 protected:
   Rack::ExtensionDevice<MAUSrc> fSrc;
   Rack::ExtensionDevice<MAUDst> fDst;
 };
 
 template<typename Effect>
-class EffectTester : public ExtensionEffectTester
+class StudioEffectTester : public ExtensionEffectTester
 {
 public:
-  explicit EffectTester(DeviceConfig<Effect> const &iDeviceConfig) : ExtensionEffectTester(iDeviceConfig.getConfig()) {}
+  explicit StudioEffectTester(DeviceConfig<Effect> const &iDeviceConfig) :
+    ExtensionEffectTester(iDeviceConfig.clone().device_type(DeviceType::kStudioFX).getConfig()) {}
   Rack::ExtensionDevice<Effect> getDevice() { return getExtensionDevice<Effect>(); }
+
+  Effect *operator->() { return getDevice().operator->(); };
+  Effect const *operator->() const { return getDevice().operator->(); };
+};
+
+template<typename Effect>
+class CreativeEffectTester : public ExtensionEffectTester
+{
+public:
+  explicit CreativeEffectTester(DeviceConfig<Effect> const &iDeviceConfig) :
+    ExtensionEffectTester(iDeviceConfig.clone().device_type(DeviceType::kCreativeFX).getConfig()) {}
+  Rack::ExtensionDevice<Effect> getDevice() { return getExtensionDevice<Effect>(); }
+
+  Effect *operator->() { return getDevice().operator->(); };
+  Effect const *operator->() const { return getDevice().operator->(); };
 };
 
 class ExtensionInstrumentTester : public DeviceTester
@@ -94,8 +117,12 @@ template<typename Instrument>
 class InstrumentTester : public ExtensionInstrumentTester
 {
 public:
-  explicit InstrumentTester(DeviceConfig<Instrument> const &iDeviceConfig) : ExtensionInstrumentTester(iDeviceConfig.getConfig()) {}
+  explicit InstrumentTester(DeviceConfig<Instrument> const &iDeviceConfig) :
+    ExtensionInstrumentTester(iDeviceConfig.clone().device_type(DeviceType::kInstrument).getConfig()) {}
   Rack::ExtensionDevice<Instrument> getDevice() { return getExtensionDevice<Instrument>(); }
+
+  Instrument *operator->() { return getDevice().operator->(); };
+  Instrument const *operator->() const { return getDevice().operator->(); };
 };
 
 class ExtensionNotePlayerTester : public DeviceTester
@@ -104,6 +131,9 @@ public:
   explicit ExtensionNotePlayerTester(Config const &iDeviceConfig);
 
   MockDevice::NoteEvents nextFrame(MockDevice::NoteEvents iSourceEvents = {});
+
+  bool isBypassed() const { return fDevice.isNotePlayerBypassed(); }
+  void setBypassed(bool iBypassed) { fDevice.setNotePlayerBypassed(iBypassed); }
 
 protected:
   Rack::ExtensionDevice<MNPSrc> fSrc;
@@ -114,8 +144,12 @@ template<typename NotePlayer>
 class NotePlayerTester : public ExtensionNotePlayerTester
 {
 public:
-  explicit NotePlayerTester(DeviceConfig<NotePlayer> const &iDeviceConfig) : ExtensionNotePlayerTester(iDeviceConfig.getConfig()) {}
+  explicit NotePlayerTester(DeviceConfig<NotePlayer> const &iDeviceConfig) :
+    ExtensionNotePlayerTester(iDeviceConfig.clone().device_type(DeviceType::kNotePlayer).getConfig()) {}
   Rack::ExtensionDevice<NotePlayer> getDevice() { return getExtensionDevice<NotePlayer>(); }
+
+  NotePlayer *operator->() { return getDevice().operator->(); };
+  NotePlayer const *operator->() const { return getDevice().operator->(); };
 };
 
 //------------------------------------------------------------------------

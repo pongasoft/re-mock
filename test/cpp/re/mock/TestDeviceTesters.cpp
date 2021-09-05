@@ -24,9 +24,12 @@ namespace re::mock::Test {
 using namespace mock;
 
 // EffectTester.Usage
-TEST(EffectTester, Usage)
+TEST(StudioEffectTester, Usage)
 {
-  EffectTester<MAUPst> tester(MAUPst::CONFIG);
+  StudioEffectTester<MAUPst> tester(MAUPst::CONFIG);
+
+  // should be enabled by default
+  ASSERT_EQ(kJBox_EnabledOn, tester.getBypassState());
 
   // device is not wired yet!
   ASSERT_EQ(tester.nextFrame(MockAudioDevice::buffer(1.0, 2.0)), MockAudioDevice::buffer(0, 0));
@@ -45,6 +48,14 @@ TEST(EffectTester, Usage)
 
   // device is fully wired
   ASSERT_EQ(tester.nextFrame(MockAudioDevice::buffer(5.0, 6.0)), MockAudioDevice::buffer(5.0, 6.0));
+
+  // change to off
+  tester.setBypassState(kJBox_EnabledOff);
+  ASSERT_EQ(kJBox_EnabledOff, tester.getBypassState());
+
+  // change to bypass
+  tester.setBypassState(kJBox_EnabledBypass);
+  ASSERT_EQ(kJBox_EnabledBypass, tester.getBypassState());
 }
 
 // InstrumentTester.Usage
@@ -71,6 +82,9 @@ TEST(NotePlayerTester, Usage)
 {
   NotePlayerTester<MNPPst> tester(MNPPst::CONFIG);
 
+  // should be enabled by default
+  ASSERT_FALSE(tester.isBypassed());
+
   ASSERT_EQ(MockDevice::NoteEvents{}, tester.getDevice()->fNoteEvents);
 
   ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.nextFrame());
@@ -88,6 +102,10 @@ TEST(NotePlayerTester, Usage)
   });
 
   ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(70, 120, 3), tester.nextFrame());
+
+  // bypass note player (does not receive notes anymore)
+  tester.setBypassed(true);
+  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(69)));
 }
 
 }

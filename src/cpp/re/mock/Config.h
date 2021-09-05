@@ -38,6 +38,15 @@ enum class PropertyOwner {
   kGUIOwner
 };
 
+enum class DeviceType
+{
+  kInstrument,
+  kCreativeFX,
+  kStudioFX,
+  kHelper,
+  kNotePlayer
+};
+
 struct Realtime
 {
   using create_native_object_t = std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)>;
@@ -96,6 +105,12 @@ struct Config
   Config &debug(bool iDebug = true)
   {
     fDebug = iDebug;
+    return *this;
+  }
+
+  Config &device_type(DeviceType iDeviceType)
+  {
+    fDeviceType = iDeviceType;
     return *this;
   }
 
@@ -175,6 +190,7 @@ struct Config
 
 protected:
   bool fDebug{};
+  DeviceType fDeviceType{DeviceType::kHelper};
   std::vector<std::variant<ConfigFile, ConfigString>> fMotherboardDefs{};
   std::vector<std::variant<ConfigFile, ConfigString>> fRealtimeControllers{};
   rt_callback_t fRealtime{};
@@ -188,6 +204,12 @@ struct DeviceConfig
   DeviceConfig &debug(bool iDebug = true)
   {
     fConfig.debug(iDebug);
+    return *this;
+  }
+
+  DeviceConfig &device_type(DeviceType iDeviceType)
+  {
+    fConfig.device_type(iDeviceType);
     return *this;
   }
 

@@ -96,6 +96,12 @@ public: // used by regular code
     setNum(fmt::printf("%s/value", iSocketPath.c_str()), iValue);
   }
 
+  TJBox_OnOffBypassStates getEffectBypassState() const { return static_cast<TJBox_OnOffBypassStates>(getNum<int>("/custom_properties/builtin_onoffbypass")); }
+  void setEffectBypassState(TJBox_OnOffBypassStates iState) { setNum("/custom_properties/builtin_onoffbypass", static_cast<int>(iState)); }
+
+  bool isNotePlayerBypassed() const { return getBool("/environment/player_bypassed"); }
+  void setNotePlayerBypassed(bool iBypassed) { setBool("/environment/player_bypassed", iBypassed); }
+
   void setNoteInEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0);
   inline void setNoteInEvent(TJBox_NoteEvent const &iNoteEvent) { setNoteInEvent(iNoteEvent.fNoteNumber, iNoteEvent.fVelocity, iNoteEvent.fAtFrameIndex); };
   void setNoteInEvents(NoteEvents const &iNoteEvents);
@@ -214,6 +220,7 @@ protected:
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
+  TJBox_ObjectRef fEnvironmentRef{};
   TJBox_ObjectRef fNoteStatesRef{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};

@@ -156,7 +156,11 @@ public:
 
   static const DeviceConfig<MAUPst> CONFIG;
 
+  TJBox_OnOffBypassStates getBypassState() const;
+  void setBypassState(TJBox_OnOffBypassStates iState);
+
 protected:
+  TJBox_ObjectRef fCustomPropertiesRef;
   StereoSocket fInSocket{};
   StereoSocket fOutSocket{};
 };
@@ -246,10 +250,14 @@ public:
 
   static void wire(Rack &iRack, Rack::Extension const &iFromExtension, Rack::Extension const &iToExtension);
 
+  bool isBypassed() const;
+  void setBypassed(bool iBypassed);
+
 public:
   NoteEvents fNoteEvents{};
 
 protected:
+  TJBox_ObjectRef fEnvironmentRef;
   TJBox_ObjectRef fNoteStatesRef;
 };
 

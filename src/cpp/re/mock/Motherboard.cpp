@@ -69,6 +69,9 @@ Motherboard::Motherboard()
   // /custom_properties
   fCustomPropertiesRef = addObject("/custom_properties")->fObjectRef;
 
+  // /environment
+  fEnvironmentRef = addObject("/environment")->fObjectRef;
+
 //  // /custom_properties/instance (for the "privateState")
 //  addProperty(fCustomPropertiesRef, "instance", PropertyOwner::kRTCOwner, lua::jbox_native_object{});
 
@@ -205,19 +208,17 @@ std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRat
 {
   auto res = std::unique_ptr<Motherboard>(new Motherboard());
 
-  auto environment = res->addObject("/environment");
-
   // /environment/instance_id
   auto idProp = std::make_shared<lua::jbox_number_property>();
   idProp->fPropertyTag = kJBox_EnvironmentInstanceID;
   idProp->fDefaultValue = iInstanceId;
-  res->addProperty(environment->fObjectRef, "instance_id", PropertyOwner::kHostOwner, idProp);
+  res->addProperty(res->fEnvironmentRef, "instance_id", PropertyOwner::kHostOwner, idProp);
 
   // /environment/system_sample_rate
   auto sampleRateProp = std::make_shared<lua::jbox_number_property>();
   sampleRateProp->fPropertyTag = kJBox_EnvironmentSystemSampleRate;
   sampleRateProp->fDefaultValue = iSampleRate;
-  res->addProperty(environment->fObjectRef, "system_sample_rate", PropertyOwner::kHostOwner, sampleRateProp);
+  res->addProperty(res->fEnvironmentRef, "system_sample_rate", PropertyOwner::kHostOwner, sampleRateProp);
 
   return res;
 }
@@ -323,6 +324,34 @@ void Motherboard::init(Config const &iConfig)
     auto diff = registerRTCBinding(propertyPath, bindingKey);
     fRealtimeController->invokeBinding(this, bindingKey, getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
   }
+
+  // extra properties based on device type
+  switch(iConfig.fDeviceType)
+  {
+    case DeviceType::kStudioFX:
+    case DeviceType::kCreativeFX:
+    {
+      auto prop = std::make_shared<lua::jbox_number_property>();
+      prop->fPropertyTag = kJBox_CustomPropertiesOnOffBypass;
+      prop->fDefaultValue = kJBox_EnabledOn;
+      addProperty(fCustomPropertiesRef, "builtin_onoffbypass", PropertyOwner::kDocOwner, prop);
+      break;
+    }
+
+    case DeviceType::kNotePlayer:
+    {
+      auto prop = std::make_shared<lua::jbox_boolean_property>();
+      prop->fPropertyTag = kJBox_EnvironmentPlayerBypassed;
+      prop->fDefaultValue = false;
+      addProperty(fEnvironmentRef, "player_bypassed", PropertyOwner::kHostOwner, prop);
+      break;
+    }
+
+    default:
+      // no extra properties
+      break;
+  }
+
 }
 
 //------------------------------------------------------------------------

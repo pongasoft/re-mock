@@ -138,10 +138,12 @@ void Rack::copyNoteEvents(Rack::Extension::NoteWire const &iWire)
   auto outExtension = fExtensions.get(iWire.fFromSocket.fExtensionId);
   auto inExtension = fExtensions.get(iWire.fToSocket.fExtensionId);
 
-  auto noteEvents = outExtension->fMotherboard->getNoteOutEvents();
-  for(auto &noteEvent: noteEvents)
-    inExtension->fMotherboard->setNoteInEvent(noteEvent);
-
+  if(!inExtension->fMotherboard->isNotePlayerBypassed())
+  {
+    auto noteEvents = outExtension->fMotherboard->getNoteOutEvents();
+    for(auto &noteEvent: noteEvents)
+      inExtension->fMotherboard->setNoteInEvent(noteEvent);
+  }
 }
 
 //------------------------------------------------------------------------
