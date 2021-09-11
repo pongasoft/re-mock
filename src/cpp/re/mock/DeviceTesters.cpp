@@ -23,35 +23,211 @@ namespace re::mock {
 //------------------------------------------------------------------------
 // DeviceTester::DeviceTester
 //------------------------------------------------------------------------
-DeviceTester::DeviceTester(Config const &iDeviceConfig) : fDevice{fRack.newExtension(iDeviceConfig)}
+DeviceTester::DeviceTester(Config const &iDeviceConfig, int iSampleRate) :
+  fRack{iSampleRate}, fDevice{fRack.newExtension(iDeviceConfig)}
 {
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wire
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MAUSrc> &DeviceTester::wire(Rack::ExtensionDevice<MAUSrc> &iSrc,
+                                                  std::optional<std::string> iLeftInSocketName,
+                                                  std::optional<std::string> iRightInSocketName)
+{
+  if(iLeftInSocketName)
+    fRack.wire(iSrc.getAudioOutSocket(MAUSrc::LEFT_SOCKET), fDevice.getAudioInSocket(iLeftInSocketName.value()));
+  if(iRightInSocketName)
+    fRack.wire(iSrc.getAudioOutSocket(MAUSrc::RIGHT_SOCKET), fDevice.getAudioInSocket(iRightInSocketName.value()));
+
+  return iSrc;
+}
+
+
+//------------------------------------------------------------------------
+// DeviceTester::wireNewAudioSrc
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MAUSrc> DeviceTester::wireNewAudioSrc(std::optional<std::string> iLeftInSocketName,
+                                                            std::optional<std::string> iRightInSocketName)
+{
+  auto src = fRack.newDevice<MAUSrc>(MAUSrc::CONFIG);
+
+  return wire(src, iLeftInSocketName, iRightInSocketName);
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::unwire
+//------------------------------------------------------------------------
+void DeviceTester::unwire(Rack::ExtensionDevice<MAUSrc> &iSrc)
+{
+  fRack.unwire(iSrc.getStereoAudioOutSocket(MAUSrc::LEFT_SOCKET, MAUSrc::RIGHT_SOCKET));
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wire
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MAUDst> &
+DeviceTester::wire(Rack::ExtensionDevice<MAUDst> &iDst,
+                   std::optional<std::string> iLeftOutSocketName,
+                   std::optional<std::string> iRightOutSocketName)
+{
+  if(iLeftOutSocketName)
+    fRack.wire(fDevice.getAudioOutSocket(iLeftOutSocketName.value()), iDst.getAudioInSocket(MAUDst::LEFT_SOCKET));
+  if(iRightOutSocketName)
+    fRack.wire(fDevice.getAudioOutSocket(iRightOutSocketName.value()), iDst.getAudioInSocket(MAUDst::RIGHT_SOCKET));
+
+  return iDst;
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wireNewAudioDst
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MAUDst> DeviceTester::wireNewAudioDst(std::optional<std::string> iLeftOutSocketName,
+                                                            std::optional<std::string> iRightOutSocketName)
+{
+  auto dst = fRack.newDevice<MAUDst>(MAUDst::CONFIG);
+  wire(dst, iLeftOutSocketName, iRightOutSocketName);
+  return dst;
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::unwire
+//------------------------------------------------------------------------
+void DeviceTester::unwire(Rack::ExtensionDevice<MAUDst> &iDst)
+{
+  fRack.unwire(iDst.getAudioInSocket(MAUDst::LEFT_SOCKET));
+  fRack.unwire(iDst.getAudioInSocket(MAUDst::RIGHT_SOCKET));
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wire
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MCVSrc> &
+DeviceTester::wire(Rack::ExtensionDevice<MCVSrc> &iSrc, std::string const &iCVInSocketName)
+{
+  fRack.wire(iSrc.getCVOutSocket(MCVSrc::SOCKET), fDevice.getCVInSocket(iCVInSocketName));
+  return iSrc;
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wireNewCVSrc
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MCVSrc> DeviceTester::wireNewCVSrc(std::optional<std::string> iCVInSocketName)
+{
+  auto src = fRack.newDevice<MCVSrc>(MCVSrc::CONFIG);
+  if(iCVInSocketName)
+    wire(src, iCVInSocketName.value());
+  return src;
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::unwire
+//------------------------------------------------------------------------
+void DeviceTester::unwire(Rack::ExtensionDevice<MCVSrc> &iSrc)
+{
+  fRack.unwire(iSrc.getCVOutSocket(MCVSrc::SOCKET));
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wire
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MCVDst> &
+DeviceTester::wire(Rack::ExtensionDevice<MCVDst> &iDst, std::string const &iCVOutSocketName)
+{
+  fRack.wire(fDevice.getCVOutSocket(iCVOutSocketName), iDst.getCVInSocket(MCVDst::SOCKET));
+  return iDst;
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wireNewCVDst
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MCVDst> DeviceTester::wireNewCVDst(std::optional<std::string> iCVOutSocketName)
+{
+  auto dst = fRack.newDevice<MCVDst>(MCVDst::CONFIG);
+  if(iCVOutSocketName)
+    wire(dst, iCVOutSocketName.value());
+  return dst;
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::unwire
+//------------------------------------------------------------------------
+void DeviceTester::unwire(Rack::ExtensionDevice<MCVDst> &iDst)
+{
+  fRack.unwire(iDst.getCVInSocket(MCVSrc::SOCKET));
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wireNewNotePlayerSrc
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MNPSrc> DeviceTester::wireNewNotePlayerSrc()
+{
+  auto src = fRack.newDevice<MNPSrc>(MNPSrc::CONFIG);
+  fRack.wire(src.getNoteOutSocket(), fDevice.getNoteInSocket());
+  return src;
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::unwire
+//------------------------------------------------------------------------
+void DeviceTester::unwire(Rack::ExtensionDevice<MNPSrc> &iSrc)
+{
+  fRack.unwire(iSrc.getNoteOutSocket());
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::wireNewNotePlayerDst
+//------------------------------------------------------------------------
+Rack::ExtensionDevice<MNPDst> DeviceTester::wireNewNotePlayerDst()
+{
+  auto dst = fRack.newDevice<MNPDst>(MNPDst::CONFIG);
+  fRack.wire(fDevice.getNoteOutSocket(), dst.getNoteInSocket());
+  return dst;
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::unwire
+//------------------------------------------------------------------------
+void DeviceTester::unwire(Rack::ExtensionDevice<MNPDst> &iDst)
+{
+  fRack.unwire(iDst.getNoteInSocket());
 }
 
 //------------------------------------------------------------------------
 // ExtensionEffectTester::ExtensionEffectTester
 //------------------------------------------------------------------------
-ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig) :
-  DeviceTester(iDeviceConfig),
+ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig, int iSampleRate) :
+  DeviceTester(iDeviceConfig, iSampleRate),
   fSrc{fRack.newDevice<MAUSrc>(MAUSrc::CONFIG)},
   fDst{fRack.newDevice<MAUDst>(MAUDst::CONFIG)}
 {
 }
 
 //------------------------------------------------------------------------
-// ExtensionEffectTester::setMainIn
+// ExtensionEffectTester::wireMainIn
 //------------------------------------------------------------------------
-void ExtensionEffectTester::setMainIn(std::string const &iLeftInSocketName, std::string const &iRightInSocketName)
+void ExtensionEffectTester::wireMainIn(std::optional<std::string> iLeftInSocketName,
+                                       std::optional<std::string> iRightInSocketName)
 {
-  MockAudioDevice::wire(fRack, fSrc, fDevice.getStereoAudioInSocket(iLeftInSocketName, iRightInSocketName));
+  if(iLeftInSocketName)
+    fRack.wire(fSrc.getAudioOutSocket(MAUSrc::LEFT_SOCKET), fDevice.getAudioInSocket(iLeftInSocketName.value()));
+  if(iRightInSocketName)
+    fRack.wire(fSrc.getAudioOutSocket(MAUSrc::RIGHT_SOCKET), fDevice.getAudioInSocket(iRightInSocketName.value()));
 }
 
+
 //------------------------------------------------------------------------
-// ExtensionEffectTester::setMainOut
+// ExtensionEffectTester::wireMainOut
 //------------------------------------------------------------------------
-void ExtensionEffectTester::setMainOut(std::string const &iLeftOutSocketName, std::string const &iRightOutSocketName)
+void ExtensionEffectTester::wireMainOut(std::optional<std::string> iLeftOutSocketName,
+                                        std::optional<std::string> iRightOutSocketName)
 {
-  MockAudioDevice::wire(fRack, fDevice.getStereoAudioOutSocket(iLeftOutSocketName, iRightOutSocketName), fDst);
+  if(iLeftOutSocketName)
+    fRack.wire(fDevice.getAudioOutSocket(iLeftOutSocketName.value()), fDst.getAudioInSocket(MAUDst::LEFT_SOCKET));
+  if(iRightOutSocketName)
+    fRack.wire(fDevice.getAudioOutSocket(iRightOutSocketName.value()), fDst.getAudioInSocket(MAUDst::RIGHT_SOCKET));
 }
+
 
 //------------------------------------------------------------------------
 // ExtensionEffectTester::nextFrame
@@ -77,18 +253,22 @@ void ExtensionEffectTester::nextFrame(MockAudioDevice::StereoBuffer const &iInpu
 //------------------------------------------------------------------------
 // ExtensionInstrumentTester::ExtensionInstrumentTester
 //------------------------------------------------------------------------
-ExtensionInstrumentTester::ExtensionInstrumentTester(Config const &iDeviceConfig) :
-  DeviceTester(iDeviceConfig),
+ExtensionInstrumentTester::ExtensionInstrumentTester(Config const &iDeviceConfig, int iSampleRate) :
+  DeviceTester(iDeviceConfig, iSampleRate),
   fDst{fRack.newDevice<MAUDst>(MAUDst::CONFIG)}
 {
 }
 
 //------------------------------------------------------------------------
-// ExtensionEffectTester::setMainOut
+// ExtensionEffectTester::wireMainOut
 //------------------------------------------------------------------------
-void ExtensionInstrumentTester::setMainOut(std::string const &iLeftOutSocketName, std::string const &iRightOutSocketName)
+void ExtensionInstrumentTester::wireMainOut(std::optional<std::string> iLeftOutSocketName,
+                                            std::optional<std::string> iRightOutSocketName)
 {
-  MockAudioDevice::wire(fRack, fDevice.getStereoAudioOutSocket(iLeftOutSocketName, iRightOutSocketName), fDst);
+  if(iLeftOutSocketName)
+    fRack.wire(fDevice.getAudioOutSocket(iLeftOutSocketName.value()), fDst.getAudioInSocket(MAUDst::LEFT_SOCKET));
+  if(iRightOutSocketName)
+    fRack.wire(fDevice.getAudioOutSocket(iRightOutSocketName.value()), fDst.getAudioInSocket(MAUDst::RIGHT_SOCKET));
 }
 
 //------------------------------------------------------------------------
@@ -120,17 +300,14 @@ void ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents,
   oOutputBuffer = fDst->fBuffer;
 }
 
-
 //------------------------------------------------------------------------
 // ExtensionNotePlayerTester::ExtensionNotePlayerTester
 //------------------------------------------------------------------------
-ExtensionNotePlayerTester::ExtensionNotePlayerTester(Config const &iDeviceConfig) :
-  DeviceTester(iDeviceConfig),
-  fSrc{fRack.newDevice<MNPSrc>(MNPSrc::CONFIG)},
-  fDst{fRack.newDevice<MNPDst>(MNPDst::CONFIG)}
+ExtensionNotePlayerTester::ExtensionNotePlayerTester(Config const &iDeviceConfig, int iSampleRate) :
+  DeviceTester(iDeviceConfig, iSampleRate),
+  fSrc{wireNewNotePlayerSrc()},
+  fDst{wireNewNotePlayerDst()}
 {
-  MockNotePlayer::wire(fRack, fSrc, fDevice);
-  MockNotePlayer::wire(fRack, fDevice, fDst);
 }
 
 //------------------------------------------------------------------------

@@ -181,6 +181,17 @@ void Rack::unwire(Rack::Extension::AudioOutSocket const &iOutSocket)
 }
 
 //------------------------------------------------------------------------
+// Rack::unwire
+//------------------------------------------------------------------------
+void Rack::unwire(Rack::Extension::AudioInSocket const &iInSocket)
+{
+  auto ext = fExtensions.get(iInSocket.fExtensionId);
+  auto wire = ext->findWire(iInSocket);
+  if(wire)
+    unwire(wire->fFromSocket);
+}
+
+//------------------------------------------------------------------------
 // Rack::wire
 //------------------------------------------------------------------------
 void Rack::wire(Extension::StereoAudioOutSocket const &iOutSocket, Extension::StereoAudioInSocket const &iInSocket)
@@ -233,6 +244,17 @@ void Rack::unwire(Rack::Extension::CVOutSocket const &iOutSocket)
 }
 
 //------------------------------------------------------------------------
+// Rack::unwire
+//------------------------------------------------------------------------
+void Rack::unwire(Rack::Extension::CVInSocket const &iInSocket)
+{
+  auto ext = fExtensions.get(iInSocket.fExtensionId);
+  auto wire = ext->findWire(iInSocket);
+  if(wire)
+    unwire(wire->fFromSocket);
+}
+
+//------------------------------------------------------------------------
 // Rack::wire
 //------------------------------------------------------------------------
 void Rack::wire(Extension::NoteOutSocket const &iOutSocket, Extension::NoteInSocket const &iInSocket)
@@ -258,6 +280,16 @@ void Rack::unwire(Extension::NoteOutSocket const &iOutSocket)
   }
 }
 
+//------------------------------------------------------------------------
+// Rack::unwire
+//------------------------------------------------------------------------
+void Rack::unwire(Extension::NoteInSocket const &iInSocket)
+{
+  auto ext = fExtensions.get(iInSocket.fExtensionId);
+  auto wire = ext->findWire(iInSocket);
+  if(wire)
+    unwire(wire->fFromSocket);
+}
 
 //------------------------------------------------------------------------
 // InternalThreadLocalRAII - to add/remove the "current" motherboard
@@ -383,6 +415,24 @@ std::optional<Rack::Extension::AudioInSocket> Rack::ExtensionImpl::unwire(Extens
     auto wire = *iter;
     fAudioOutWires.erase(iter);
     return wire.fToSocket;
+  }
+
+  return std::nullopt;
+}
+
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::findWire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::AudioWire> Rack::ExtensionImpl::findWire(Extension::AudioInSocket const &iInSocket)
+{
+  RE_MOCK_ASSERT(iInSocket.fExtensionId == fId); // sanity check...
+
+  auto iter =
+    std::find_if(fAudioInWires.begin(), fAudioInWires.end(), [&iInSocket](auto &wire) { return wire.fToSocket == iInSocket; });
+
+  if(iter != fAudioInWires.end())
+  {
+    return *iter;
   }
 
   return std::nullopt;
@@ -544,6 +594,23 @@ std::optional<Rack::Extension::CVInSocket> Rack::ExtensionImpl::unwire(Extension
 }
 
 //------------------------------------------------------------------------
+// Rack::ExtensionImpl::findWire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::CVWire> Rack::ExtensionImpl::findWire(Extension::CVInSocket const &iInSocket)
+{
+  RE_MOCK_ASSERT(iInSocket.fExtensionId == fId); // sanity check...
+
+  auto iter =
+    std::find_if(fCVInWires.begin(), fCVInWires.end(), [&iInSocket](auto &wire) { return wire.fToSocket == iInSocket; });
+
+  if(iter != fCVInWires.end())
+    return *iter;
+
+  return std::nullopt;
+}
+
+
+//------------------------------------------------------------------------
 // Rack::ExtensionImpl::unwire
 //------------------------------------------------------------------------
 std::optional<Rack::Extension::CVOutSocket> Rack::ExtensionImpl::unwire(Extension::CVInSocket const &iInSocket)
@@ -601,5 +668,20 @@ std::optional<Rack::Extension::NoteOutSocket> Rack::ExtensionImpl::unwire(Extens
 
 }
 
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::unwire
+//------------------------------------------------------------------------
+std::optional<Rack::Extension::NoteWire> Rack::ExtensionImpl::findWire(Extension::NoteInSocket const &iInSocket)
+{
+  RE_MOCK_ASSERT(iInSocket.fExtensionId == fId); // sanity check...
+
+  if(fNoteInWire && fNoteInWire->fToSocket.fExtensionId == iInSocket.fExtensionId)
+  {
+    return fNoteInWire;
+  }
+
+  return std::nullopt;
+
+}
 
 }

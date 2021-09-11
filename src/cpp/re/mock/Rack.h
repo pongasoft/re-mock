@@ -184,10 +184,13 @@ protected:
     void wire(Extension::NoteOutSocket const &iOutSocket, Extension::NoteInSocket const &iInSocket);
     std::optional<Extension::AudioInSocket> unwire(Extension::AudioOutSocket const &iOutSocket);
     std::optional<Extension::AudioOutSocket> unwire(Extension::AudioInSocket const &iInSocket);
+    std::optional<Extension::AudioWire> findWire(Extension::AudioInSocket const &iInSocket);
     std::optional<Extension::CVInSocket> unwire(Extension::CVOutSocket const &iOutSocket);
     std::optional<Extension::CVOutSocket> unwire(Extension::CVInSocket const &iInSocket);
+    std::optional<Extension::CVWire> findWire(Extension::CVInSocket const &iInSocket);
     std::optional<Extension::NoteInSocket> unwire(Extension::NoteOutSocket const &iOutSocket);
     std::optional<Extension::NoteOutSocket> unwire(Extension::NoteInSocket const &iInSocket);
+    std::optional<Extension::NoteWire> findWire(Extension::NoteInSocket const &iInSocket);
 
     std::set<int> const &getDependents() const;
 
@@ -214,12 +217,15 @@ public:
 
   void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
   void unwire(Extension::AudioOutSocket const &iOutSocket);
+  void unwire(Extension::AudioInSocket const &iInSocket);
   void wire(Extension::StereoAudioOutSocket const &iOutSocket, Extension::StereoAudioInSocket const &iInSocket);
   void unwire(Extension::StereoAudioOutSocket const &iOutSocket);
   void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
   void unwire(Extension::CVOutSocket const &iOutSocket);
+  void unwire(Extension::CVInSocket const &iInSocket);
   void wire(Extension::NoteOutSocket const &iOutSocket, Extension::NoteInSocket const &iInSocket);
   void unwire(Extension::NoteOutSocket const &iOutSocket);
+  void unwire(Extension::NoteInSocket const &iInSocket);
 
   void nextFrame();
 

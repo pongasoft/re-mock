@@ -188,7 +188,7 @@ public:
   template<typename From>
   static void wire(Rack &iRack, Rack::ExtensionDevice<From> const &iFromExtension, Rack::Extension::CVInSocket const &iToSocket);
   template<typename To>
-  static void wire(Rack &iRack, Rack::Extension::CVInSocket const &iFromSocket, Rack::ExtensionDevice<To> const &iToExtension);
+  static void wire(Rack &iRack, Rack::Extension::CVOutSocket const &iFromSocket, Rack::ExtensionDevice<To> const &iToExtension);
 
   static bool eq(TJBox_Float64 iCV1, TJBox_Float64 iCV2);
 
@@ -361,7 +361,7 @@ void MockCVDevice::wire(Rack &iRack,
 // MockCVDevice::wire
 //------------------------------------------------------------------------
 template<typename To>
-void MockCVDevice::wire(Rack &iRack, Rack::Extension::CVInSocket const &iFromSocket,
+void MockCVDevice::wire(Rack &iRack, Rack::Extension::CVOutSocket const &iFromSocket,
                         Rack::ExtensionDevice<To> const &iToExtension)
 {
   static_assert(std::is_convertible<To*, MockCVDevice*>::value, "To must be a subclass of MockCVDevice");
