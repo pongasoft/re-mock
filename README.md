@@ -8,7 +8,7 @@ Taste of the framework
 
 Example of unit test (using GoogleTest):
 
- ```
+ ```c++
 // Creates a config by reading motherboard_def.lua and realtime_controller.lua
 auto c = DeviceConfig<Device>::fromJBoxExport(RE_CMAKE_MOTHERBOARD_DEF_LUA, RE_CMAKE_REALTIME_CONTROLLER_LUA);
 

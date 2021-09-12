@@ -49,7 +49,7 @@ Each tester creates a basic test infrastructure for each type of device:
 
 You use this tester when your device is a helper/utility (`device_type="helper"` in `info.lua`). This tester does not
 create or wire any other devices as it is not really possible to determine what the helper will do. 
-Refer to the section _How to test sockets?_ for details on how to wire devices based on the sockets exposed by the 
+Refer to the section [How to test sockets?](#how-to-test-sockets) for details on how to wire devices based on the sockets exposed by the 
 device.
 
 #### StudioEffectTester and CreativeEffectTester
