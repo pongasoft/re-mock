@@ -105,7 +105,7 @@ endif()
 
 if(re-mock_DEV_BUILD)
 
-  # Generate the re_cmake_build.h file
+  # Generate the re_mock_build.h file
   set(GENERATED_FILES_DIR "${CMAKE_BINARY_DIR}/generated")
   file(TO_NATIVE_PATH "${CMAKE_CURRENT_LIST_DIR}" PROJECT_DIR_NATIVE_PATH)
   file(TO_NATIVE_PATH "${RE_SDK_ROOT}" RE_SDK_ROOT_NATIVE_PATH)
