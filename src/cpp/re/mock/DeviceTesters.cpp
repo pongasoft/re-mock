@@ -209,10 +209,7 @@ ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig, int iS
 void ExtensionEffectTester::wireMainIn(std::optional<std::string> iLeftInSocketName,
                                        std::optional<std::string> iRightInSocketName)
 {
-  if(iLeftInSocketName)
-    fRack.wire(fSrc.getAudioOutSocket(MAUSrc::LEFT_SOCKET), fDevice.getAudioInSocket(iLeftInSocketName.value()));
-  if(iRightInSocketName)
-    fRack.wire(fSrc.getAudioOutSocket(MAUSrc::RIGHT_SOCKET), fDevice.getAudioInSocket(iRightInSocketName.value()));
+  wire(fSrc, iLeftInSocketName, iRightInSocketName);
 }
 
 
@@ -222,10 +219,7 @@ void ExtensionEffectTester::wireMainIn(std::optional<std::string> iLeftInSocketN
 void ExtensionEffectTester::wireMainOut(std::optional<std::string> iLeftOutSocketName,
                                         std::optional<std::string> iRightOutSocketName)
 {
-  if(iLeftOutSocketName)
-    fRack.wire(fDevice.getAudioOutSocket(iLeftOutSocketName.value()), fDst.getAudioInSocket(MAUDst::LEFT_SOCKET));
-  if(iRightOutSocketName)
-    fRack.wire(fDevice.getAudioOutSocket(iRightOutSocketName.value()), fDst.getAudioInSocket(MAUDst::RIGHT_SOCKET));
+  wire(fDst, iLeftOutSocketName, iRightOutSocketName);
 }
 
 
@@ -265,10 +259,7 @@ ExtensionInstrumentTester::ExtensionInstrumentTester(Config const &iDeviceConfig
 void ExtensionInstrumentTester::wireMainOut(std::optional<std::string> iLeftOutSocketName,
                                             std::optional<std::string> iRightOutSocketName)
 {
-  if(iLeftOutSocketName)
-    fRack.wire(fDevice.getAudioOutSocket(iLeftOutSocketName.value()), fDst.getAudioInSocket(MAUDst::LEFT_SOCKET));
-  if(iRightOutSocketName)
-    fRack.wire(fDevice.getAudioOutSocket(iRightOutSocketName.value()), fDst.getAudioInSocket(MAUDst::RIGHT_SOCKET));
+  wire(fDst, iLeftOutSocketName, iRightOutSocketName);
 }
 
 //------------------------------------------------------------------------

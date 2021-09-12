@@ -70,7 +70,11 @@ Motherboard::Motherboard()
   fCustomPropertiesRef = addObject("/custom_properties")->fObjectRef;
 
   // /environment
-  fEnvironmentRef = addObject("/environment")->fObjectRef;
+  auto env = addObject("/environment");
+  fEnvironmentRef = env->fObjectRef;
+
+  env->addProperty("master_tune", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_EnvironmentMasterTune);
+  env->addProperty("devicevisible", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_EnvironmentDeviceVisible);
 
 //  // /custom_properties/instance (for the "privateState")
 //  addProperty(fCustomPropertiesRef, "instance", PropertyOwner::kRTCOwner, lua::jbox_native_object{});
@@ -88,6 +92,23 @@ Motherboard::Motherboard()
                             JBox_MakeNumber(0),
                             static_cast<TJBox_Tag>(i));
   }
+
+  // transport
+  auto transport = addObject("/transport");
+  transport->addProperty("playing", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_TransportPlaying);
+  transport->addProperty("play_pos", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_TransportPlayPos);
+  transport->addProperty("tempo", PropertyOwner::kHostOwner, JBox_MakeNumber(120), kJBox_TransportTempo);
+  transport->addProperty("filtered_tempo", PropertyOwner::kHostOwner, JBox_MakeNumber(120), kJBox_TransportFilteredTempo);
+  transport->addProperty("tempo_automation", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_TransportTempoAutomation);
+  transport->addProperty("time_signature_numerator", PropertyOwner::kHostOwner, JBox_MakeNumber(4), kJBox_TransportTimeSignatureNumerator);
+  transport->addProperty("time_signature_denominator", PropertyOwner::kHostOwner, JBox_MakeNumber(4), kJBox_TransportTimeSignatureDenominator);
+  transport->addProperty("loop_enabled", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_TransportLoopEnabled);
+  transport->addProperty("loop_start_pos", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_TransportLoopStartPos);
+  transport->addProperty("loop_end_pos", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_TransportLoopEndPos);
+  transport->addProperty("bar_start_pos", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_TransportBarStartPos);
+  transport->addProperty("request_reset_audio", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_TransportRequestResetAudio);
+  transport->addProperty("request_run", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_TransportRequestRun);
+  transport->addProperty("request_stop", PropertyOwner::kHostOwner, JBox_MakeNumber(0), kJBox_TransportRequestStop);
 }
 
 //------------------------------------------------------------------------
