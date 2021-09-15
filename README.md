@@ -133,3 +133,7 @@ License
 - This project is released under the terms of the [Apache 2.0 license](LICENSE.txt)
 
 - This project uses the Rack extension SDK released under the [Rack Extension License agreement](RE_License.txt)
+
+- This project includes [lua-cmake](https://github.com/lubgr/lua-cmake) released under an [MIT License](external/lua-cmake/LICENSE)
+
+- This project includes [lua 5.4.1](https://www.lua.org/) released under an [MIT License](https://www.lua.org/license.html)

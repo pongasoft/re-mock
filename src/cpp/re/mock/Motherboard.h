@@ -40,7 +40,7 @@
 bool operator==(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
 bool operator!=(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
 std::ostream &operator<<(std::ostream &os, TJBox_NoteEvent const &event);
-static bool compare(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r);
+bool compare(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r);
 
 namespace re::mock {
 
