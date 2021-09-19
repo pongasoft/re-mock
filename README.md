@@ -123,6 +123,11 @@ am looking for use cases my plugins are not covering, so do not hesitate to cont
 Release notes
 -------------
 
+#### 0.9.1 - 2021-09-19
+
+- Fixed "warning: unused function 'compare'" message
+- Added missing licenses
+
 #### 0.9.0 - 2021-09-12
 
 - First Beta/Feedback release.
