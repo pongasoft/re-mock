@@ -123,6 +123,11 @@ am looking for use cases my plugins are not covering, so do not hesitate to cont
 Release notes
 -------------
 
+#### 0.9.2 - 2021-09-21
+
+- Fixed output buffers not being cleaned before `nextFrame`
+- Fixed input buffers not being cleaned after `nextFrame`
+
 #### 0.9.1 - 2021-09-19
 
 - Fixed "warning: unused function 'compare'" message

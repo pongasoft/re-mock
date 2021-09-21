@@ -171,7 +171,8 @@ end
       /* .fLeft = */  re.getDSPBuffer("/audio_inputs/L"),
       /* .fRight = */ re.getDSPBuffer(re.getAudioInSocket("R"))
     };
-    ASSERT_EQ(buffer, MockAudioDevice::buffer(1.0, 2.0));
+    // after nextFrame input buffers are cleared (they have been consumed)
+    ASSERT_EQ(buffer, MockAudioDevice::buffer(0, 0));
   }
   {
     auto buffer = MockAudioDevice::StereoBuffer{

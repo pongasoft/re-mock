@@ -224,6 +224,8 @@ protected:
   TJBox_ObjectRef fNoteStatesRef{};
   std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};
+  std::set<int> fInputDSPBuffers{};
+  std::set<int> fOutputDSPBuffers{};
   std::unique_ptr<lua::RealtimeController> fRealtimeController{};
   Realtime fRealtime{};
   ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};

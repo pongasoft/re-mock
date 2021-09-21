@@ -468,13 +468,23 @@ TJBox_PropertyDiff Motherboard::registerRTCBinding(std::string const &iPropertyP
 }
 
 //------------------------------------------------------------------------
+// jbox_get_dsp_id
+//------------------------------------------------------------------------
+inline int jbox_get_dsp_id(TJBox_Value const &iJboxValue)
+{
+  return impl::jbox_get_value<int>(kJBox_DSPBuffer, iJboxValue);
+}
+
+//------------------------------------------------------------------------
 // Motherboard::addAudioInput
 //------------------------------------------------------------------------
 void Motherboard::addAudioInput(std::string const &iSocketName)
 {
   auto o = addObject(fmt::printf("/audio_inputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_AudioInputConnected);
-  o->addProperty("buffer", PropertyOwner::kHostOwner, createDSPBuffer(), kJBox_AudioInputBuffer);
+  auto buffer = createDSPBuffer();
+  o->addProperty("buffer", PropertyOwner::kHostOwner, buffer, kJBox_AudioInputBuffer);
+  fInputDSPBuffers.emplace(jbox_get_dsp_id(buffer));
 }
 
 //------------------------------------------------------------------------
@@ -485,7 +495,9 @@ void Motherboard::addAudioOutput(std::string const &iSocketName)
   auto o = addObject(fmt::printf("/audio_outputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, JBox_MakeBoolean(false), kJBox_AudioOutputConnected);
   o->addProperty("dsp_latency", PropertyOwner::kRTCOwner, JBox_MakeNumber(0), kJBox_AudioOutputDSPLatency);
-  o->addProperty("buffer", PropertyOwner::kHostOwner, createDSPBuffer(), kJBox_AudioOutputBuffer);
+  auto buffer = createDSPBuffer();
+  o->addProperty("buffer", PropertyOwner::kHostOwner, buffer, kJBox_AudioOutputBuffer);
+  fOutputDSPBuffers.emplace(jbox_get_dsp_id(buffer));
 }
 
 //------------------------------------------------------------------------
@@ -544,22 +556,24 @@ impl::JboxObject *Motherboard::addObject(std::string const &iObjectPath)
 //------------------------------------------------------------------------
 void Motherboard::nextFrame()
 {
+  // clearing note out events
   fNoteOutEvents.clear();
+
+  // clearing output buffers (make sure that if the device doesn't do anything it is set to 0)
+  for(auto id: fOutputDSPBuffers)
+    fDSPBuffers.get(id).fill(0);
 
   if(fRealtime.render_realtime)
     fRealtime.render_realtime(getInstance<void *>(),
                               fCurrentFramePropertyDiffs.data(),
                               fCurrentFramePropertyDiffs.size());
 
+  // clearing diffs (consumed)
   fCurrentFramePropertyDiffs.clear();
-}
 
-//------------------------------------------------------------------------
-// jbox_get_dsp_id
-//------------------------------------------------------------------------
-inline int jbox_get_dsp_id(TJBox_Value const &iJboxValue)
-{
-  return impl::jbox_get_value<int>(kJBox_DSPBuffer, iJboxValue);
+  // clearing input buffers (consumed)
+  for(auto id: fInputDSPBuffers)
+    fDSPBuffers.get(id).fill(0);
 }
 
 //------------------------------------------------------------------------

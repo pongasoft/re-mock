@@ -83,11 +83,24 @@ TEST(Rack, AudioWiring) {
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
 
- rack.nextFrame();
+  rack.nextFrame();
 
   ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+
+  // we bypass the device
+  pst.use([&pst]{
+    pst->setBypassState(kJBox_EnabledOff);
+  });
+
+  rack.nextFrame();
+
+  // dst should be 0
+  ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+  ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0.0, 0.0));
+  ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
+
 }
 
 // Rack.AudioUnwiring
