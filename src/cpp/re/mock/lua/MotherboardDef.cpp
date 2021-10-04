@@ -110,6 +110,7 @@ MotherboardDef::MotherboardDef()
     {"cv_output",                          lua_cv_output},
     {"ui_text",                            lua_ignored},
     {"ui_selector",                        lua_ignored},
+    {"ui_percent",                         lua_ignored},
     {"ui_linear",                          lua_ignored},
     {"ui_nonlinear",                       lua_ignored},
     {"add_cv_routing_target",              lua_ignored},

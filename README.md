@@ -123,6 +123,10 @@ am looking for use cases my plugins are not covering, so do not hesitate to cont
 Release notes
 -------------
 
+#### 0.9.3 - 2021-10-04
+
+- Added `ui_percent` to the list of ignored lua keywords
+
 #### 0.9.2 - 2021-09-21
 
 - Fixed output buffers not being cleaned before `nextFrame`
