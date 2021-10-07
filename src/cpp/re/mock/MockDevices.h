@@ -93,6 +93,7 @@ public:
   };
 
   static StereoBuffer buffer(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample);
+  static StereoBuffer buffer(buffer_type const &iLeftBuffer, buffer_type const &iRightBuffer);
 
   static bool eq(TJBox_AudioSample iSample1, TJBox_AudioSample iSample2);
   static bool eq(StereoBuffer const &iBuffer1, StereoBuffer const &iBuffer2);

@@ -170,6 +170,14 @@ MockAudioDevice::StereoBuffer MockAudioDevice::buffer(TJBox_AudioSample iLeftSam
 }
 
 //------------------------------------------------------------------------
+// MockAudioDevice::buffer
+//------------------------------------------------------------------------
+MockAudioDevice::StereoBuffer MockAudioDevice::buffer(buffer_type const &iLeftBuffer, buffer_type const &iRightBuffer)
+{
+  return { /* .fLeft = */ iLeftBuffer, /* .fRight = */ iRightBuffer };
+}
+
+//------------------------------------------------------------------------
 // MockAudioDevice::StereoSocket::input
 //------------------------------------------------------------------------
 MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::input()
