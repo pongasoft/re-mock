@@ -495,6 +495,26 @@ TEST(Rack, Diff)
     ASSERT_EQ(100, noteEvent.fVelocity);
     ASSERT_EQ(25, noteEvent.fAtFrameIndex);
   });
+
+  // write in any order but make sure it gets ordered by fAtFrameIndex
+  re.setNoteInEvent(69, 100, 0);
+  re.setNoteInEvent(69, 50, 10);
+  re.setNoteInEvent(69, 120, 5);
+  re.setNoteInEvent(69, 90, 3);
+
+  rack.nextFrame();
+
+  ASSERT_EQ(4, re->fDiffs.size());
+  re.use([&re] {
+    auto noteEvent = JBox_AsNoteEvent(re->fDiffs[0]);
+    ASSERT_EQ(69, noteEvent.fNoteNumber); ASSERT_EQ(100, noteEvent.fVelocity); ASSERT_EQ(0, noteEvent.fAtFrameIndex);
+    noteEvent = JBox_AsNoteEvent(re->fDiffs[1]);
+    ASSERT_EQ(69, noteEvent.fNoteNumber); ASSERT_EQ(90, noteEvent.fVelocity); ASSERT_EQ(3, noteEvent.fAtFrameIndex);
+    noteEvent = JBox_AsNoteEvent(re->fDiffs[2]);
+    ASSERT_EQ(69, noteEvent.fNoteNumber); ASSERT_EQ(120, noteEvent.fVelocity); ASSERT_EQ(5, noteEvent.fAtFrameIndex);
+    noteEvent = JBox_AsNoteEvent(re->fDiffs[3]);
+    ASSERT_EQ(69, noteEvent.fNoteNumber); ASSERT_EQ(50, noteEvent.fVelocity); ASSERT_EQ(10, noteEvent.fAtFrameIndex);
+  });
 }
 
 // Rack.InstanceID

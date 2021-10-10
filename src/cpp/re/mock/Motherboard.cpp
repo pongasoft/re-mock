@@ -564,9 +564,24 @@ void Motherboard::nextFrame()
     fDSPBuffers.get(id).fill(0);
 
   if(fRealtime.render_realtime)
+  {
+    // The diffs are supposed to be sorted by frame index
+    if(fCurrentFramePropertyDiffs.size() > 0)
+    {
+      std::sort(fCurrentFramePropertyDiffs.begin(),
+                fCurrentFramePropertyDiffs.end(),
+                [](TJBox_PropertyDiff const &l, TJBox_PropertyDiff const &r) {
+                  if(l.fAtFrameIndex == r.fAtFrameIndex)
+                    return l.fPropertyTag < r.fPropertyTag;
+                  else
+                    return l.fAtFrameIndex < r.fAtFrameIndex;
+                });
+    }
+
     fRealtime.render_realtime(getInstance<void *>(),
                               fCurrentFramePropertyDiffs.data(),
                               fCurrentFramePropertyDiffs.size());
+  }
 
   // clearing diffs (consumed)
   fCurrentFramePropertyDiffs.clear();
