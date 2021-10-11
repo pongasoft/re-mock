@@ -552,6 +552,15 @@ MockDevice::NoteEvents &MockDevice::NoteEvents::event(TJBox_NoteEvent const &iNo
 }
 
 //------------------------------------------------------------------------
+// MockDevice::NoteEvents::note
+//------------------------------------------------------------------------
+MockDevice::NoteEvents &MockDevice::NoteEvents::note(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex)
+{
+  return event({iNoteNumber, iVelocity, iAtFrameIndex});
+}
+
+
+//------------------------------------------------------------------------
 // MockDevice::NoteEvents::noteOn
 //------------------------------------------------------------------------
 MockDevice::NoteEvents &MockDevice::NoteEvents::noteOn(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex)

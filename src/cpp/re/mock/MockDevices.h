@@ -34,6 +34,7 @@ public:
     NoteEvents &events(Motherboard::NoteEvents const &iNoteEvents);
     NoteEvents &event(TJBox_NoteEvent const &iNoteEvent);
     NoteEvents &noteOn(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity = 100, TJBox_UInt16 iAtFrameIndex = 0);
+    NoteEvents &note(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex);
     NoteEvents &noteOff(TJBox_UInt8 iNoteNumber, TJBox_UInt16 iAtFrameIndex = 0);
     NoteEvents &allNotesOff();
     NoteEvents &clear();
