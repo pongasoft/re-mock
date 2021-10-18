@@ -218,7 +218,7 @@ void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iP
                                          iPropertyDiff->fCurrentValue);
 
     if(fRTCNotify.find(iPropertyDiff->fPropertyRef) != fRTCNotify.end())
-      fCurrentFramePropertyDiffs.emplace_back(*iPropertyDiff);
+      addPropertyDiff(*iPropertyDiff);
   }
 }
 
@@ -445,14 +445,14 @@ void Motherboard::registerRTCNotify(std::string const &iPropertyPath)
     auto diffs = objectRef->watchAllPropertiesForChange();
     for(auto &diff: diffs)
     {
-      fCurrentFramePropertyDiffs.emplace_back(diff);
+      addPropertyDiff(diff);
       fRTCNotify.emplace(diff.fPropertyRef);
     }
   }
   else
   {
     auto ref = getPropertyRef(iPropertyPath);
-    fCurrentFramePropertyDiffs.emplace_back(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
+    addPropertyDiff(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
     fRTCNotify.emplace(ref);
   }
 }
@@ -566,21 +566,24 @@ void Motherboard::nextFrame()
   if(fRealtime.render_realtime)
   {
     // The diffs are supposed to be sorted by frame index
-    if(fCurrentFramePropertyDiffs.size() > 0)
+    if(fCurrentFramePropertyDiffs.size() > 1)
     {
       std::sort(fCurrentFramePropertyDiffs.begin(),
                 fCurrentFramePropertyDiffs.end(),
-                [](TJBox_PropertyDiff const &l, TJBox_PropertyDiff const &r) {
+                [](PropertyDiff const &l, PropertyDiff const &r) {
                   if(l.fAtFrameIndex == r.fAtFrameIndex)
-                    return l.fPropertyTag < r.fPropertyTag;
+                    return l.fInsertIndex < r.fInsertIndex;
                   else
                     return l.fAtFrameIndex < r.fAtFrameIndex;
                 });
     }
 
-    fRealtime.render_realtime(getInstance<void *>(),
-                              fCurrentFramePropertyDiffs.data(),
-                              fCurrentFramePropertyDiffs.size());
+    std::vector<TJBox_PropertyDiff> diffs{};
+    diffs.reserve(fCurrentFramePropertyDiffs.size());
+    for(auto const &diff: fCurrentFramePropertyDiffs)
+      diffs.emplace_back(diff.toJBoxPropertyDiff());
+
+    fRealtime.render_realtime(getInstance<void *>(), diffs.data(), diffs.size());
   }
 
   // clearing diffs (consumed)
@@ -1031,6 +1034,18 @@ void Motherboard::outputNoteEvent(TJBox_NoteEvent const &iNoteEvent)
 }
 
 //------------------------------------------------------------------------
+// Motherboard::addPropertyDiff
+//------------------------------------------------------------------------
+void Motherboard::addPropertyDiff(TJBox_PropertyDiff const &iDiff)
+{
+  PropertyDiff diff{};
+  TJBox_PropertyDiff *diffPtr = &diff;
+  *diffPtr = iDiff; // copy the base class
+  diff.fInsertIndex = fCurrentFramePropertyDiffs.size();
+  fCurrentFramePropertyDiffs.emplace_back(diff);
+}
+
+//------------------------------------------------------------------------
 // JboxObject::JboxObject
 //------------------------------------------------------------------------
 impl::JboxObject::JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iObjectRef) :
@@ -1181,6 +1196,14 @@ TJBox_PropertyDiff impl::JboxProperty::watchForChange()
     /* .fPropertyRef = */   fPropertyRef,
     /* .fPropertyTag = */   fTag
   };
+}
+
+//------------------------------------------------------------------------
+// Motherboard::PropertyDiff::toJBoxPropertyDiff
+//------------------------------------------------------------------------
+TJBox_PropertyDiff Motherboard::PropertyDiff::toJBoxPropertyDiff() const
+{
+  return { fPreviousValue, fCurrentValue, fPropertyRef, fPropertyTag, fAtFrameIndex };
 }
 
 }

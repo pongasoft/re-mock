@@ -204,6 +204,8 @@ protected:
 
   void nextFrame();
 
+  void addPropertyDiff(TJBox_PropertyDiff const &iDiff);
+
 protected:
 
   static bool compare(TJBox_PropertyRef const &l, TJBox_PropertyRef const &r)
@@ -216,13 +218,19 @@ protected:
 
   using ComparePropertyRef = decltype(&compare);
 
+  struct PropertyDiff : public TJBox_PropertyDiff
+  {
+    int fInsertIndex{};
+    TJBox_PropertyDiff toJBoxPropertyDiff() const;
+  };
+
 protected:
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   TJBox_ObjectRef fEnvironmentRef{};
   TJBox_ObjectRef fNoteStatesRef{};
-  std::vector<TJBox_PropertyDiff> fCurrentFramePropertyDiffs{};
+  std::vector<PropertyDiff> fCurrentFramePropertyDiffs{};
   ObjectManager<DSPBuffer> fDSPBuffers{};
   std::set<int> fInputDSPBuffers{};
   std::set<int> fOutputDSPBuffers{};
