@@ -162,6 +162,44 @@ bool MockAudioDevice::eq(MockAudioDevice::StereoBuffer const &iBuffer1,
 }
 
 //------------------------------------------------------------------------
+// MockAudioDevice::eqWithPrecision
+//------------------------------------------------------------------------
+bool MockAudioDevice::eqWithPrecision(TJBox_AudioSample iPrecision,
+                                      TJBox_AudioSample iSample1,
+                                      TJBox_AudioSample iSample2)
+{
+  return std::fabs(iSample1 - iSample2) <= iPrecision;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::eq
+//------------------------------------------------------------------------
+bool MockAudioDevice::eqWithPrecision(TJBox_AudioSample iPrecision,
+                                      buffer_type const &iBuffer1,
+                                      buffer_type const &iBuffer2)
+{
+  for(int i = 0; i < NUM_SAMPLES_PER_FRAME; i++)
+  {
+    if(!eqWithPrecision(iPrecision, iBuffer1[i], iBuffer2[i]))
+      return false;
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::eqWithPrecision
+//------------------------------------------------------------------------
+bool MockAudioDevice::eqWithPrecision(TJBox_AudioSample iPrecision,
+                                      MockAudioDevice::StereoBuffer const &iBuffer1,
+                                      MockAudioDevice::StereoBuffer const &iBuffer2)
+{
+  return eqWithPrecision(iPrecision, iBuffer1.fLeft, iBuffer2.fLeft) &&
+         eqWithPrecision(iPrecision, iBuffer1.fRight, iBuffer2.fRight);
+}
+
+
+//------------------------------------------------------------------------
 // MockAudioDevice::buffer
 //------------------------------------------------------------------------
 MockAudioDevice::StereoBuffer MockAudioDevice::buffer(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample)

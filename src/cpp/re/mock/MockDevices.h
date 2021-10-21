@@ -100,6 +100,10 @@ public:
   static bool eq(StereoBuffer const &iBuffer1, StereoBuffer const &iBuffer2);
   static bool eq(buffer_type const &iBuffer1, buffer_type const &iBuffer2);
 
+  static bool eqWithPrecision(TJBox_AudioSample iPrecision, TJBox_AudioSample iSample1, TJBox_AudioSample iSample2);
+  static bool eqWithPrecision(TJBox_AudioSample iPrecision, StereoBuffer const &iBuffer1, StereoBuffer const &iBuffer2);
+  static bool eqWithPrecision(TJBox_AudioSample iPrecision, buffer_type const &iBuffer1, buffer_type const &iBuffer2);
+
 public:
   explicit MockAudioDevice(int iSampleRate);
   static void copyBuffer(StereoSocket const &iFromSocket, StereoBuffer &iToBuffer);
