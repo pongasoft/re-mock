@@ -44,6 +44,11 @@ static int lua_number(lua_State *L)
   return MotherboardDef::loadFromRegistry(L)->luaNumber();
 }
 
+static int lua_number_no_default(lua_State *L)
+{
+  return MotherboardDef::loadFromRegistry(L)->luaNumberNoDefault();
+}
+
 static int lua_string(lua_State *L)
 {
   return MotherboardDef::loadFromRegistry(L)->luaString();
@@ -99,28 +104,42 @@ struct JBoxObjectUD
 MotherboardDef::MotherboardDef()
 {
   static const struct luaL_Reg jboxLib[] = {
-    {"property_set",                       lua_property_set},
-    {"native_object",                      lua_native_object},
-    {"boolean",                            lua_boolean},
-    {"number" ,                            lua_number},
-    {"string",                             lua_string},
-    {"audio_input",                        lua_audio_input},
-    {"audio_output",                       lua_audio_output},
-    {"cv_input",                           lua_cv_input},
-    {"cv_output",                          lua_cv_output},
-    {"ui_text",                            lua_ignored},
-    {"ui_selector",                        lua_ignored},
-    {"ui_percent",                         lua_ignored},
-    {"ui_linear",                          lua_ignored},
-    {"ui_nonlinear",                       lua_ignored},
     {"add_cv_routing_target",              lua_ignored},
     {"add_mono_audio_routing_target",      lua_ignored},
-    {"add_stereo_audio_routing_target",    lua_ignored},
+    {"add_mono_instrument_routing_hint",   lua_ignored},
     {"add_stereo_audio_routing_pair",      lua_ignored},
+    {"add_stereo_audio_routing_target",    lua_ignored},
     {"add_stereo_effect_routing_hint",     lua_ignored},
     {"add_stereo_instrument_routing_hint", lua_ignored},
-    {"add_mono_instrument_routing_hint",   lua_ignored},
+    {"audio_input",                        lua_audio_input},
+    {"audio_output",                       lua_audio_output},
+    {"blob",                               lua_ignored},
+    {"boolean",                            lua_boolean},
+    {"cv_input",                           lua_cv_input},
+    {"cv_output",                          lua_cv_output},
+    {"expand_template_string",             lua_ignored},
+    {"format_integer_as_string",           lua_ignored},
+    {"format_note_length_value_as_string", lua_ignored},
+    {"format_number_as_string",            lua_ignored},
+    {"native_object",                      lua_native_object},
+    {"number",                             lua_number},
+    {"performance_aftertouch",             lua_number_no_default},
+    {"performance_breathcontrol",          lua_number_no_default},
+    {"performance_expression",             lua_number_no_default},
+    {"performance_modwheel",               lua_number_no_default},
+    {"performance_pitchbend",              lua_number_no_default},
+    {"performance_sustainpedal",           lua_number_no_default},
+    {"property_set",                       lua_property_set},
+    {"sample",                             lua_ignored},
     {"set_effect_auto_bypass_routing",     lua_ignored},
+    {"string",                             lua_string},
+    {"trace",                              lua_ignored},
+    {"ui_linear",                          lua_ignored},
+    {"ui_nonlinear",                       lua_ignored},
+    {"ui_percent",                         lua_ignored},
+    {"ui_selector",                        lua_ignored},
+    {"ui_text",                            lua_ignored},
+    {"user_sample",                        lua_ignored},
     {nullptr,                              nullptr}
   };
 
@@ -259,6 +278,17 @@ int MotherboardDef::luaNumber()
   auto p = std::make_shared<jbox_number_property>();
   populatePropertyTag(p);
   p->fDefaultValue = L.getTableValueAsNumber("default", 1);
+  return addObjectOnTopOfStack(std::move(p));
+}
+
+//------------------------------------------------------------------------
+// MotherboardDef::luaNumberNoDefault
+//------------------------------------------------------------------------
+int MotherboardDef::luaNumberNoDefault()
+{
+  auto p = std::make_shared<jbox_number_property>();
+  populatePropertyTag(p);
+  p->fDefaultValue = 0;
   return addObjectOnTopOfStack(std::move(p));
 }
 

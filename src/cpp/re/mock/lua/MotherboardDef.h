@@ -137,6 +137,7 @@ public:
   int luaNativeObject();
   int luaBoolean();
   int luaNumber();
+  int luaNumberNoDefault();
   int luaString();
   int luaSocket(jbox_sockets::Type iSocketType);
   int luaPropertySet();
