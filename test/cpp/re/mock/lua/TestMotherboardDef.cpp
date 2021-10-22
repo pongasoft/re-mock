@@ -86,7 +86,7 @@ TEST(MotherboardDef, All)
   auto customProperties = def->getCustomProperties();
 
   // document_owner
-  ASSERT_EQ(3, customProperties->document_owner.size());
+  ASSERT_EQ(4, customProperties->document_owner.size());
   {
     auto ptr = std::get<std::shared_ptr<jbox_boolean_property>>(customProperties->document_owner["doc_boolean"]);
     ASSERT_EQ(ptr->fPropertyTag, 100);
@@ -101,6 +101,11 @@ TEST(MotherboardDef, All)
     auto ptr = std::get<std::shared_ptr<jbox_string_property>>(customProperties->document_owner["doc_string"]);
     ASSERT_EQ(ptr->fPropertyTag, 103);
     ASSERT_EQ(ptr->fDefaultValue, "abcd");
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->document_owner["doc_pitch_bend"]);
+    ASSERT_EQ(ptr->fPropertyTag, 104);
+    ASSERT_FLOAT_EQ(ptr->fDefaultValue, 0.5);
   }
 
   // rtc_owner

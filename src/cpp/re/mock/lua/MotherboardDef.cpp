@@ -49,6 +49,11 @@ static int lua_number_no_default(lua_State *L)
   return MotherboardDef::loadFromRegistry(L)->luaNumberNoDefault();
 }
 
+static int lua_pitchbend(lua_State *L)
+{
+  return MotherboardDef::loadFromRegistry(L)->luaNumberNoDefault(0.5);
+}
+
 static int lua_string(lua_State *L)
 {
   return MotherboardDef::loadFromRegistry(L)->luaString();
@@ -127,7 +132,7 @@ MotherboardDef::MotherboardDef()
     {"performance_breathcontrol",          lua_number_no_default},
     {"performance_expression",             lua_number_no_default},
     {"performance_modwheel",               lua_number_no_default},
-    {"performance_pitchbend",              lua_number_no_default},
+    {"performance_pitchbend",              lua_pitchbend},
     {"performance_sustainpedal",           lua_number_no_default},
     {"property_set",                       lua_property_set},
     {"sample",                             lua_ignored},
@@ -284,11 +289,11 @@ int MotherboardDef::luaNumber()
 //------------------------------------------------------------------------
 // MotherboardDef::luaNumberNoDefault
 //------------------------------------------------------------------------
-int MotherboardDef::luaNumberNoDefault()
+int MotherboardDef::luaNumberNoDefault(TJBox_Float64 iDefault)
 {
   auto p = std::make_shared<jbox_number_property>();
   populatePropertyTag(p);
-  p->fDefaultValue = 0;
+  p->fDefaultValue = iDefault;
   return addObjectOnTopOfStack(std::move(p));
 }
 

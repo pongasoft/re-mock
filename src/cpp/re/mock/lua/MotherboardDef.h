@@ -137,7 +137,7 @@ public:
   int luaNativeObject();
   int luaBoolean();
   int luaNumber();
-  int luaNumberNoDefault();
+  int luaNumberNoDefault(TJBox_Float64 iDefault = 0);
   int luaString();
   int luaSocket(jbox_sockets::Type iSocketType);
   int luaPropertySet();
