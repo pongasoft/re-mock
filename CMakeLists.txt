@@ -36,8 +36,8 @@ endif()
 if(re-mock_DEV_BUILD)
   enable_testing()
 
-  # Using RE SDK version 4.2.0
-  set(RE_SDK_VERSION 4.2.0)
+  # Using RE SDK version 4.3.0
+  set(RE_SDK_VERSION 4.3.0)
 
   # Location of RE SDK: can be set when invoking cmake => cmake -D "RE_SDK_ROOT:PATH=/path/to/re_sdk"
   # or via -p option in configure.py script or in cmake-gui
