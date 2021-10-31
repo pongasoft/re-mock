@@ -130,6 +130,7 @@ if(re-mock_DEV_BUILD)
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestMotherboardDef.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestRealtimeController.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/lua/TestSanityCheckSDK.cpp"
       )
 
   add_executable("${target_test}" "${TEST_CASE_SOURCES}")

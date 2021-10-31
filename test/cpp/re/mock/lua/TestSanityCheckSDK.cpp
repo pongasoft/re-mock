@@ -1,0 +1,77 @@
+/*
+ * Copyright (c) 2021 pongasoft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ *
+ * @author Yan Pujante
+ */
+
+#include <re/mock/lua/MotherboardDef.h>
+#include <re/mock/lua/RealtimeController.h>
+#include <gtest/gtest.h>
+#include <re_mock_build.h>
+
+namespace re::mock::lua::Test {
+
+using namespace testing;
+
+static auto SDK_EXAMPLES = {
+  "ColumnDisplayDevice",
+  "CustomDisplayDevice",
+  "HideableWidgetsDevice",
+  "PopupAndModifierKeys",
+  "RE2DAllWidgets",
+  "SilenceDetectionEffect",
+  "SimpleInstrument",
+  "SimplePatternPlayer",
+  "SimplePlayer",
+  "VerySimpleSampler"
+};
+
+/**
+ * The purpose of this test is to make sure that all the examples provided with the SDK can be
+ * at least loaded/parsed with `MotherboardDef::fromFile` and `RealtimeController::fromFile`
+ */
+TEST(SanityCheck, SDKExamples)
+{
+  for(auto &p: SDK_EXAMPLES)
+  {
+    {
+      auto path = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "motherboard_def.lua");
+
+      auto def = MotherboardDef::fromFile(path);
+      auto customProperties = def->getCustomProperties();
+      std::cout << p << "/motherboard_def.lua: "
+                << "audio_inputs=" << def->getAudioInputs()->fNames.size()
+                << ";audio_outputs=" << def->getAudioOutputs()->fNames.size()
+                << ";cv_inputs=" << def->getCVInputs()->fNames.size()
+                << ";cv_outputs=" << def->getCVOutputs()->fNames.size()
+                << ";document_owner=" << customProperties->document_owner.size()
+                << ";rtc_owner=" << customProperties->rtc_owner.size()
+                << ";rt_owner=" << customProperties->rt_owner.size()
+                << std::endl;
+    }
+
+    {
+      auto path = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "realtime_controller.lua");
+
+      auto def = RealtimeController::fromFile(path);
+      std::cout << p << "/realtime_controller.lua: "
+                << "rtc_bindings=" << def->getBindings().size()
+                << ";rt_input_setup=" << def->getRTInputSetupNotify().size()
+                << std::endl;
+    }
+  }
+}
+
+}
