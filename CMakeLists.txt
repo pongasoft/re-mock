@@ -125,6 +125,7 @@ if(re-mock_DEV_BUILD)
   set(TEST_CASE_SOURCES
       "${re-mock_CPP_TST_DIR}/re/mock/TestDeviceTesters.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestMisc.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRack.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"

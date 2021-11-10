@@ -129,6 +129,9 @@ public:
     Motherboard::DSPBuffer getDSPBuffer(AudioSocket const &iSocket) const { return motherboard().getDSPBuffer(iSocket.fSocketRef); }
     void setDSPBuffer(AudioSocket const &iSocket, Motherboard::DSPBuffer iBuffer) { motherboard().setDSPBuffer(iSocket.fSocketRef, std::move(iBuffer)); }
 
+    void requestResetAudio() { motherboard().requestResetAudio(); }
+    void requestStop() { motherboard().requestStop(); }
+
     template<typename T>
     inline T *getNativeObjectRW(std::string const &iPropertyPath) const { return motherboard().getNativeObjectRW<T>(iPropertyPath); }
 

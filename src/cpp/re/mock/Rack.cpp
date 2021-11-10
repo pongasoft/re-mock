@@ -388,7 +388,7 @@ void Rack::ExtensionImpl::wire(Extension::AudioOutSocket const &iOutSocket, Exte
   auto newWire = Extension::AudioWire{ iOutSocket, iInSocket };
 
   // check for duplicate
-  RE_MOCK_ASSERT(!stl::find_if(fAudioOutWires, [&newWire](auto &wire) { return Rack::Extension::AudioWire::overlap(wire, newWire); }), "Audio socket in use");
+  RE_MOCK_ASSERT(!stl::contains_if(fAudioOutWires, [&newWire](auto &wire) { return Rack::Extension::AudioWire::overlap(wire, newWire); }), "Audio socket in use");
 
   if(iOutSocket.fExtensionId == fId)
     fAudioOutWires.emplace_back(newWire);
@@ -537,7 +537,7 @@ void Rack::ExtensionImpl::wire(Extension::CVOutSocket const &iOutSocket, Extensi
   auto newWire = Extension::CVWire{ iOutSocket, iInSocket };
 
   // check for duplicate
-  RE_MOCK_ASSERT(!stl::find_if(fCVOutWires, [&newWire](auto &wire) { return Rack::Extension::CVWire::overlap(wire, newWire); }), "CV socket in use");
+  RE_MOCK_ASSERT(!stl::contains_if(fCVOutWires, [&newWire](auto &wire) { return Rack::Extension::CVWire::overlap(wire, newWire); }), "CV socket in use");
 
   if(iOutSocket.fExtensionId == fId)
     fCVOutWires.emplace_back(newWire);

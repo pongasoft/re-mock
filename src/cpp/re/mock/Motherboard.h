@@ -109,6 +109,9 @@ public: // used by regular code
   void setDSPBuffer(std::string const &iAudioSocketPath, DSPBuffer iBuffer);
   DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const;
 
+  void requestResetAudio() { setNum("/transport/request_reset_audio", getNum("/transport/request_reset_audio") + 1); }
+  void requestStop() { setNum("/transport/request_stop", getNum("/transport/request_stop") + 1); }
+
   template<typename T>
   inline T *getNativeObjectRW(std::string const &iPropertyPath) const {
     return reinterpret_cast<T *>(getNativeObjectRW(getValue(iPropertyPath)));

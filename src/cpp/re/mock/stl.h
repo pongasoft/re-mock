@@ -46,7 +46,7 @@ inline bool contains(Container const &iContainer, T const &iItem)
 }
 
 template<typename Container, typename Predicate>
-inline bool find_if(Container const &iContainer, Predicate iPredicate)
+inline bool contains_if(Container const &iContainer, Predicate iPredicate)
 {
   return std::find_if(std::begin(iContainer), std::end(iContainer), iPredicate) != std::end(iContainer);
 }

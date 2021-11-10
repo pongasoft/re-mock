@@ -82,6 +82,8 @@ public:
 
   void unwire(Rack::ExtensionDevice<MNPDst> &iDst);
 
+  void nextFrames(int iNumFrames);
+
 protected:
   template<typename Device>
   Rack::ExtensionDevice<Device> getExtensionDevice();

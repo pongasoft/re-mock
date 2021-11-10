@@ -194,6 +194,15 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MNPDst> &iDst)
 }
 
 //------------------------------------------------------------------------
+// DeviceTester::nextFrames
+//------------------------------------------------------------------------
+void DeviceTester::nextFrames(int iNumFrames)
+{
+  for(int i = 0; i < iNumFrames; i++)
+    fRack.nextFrame();
+}
+
+//------------------------------------------------------------------------
 // ExtensionEffectTester::ExtensionEffectTester
 //------------------------------------------------------------------------
 ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig, int iSampleRate) :
