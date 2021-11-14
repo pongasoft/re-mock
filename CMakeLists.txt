@@ -65,6 +65,7 @@ set(re-mock_BUILD_HEADERS
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.h
     ${re-mock_CPP_SRC_DIR}/re/mock/MotherboardImpl.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Patch.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Rack.h
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.h
     ${re-mock_CPP_SRC_DIR}/re/mock/stl.h
@@ -82,6 +83,7 @@ set(re-mock_BUILD_SOURCES
     ${re-mock_CPP_SRC_DIR}/re/mock/Jukebox.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/Patch.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/MockJBox.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.cpp
@@ -94,10 +96,13 @@ set(re-mock_INCLUDE_DIRECTORIES "${re-mock_CPP_SRC_DIR}")
 # Including lua lib/headers
 add_subdirectory(external/lua-cmake)
 
+# Including tinyxml2
+add_subdirectory(external/tinyxml2-9.0.0)
+
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
-target_link_libraries(${target} PUBLIC lua::lib lua::header)
+target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2)
 
 if(NOT APPLE)
 #  target_compile_options(${target} PUBLIC "/std:c++latest")
@@ -126,6 +131,7 @@ if(re-mock_DEV_BUILD)
       "${re-mock_CPP_TST_DIR}/re/mock/TestDeviceTesters.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestMisc.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestPatch.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRack.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"

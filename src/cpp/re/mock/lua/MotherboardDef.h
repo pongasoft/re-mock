@@ -34,6 +34,11 @@ class Motherboard;
 
 namespace re::mock::lua {
 
+enum class EPersistence
+{
+  kPatch, kSong, kNone
+};
+
 struct jbox_native_object {
   using param_t = std::variant<TJBox_Float64, bool>;
 
@@ -52,36 +57,55 @@ struct jbox_native_object {
     return *this;
   }
 
+  std::optional<EPersistence> fPersistence{};
 };
 
 struct jbox_boolean_property {
   int fPropertyTag{};
   bool fDefaultValue{};
+  std::optional<EPersistence> fPersistence{};
 
   jbox_boolean_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
   jbox_boolean_property &default_value(bool iValue) { fDefaultValue = iValue; return *this;}
+  jbox_boolean_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
 };
 
 struct jbox_number_property {
   int fPropertyTag{};
   TJBox_Float64 fDefaultValue{};
+  std::optional<EPersistence> fPersistence{};
   jbox_number_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
   jbox_number_property &default_value(TJBox_Float64 iValue) { fDefaultValue = iValue; return *this;}
+  jbox_number_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
 };
 
 struct jbox_string_property {
   int fPropertyTag{};
   std::string fDefaultValue{};
   int fMaxSize{};
+  std::optional<EPersistence> fPersistence{};
   jbox_string_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
   jbox_string_property &default_value(std::string iValue) { fDefaultValue = std::move(iValue); return *this; }
   jbox_string_property &max_size(int iMaxSize) { fMaxSize = iMaxSize; return *this; }
+  jbox_string_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
+};
+
+struct jbox_performance_property {
+  enum class Type { UNKNOWN, MOD_WHEEL, PITCH_BEND, SUSTAIN_PEDAL, EXPRESSION, BREATH_CONTROL, AFTERTOUCH };
+
+  int fPropertyTag{};
+  std::optional<EPersistence> fPersistence{}; // only for MOD_WHEEL and EXPRESSION
+  Type fType{Type::UNKNOWN};
+
+  jbox_performance_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
+  jbox_performance_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
+  jbox_performance_property &type(Type iType) { fType = iType; return *this;}
 };
 
 struct jbox_sockets {
-  enum Type { UNKNOWN, AUDIO_INPUT, AUDIO_OUTPUT, CV_INPUT, CV_OUTPUT };
+  enum class Type { UNKNOWN, AUDIO_INPUT, AUDIO_OUTPUT, CV_INPUT, CV_OUTPUT };
 
-  Type fType{UNKNOWN};
+  Type fType{Type::UNKNOWN};
   std::vector<std::string> fNames{};
 };
 
@@ -110,6 +134,7 @@ using jbox_object = std::variant<
   std::shared_ptr<jbox_boolean_property>,
   std::shared_ptr<jbox_number_property>,
   std::shared_ptr<jbox_string_property>,
+  std::shared_ptr<jbox_performance_property>,
   std::shared_ptr<impl::jbox_property_set>,
   std::shared_ptr<impl::jbox_socket>
   >;
@@ -119,13 +144,42 @@ using jbox_property = std::variant<
   std::shared_ptr<jbox_native_object>,
   std::shared_ptr<jbox_boolean_property>,
   std::shared_ptr<jbox_number_property>,
+  std::shared_ptr<jbox_string_property>,
+  std::shared_ptr<jbox_performance_property>
+>;
+
+using gui_jbox_property = std::variant<
+  std::shared_ptr<jbox_boolean_property>,
+  std::shared_ptr<jbox_number_property>,
   std::shared_ptr<jbox_string_property>
-  >;
+>;
+
+using document_jbox_property = std::variant<
+  std::shared_ptr<jbox_boolean_property>,
+  std::shared_ptr<jbox_number_property>,
+  std::shared_ptr<jbox_string_property>,
+  std::shared_ptr<jbox_performance_property>
+>;
+
+// TODO: Blob
+using rtc_jbox_property = std::variant<
+  std::shared_ptr<jbox_native_object>,
+  std::shared_ptr<jbox_boolean_property>,
+  std::shared_ptr<jbox_number_property>,
+  std::shared_ptr<jbox_string_property>
+>;
+
+using rt_jbox_property = std::variant<
+  std::shared_ptr<jbox_boolean_property>,
+  std::shared_ptr<jbox_number_property>,
+  std::shared_ptr<jbox_string_property>
+>;
 
 struct JboxPropertySet {
-  std::map<std::string, jbox_property> document_owner{};
-  std::map<std::string, jbox_property> rtc_owner{};
-  std::map<std::string, jbox_property> rt_owner{};
+  std::map<std::string, gui_jbox_property> gui_owner{};
+  std::map<std::string, document_jbox_property> document_owner{};
+  std::map<std::string, rtc_jbox_property> rtc_owner{};
+  std::map<std::string, rt_jbox_property> rt_owner{};
 };
 
 class MotherboardDef : public MockJBox
@@ -137,7 +191,7 @@ public:
   int luaNativeObject();
   int luaBoolean();
   int luaNumber();
-  int luaNumberNoDefault(TJBox_Float64 iDefault = 0);
+  int luaPerformance(jbox_performance_property::Type iType);
   int luaString();
   int luaSocket(jbox_sockets::Type iSocketType);
   int luaPropertySet();
@@ -149,7 +203,7 @@ public:
     return std::dynamic_pointer_cast<T>(getObjectOnTopOfStack());
   }
 
-  std::unique_ptr<JboxPropertySet> getCustomProperties();
+  std::shared_ptr<JboxPropertySet> getCustomProperties();
 
   std::unique_ptr<jbox_sockets> getAudioInputs()
   {
@@ -196,12 +250,18 @@ protected:
 
   void populatePropertyTag(jbox_property iProperty);
 
-  void filter(jbox_object_map_t &iMap, jbox_property_map_t &oMap);
+  void populatePersistence(jbox_property iProperty);
+
+  template<typename jbox_property_type>
+  void filter(jbox_object_map_t &iMap,
+              std::map<std::string, jbox_property_type> &oMap,
+              std::function<std::optional<jbox_property_type>(std::string, std::optional<impl::jbox_object>)> iFilter);
 
   jbox_native_object::param_t toParam(int idx = -1);
 
 private:
   ObjectManager<impl::jbox_object> fObjects{};
+  std::shared_ptr<JboxPropertySet> fCustomProperties{};
 };
 
 }

@@ -85,27 +85,76 @@ TEST(MotherboardDef, All)
   ASSERT_THAT(def->getCVOutputs()->fNames, UnorderedElementsAre("cv_out"));
   auto customProperties = def->getCustomProperties();
 
+  // gui_owner
+  ASSERT_EQ(3, customProperties->gui_owner.size());
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_boolean_property>>(customProperties->gui_owner["gui_boolean"]);
+    ASSERT_EQ(ptr->fPropertyTag, 0);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+    ASSERT_TRUE(ptr->fDefaultValue);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->gui_owner["gui_number"]);
+    ASSERT_EQ(ptr->fPropertyTag, 0);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+    ASSERT_FLOAT_EQ(ptr->fDefaultValue, 5);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_string_property>>(customProperties->gui_owner["gui_string"]);
+    ASSERT_EQ(ptr->fPropertyTag, 0);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+    ASSERT_EQ(ptr->fDefaultValue, "efg");
+  }
+
   // document_owner
-  ASSERT_EQ(4, customProperties->document_owner.size());
+  ASSERT_EQ(9, customProperties->document_owner.size());
   {
     auto ptr = std::get<std::shared_ptr<jbox_boolean_property>>(customProperties->document_owner["doc_boolean"]);
     ASSERT_EQ(ptr->fPropertyTag, 100);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kPatch);
     ASSERT_TRUE(ptr->fDefaultValue);
   }
   {
     auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->document_owner["doc_number"]);
     ASSERT_EQ(ptr->fPropertyTag, 101);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kPatch);
     ASSERT_FLOAT_EQ(ptr->fDefaultValue, 3);
   }
   {
     auto ptr = std::get<std::shared_ptr<jbox_string_property>>(customProperties->document_owner["doc_string"]);
     ASSERT_EQ(ptr->fPropertyTag, 103);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kPatch);
     ASSERT_EQ(ptr->fDefaultValue, "abcd");
   }
   {
-    auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->document_owner["doc_pitch_bend"]);
+    auto ptr = std::get<std::shared_ptr<jbox_performance_property>>(customProperties->document_owner["doc_mod_wheel"]);
     ASSERT_EQ(ptr->fPropertyTag, 104);
-    ASSERT_FLOAT_EQ(ptr->fDefaultValue, 0.5);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_performance_property>>(customProperties->document_owner["doc_pitch_bend"]);
+    ASSERT_EQ(ptr->fPropertyTag, 105);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_performance_property>>(customProperties->document_owner["doc_sustain_pedal"]);
+    ASSERT_EQ(ptr->fPropertyTag, 106);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_performance_property>>(customProperties->document_owner["doc_expression"]);
+    ASSERT_EQ(ptr->fPropertyTag, 107);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_performance_property>>(customProperties->document_owner["doc_breath_control"]);
+    ASSERT_EQ(ptr->fPropertyTag, 108);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_performance_property>>(customProperties->document_owner["doc_aftertouch"]);
+    ASSERT_EQ(ptr->fPropertyTag, 109);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
   }
 
   // rtc_owner
@@ -114,6 +163,7 @@ TEST(MotherboardDef, All)
     auto ptr = std::get<std::shared_ptr<jbox_native_object>>(customProperties->rtc_owner["instance"]);
     ASSERT_EQ(ptr->fDefaultValue.operation, "");
     ASSERT_EQ(ptr->fDefaultValue.params.size(), 0);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
   }
   {
     auto ptr = std::get<std::shared_ptr<jbox_native_object>>(customProperties->rtc_owner["instance_with_default"]);
@@ -122,6 +172,7 @@ TEST(MotherboardDef, All)
     ASSERT_FLOAT_EQ(std::get<TJBox_Float64>(ptr->fDefaultValue.params[0]), 0.5);
     ASSERT_EQ(std::get<bool>(ptr->fDefaultValue.params[1]), true);
     ASSERT_FLOAT_EQ(std::get<TJBox_Float64>(ptr->fDefaultValue.params[2]), 48000);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
   }
 
   // rt_owner
@@ -130,6 +181,7 @@ TEST(MotherboardDef, All)
     auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->rt_owner["rt_number"]);
     ASSERT_EQ(ptr->fPropertyTag, 102);
     ASSERT_EQ(ptr->fDefaultValue, 0);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
   }
 
   {
@@ -137,6 +189,7 @@ TEST(MotherboardDef, All)
     ASSERT_EQ(ptr->fPropertyTag, 0);
     ASSERT_EQ(ptr->fMaxSize, 100);
     ASSERT_EQ(ptr->fDefaultValue, "");
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
   }
 
   ASSERT_EQ(def->getStackString(), "<empty>");

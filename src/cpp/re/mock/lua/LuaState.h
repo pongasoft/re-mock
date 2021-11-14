@@ -29,6 +29,7 @@ extern "C" {
 
 #include <string>
 #include <iostream>
+#include <optional>
 
 namespace re::mock::lua {
 
@@ -54,6 +55,7 @@ public:
   lua_Integer getTableValueAsInteger(char const *iKey, int idx = -1);
   bool getTableValueAsBoolean(char const *iKey, int idx = -1);
   std::string getTableValueAsString(char const *iKey, int idx = -1);
+  std::optional<std::string> getTableValueAsOptionalString(char const *iKey, int idx = -1);
   lua_Unsigned getTableSize(int idx = -1);
 
   static std::string getStackString(lua_State *L, char const *iMessage = nullptr);

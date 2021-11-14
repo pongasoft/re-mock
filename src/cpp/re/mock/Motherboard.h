@@ -36,6 +36,7 @@
 #include "MotherboardImpl.h"
 #include "lua/MotherboardDef.h"
 #include "lua/RealtimeController.h"
+#include "Patch.h"
 
 bool operator==(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
 bool operator!=(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
@@ -127,6 +128,9 @@ public: // used by regular code
     return getNativeObjectRW<T>("/custom_properties/instance");
   }
 
+  inline void loadPatch(ConfigFile const &iPatchFile) { loadPatch(Patch::from(iPatchFile)); }
+  inline void loadPatch(ConfigString const &iPatchString) { loadPatch(Patch::from(iPatchString)); }
+
   std::string toString(TJBox_Value const &iValue) const;
   std::string toString(std::string const &iPropertyPath) const { return toString(getValue(iPropertyPath)); }
   std::string toString(TJBox_PropertyRef const &iPropertyRef) const;
@@ -209,6 +213,8 @@ protected:
 
   void addPropertyDiff(TJBox_PropertyDiff const &iDiff);
 
+  void loadPatch(Patch const &iPatch);
+
 protected:
 
   static bool compare(TJBox_PropertyRef const &l, TJBox_PropertyRef const &r)
@@ -229,6 +235,7 @@ protected:
 
 protected:
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
+  std::map<std::string, lua::gui_jbox_property> fGUIProperties{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   TJBox_ObjectRef fEnvironmentRef{};
@@ -240,8 +247,7 @@ protected:
   std::unique_ptr<lua::RealtimeController> fRealtimeController{};
   Realtime fRealtime{};
   ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};
-  ObjectManager<std::string> fStrings{};
-  ObjectManager<std::unique_ptr<impl::RTString>> fRTStrings{};
+  ObjectManager<std::unique_ptr<impl::String>> fStrings{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
   NoteEvents fNoteOutEvents{};

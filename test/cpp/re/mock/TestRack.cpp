@@ -371,6 +371,7 @@ TEST(Rack, toString)
   auto c = Config::fromSkeleton()
     .mdef(Config::audio_out("output_1"))
     .mdef_string(R"(
+document_owner_properties["prop_string"]       = jbox.string { default = 'abc' }
 document_owner_properties["prop_volume_ro"]       = jbox.number { default = 0.8 }
 document_owner_properties["prop_volume_rw"]       = jbox.number { default = 0.9 }
 rtc_owner_properties["prop_gain_ro"]               = jbox.native_object{ }
@@ -408,6 +409,7 @@ end
   ASSERT_STREQ("false", re.toString("/audio_outputs/output_1/connected").c_str());
   ASSERT_STREQ("0.800000", re.toString("/custom_properties/prop_volume_ro").c_str());
   ASSERT_STREQ("DSPBuffer[1]", re.toString("/audio_outputs/output_1/buffer").c_str());
+  ASSERT_STREQ("abc", re.toString("/custom_properties/prop_string").c_str());
   ASSERT_STREQ("RONativeObject[1]", re.toString("/custom_properties/prop_gain_ro").c_str());
   ASSERT_STREQ("RWNativeObject[2]", re.toString("/custom_properties/prop_gain_rw").c_str());
 
@@ -419,12 +421,13 @@ end
     TJBox_Value values[] = { JBox_MakeNil(),
                              re.getValue("/audio_outputs/output_1/connected"),
                              re.getValue("/audio_outputs/output_1/buffer"),
+                             re.getValue("/custom_properties/prop_string"),
                              re.getValue("/custom_properties/prop_volume_ro"),
                              re.getValue("/custom_properties/prop_gain_ro"),
                              re.getValue("/custom_properties/prop_gain_rw"),
                              };
 
-    JBOX_TRACEVALUES("Nil=^0, connected=^1, buffer=^2, prop_volume_ro=^3, prop_gain_ro=^4, prop_gain_rw=^5, Nil=^0", values, 6);
+    JBOX_TRACEVALUES("Nil=^0, connected=^1, buffer=^2, prop_string=^3, prop_volume_ro=^4, prop_gain_ro=^5, prop_gain_rw=^6, Nil=^0", values, 7);
   });
 }
 
@@ -454,10 +457,12 @@ TEST(Rack, Diff)
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}))
     .mdef(Config::document_owner_property("prop_untracked", lua::jbox_boolean_property{}))
+    .mdef(Config::document_owner_property("prop_string", lua::jbox_string_property{}.default_value("abcd")))
     .rtc(Config::rt_input_setup_notify("/cv_inputs/cv/*"))
     .rtc(Config::rt_input_setup_notify("/audio_inputs/input/connected"))
     .rtc(Config::rt_input_setup_notify("/custom_properties/prop_float"))
     .rtc(Config::rt_input_setup_notify("/custom_properties/prop_bool"))
+    .rtc(Config::rt_input_setup_notify("/custom_properties/prop_string"))
     .rtc(Config::rt_input_setup_notify("/note_states/69"));
 
   auto src = rack.newDevice(MAUSrc::CONFIG);
@@ -468,25 +473,29 @@ TEST(Rack, Diff)
 
   rack.nextFrame();
 
-  // there are 8 diffs because
+  // there are 9 diffs because
   // 1. /audio_inputs/input/connected gets "initialized" with false then get updated with true when wiring happens => 2 updates
   // 2. /note_states/69 gets "initialized" with 0 then get updated with 100 => 2 updates
-  ASSERT_EQ(8, re->fDiffs.size());
+  ASSERT_EQ(9, re->fDiffs.size());
 
-  std::map<std::string, std::string> diffMap{};
+  {
+    std::map<std::string, std::string> diffMap{};
 
-  for(auto &diff: re->fDiffs)
-    diffMap[re.toString(diff.fPropertyRef)] = re.toString(diff.fCurrentValue) + "|" + std::to_string(diff.fAtFrameIndex);
+    for(auto &diff: re->fDiffs)
+      diffMap[re.toString(diff.fPropertyRef)] =
+        re.toString(diff.fCurrentValue) + "|" + std::to_string(diff.fAtFrameIndex);
 
-  std::map<std::string, std::string> expected{};
-  expected["/audio_inputs/input/connected"] = "true|0";
-  expected["/custom_properties/prop_bool"] = "false|0";
-  expected["/custom_properties/prop_float"] = "0.800000|0";
-  expected["/cv_inputs/cv/connected"] = "false|0";
-  expected["/cv_inputs/cv/value"] = "0.000000|0";
-  expected["/note_states/69"] = "100.000000|25";
+    std::map<std::string, std::string> expected{};
+    expected["/audio_inputs/input/connected"] = "true|0";
+    expected["/custom_properties/prop_bool"] = "false|0";
+    expected["/custom_properties/prop_float"] = "0.800000|0";
+    expected["/custom_properties/prop_string"] = "abcd|0";
+    expected["/cv_inputs/cv/connected"] = "false|0";
+    expected["/cv_inputs/cv/value"] = "0.000000|0";
+    expected["/note_states/69"] = "100.000000|25";
 
-  ASSERT_EQ(expected, diffMap);
+    ASSERT_EQ(expected, diffMap);
+  }
 
   auto noteStateDiff = re->fDiffs[re->fDiffs.size() - 1];
   re.use([&noteStateDiff] {
@@ -515,6 +524,71 @@ TEST(Rack, Diff)
     noteEvent = JBox_AsNoteEvent(re->fDiffs[3]);
     ASSERT_EQ(69, noteEvent.fNoteNumber); ASSERT_EQ(50, noteEvent.fVelocity); ASSERT_EQ(10, noteEvent.fAtFrameIndex);
   });
+
+  re.setBool("/custom_properties/prop_bool", true);
+  re.setNum("/custom_properties/prop_float", 0.9);
+  re.setString("/custom_properties/prop_string", "efg");
+
+  rack.nextFrame();
+
+  ASSERT_EQ(3, re->fDiffs.size());
+
+  {
+    std::map<std::string, std::string> diffMap{};
+
+    for(auto &diff: re->fDiffs)
+      diffMap[re.toString(diff.fPropertyRef)] = re.toString(diff.fCurrentValue) + "|" + std::to_string(diff.fAtFrameIndex);
+
+    std::map<std::string, std::string> expected{};
+    expected["/custom_properties/prop_bool"] = "true|0";
+    expected["/custom_properties/prop_float"] = "0.900000|0";
+    expected["/custom_properties/prop_string"] = "efg|0";
+
+    ASSERT_EQ(expected, diffMap);
+  }
+
+  auto patchString = R"(
+<?xml version="1.0"?>
+<JukeboxPatch version="2.0"  deviceProductID="com.acme.Kooza"  deviceVersion="1.0.0d1" >
+    <DeviceNameInEnglish>
+        Kooza
+    </DeviceNameInEnglish>
+    <Properties>
+        <Object name="custom_properties" >
+            <Value property="prop_float"  type="number" >
+                0.5
+            </Value>
+            <Value property="prop_bool"  type="boolean" >
+                false
+            </Value>
+            <Value property="prop_string"  type="string" >
+                414243
+            </Value>
+        </Object>
+        <Object name="transport" />
+    </Properties>
+</JukeboxPatch>
+)";
+
+  re.loadPatch(ConfigString{patchString});
+
+  rack.nextFrame();
+
+  ASSERT_EQ(3, re->fDiffs.size());
+
+  {
+    std::map<std::string, std::string> diffMap{};
+
+    for(auto &diff: re->fDiffs)
+      diffMap[re.toString(diff.fPropertyRef)] = re.toString(diff.fCurrentValue) + "|" + std::to_string(diff.fAtFrameIndex);
+
+    std::map<std::string, std::string> expected{};
+    expected["/custom_properties/prop_bool"] = "false|0";
+    expected["/custom_properties/prop_float"] = "0.500000|0";
+    expected["/custom_properties/prop_string"] = "ABC|0";
+
+    ASSERT_EQ(expected, diffMap);
+  }
 }
 
 // Rack.InstanceID

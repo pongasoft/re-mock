@@ -84,6 +84,7 @@ struct Config
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
+  // TODO add performance properties
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
@@ -176,6 +177,9 @@ struct Config
     return *this;
   }
 
+  Config &default_patch(ConfigString iString) { fDefaultPatch = iString; return *this; };
+  Config &default_patch(ConfigFile iFile) { fDefaultPatch = iFile; return *this; };
+
   Config clone() const { return *this; }
 
   template<typename T>
@@ -194,6 +198,7 @@ protected:
   std::vector<std::variant<ConfigFile, ConfigString>> fMotherboardDefs{};
   std::vector<std::variant<ConfigFile, ConfigString>> fRealtimeControllers{};
   rt_callback_t fRealtime{};
+  std::optional<std::variant<ConfigFile, ConfigString>> fDefaultPatch{};
 };
 
 template<typename T>
@@ -268,6 +273,9 @@ struct DeviceConfig
     fConfig.template rt_jbox_export<T>(iDestroyNativeObject);
     return *this;
   }
+
+  DeviceConfig &default_patch(ConfigString iString) { fConfig.default_patch(iString); return *this; };
+  DeviceConfig &default_patch(ConfigFile iFile) { fConfig.default_patch(iFile); return *this; };
 
   DeviceConfig clone() const { return *this; }
 

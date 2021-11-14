@@ -39,20 +39,19 @@ static int lua_boolean(lua_State *L)
   return MotherboardDef::loadFromRegistry(L)->luaBoolean();
 }
 
-static int lua_number(lua_State *L)
+static int lua_number(lua_State *L) { return MotherboardDef::loadFromRegistry(L)->luaNumber(); }
+
+static int lua_performance(lua_State *L, jbox_performance_property::Type iType)
 {
-  return MotherboardDef::loadFromRegistry(L)->luaNumber();
+  return MotherboardDef::loadFromRegistry(L)->luaPerformance(iType);
 }
 
-static int lua_number_no_default(lua_State *L)
-{
-  return MotherboardDef::loadFromRegistry(L)->luaNumberNoDefault();
-}
-
-static int lua_pitchbend(lua_State *L)
-{
-  return MotherboardDef::loadFromRegistry(L)->luaNumberNoDefault(0.5);
-}
+static int lua_performance_aftertouch(lua_State *L) { return lua_performance(L, jbox_performance_property::Type::AFTERTOUCH); }
+static int lua_performance_breath_control(lua_State *L) { return lua_performance(L, jbox_performance_property::Type::BREATH_CONTROL); }
+static int lua_performance_expression(lua_State *L) { return lua_performance(L, jbox_performance_property::Type::EXPRESSION); }
+static int lua_performance_mod_wheel(lua_State *L) { return lua_performance(L, jbox_performance_property::Type::MOD_WHEEL); }
+static int lua_performance_pitch_bend(lua_State *L) { return lua_performance(L, jbox_performance_property::Type::PITCH_BEND); }
+static int lua_performance_sustain_pedal(lua_State *L) { return lua_performance(L, jbox_performance_property::Type::SUSTAIN_PEDAL); }
 
 static int lua_string(lua_State *L)
 {
@@ -128,12 +127,12 @@ MotherboardDef::MotherboardDef()
     {"format_number_as_string",            lua_ignored},
     {"native_object",                      lua_native_object},
     {"number",                             lua_number},
-    {"performance_aftertouch",             lua_number_no_default},
-    {"performance_breathcontrol",          lua_number_no_default},
-    {"performance_expression",             lua_number_no_default},
-    {"performance_modwheel",               lua_number_no_default},
-    {"performance_pitchbend",              lua_pitchbend},
-    {"performance_sustainpedal",           lua_number_no_default},
+    {"performance_aftertouch",             lua_performance_aftertouch},
+    {"performance_breathcontrol",          lua_performance_breath_control},
+    {"performance_expression",             lua_performance_expression},
+    {"performance_modwheel",               lua_performance_mod_wheel},
+    {"performance_pitchbend",              lua_performance_pitch_bend},
+    {"performance_sustainpedal",           lua_performance_sustain_pedal},
     {"property_set",                       lua_property_set},
     {"sample",                             lua_ignored},
     {"set_effect_auto_bypass_routing",     lua_ignored},
@@ -271,6 +270,7 @@ int MotherboardDef::luaBoolean()
 {
   auto p = std::make_shared<jbox_boolean_property>();
   populatePropertyTag(p);
+  populatePersistence(p);
   p->fDefaultValue = L.getTableValueAsBoolean("default", 1);
   return addObjectOnTopOfStack(std::move(p));
 }
@@ -282,18 +282,20 @@ int MotherboardDef::luaNumber()
 {
   auto p = std::make_shared<jbox_number_property>();
   populatePropertyTag(p);
+  populatePersistence(p);
   p->fDefaultValue = L.getTableValueAsNumber("default", 1);
   return addObjectOnTopOfStack(std::move(p));
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::luaNumberNoDefault
+// jbox_property::luaPerformance
 //------------------------------------------------------------------------
-int MotherboardDef::luaNumberNoDefault(TJBox_Float64 iDefault)
+int MotherboardDef::luaPerformance(jbox_performance_property::Type iType)
 {
-  auto p = std::make_shared<jbox_number_property>();
+  auto p = std::make_shared<jbox_performance_property>();
+  p->fType = iType;
   populatePropertyTag(p);
-  p->fDefaultValue = iDefault;
+  populatePersistence(p);
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -304,6 +306,7 @@ int MotherboardDef::luaString()
 {
   auto p = std::make_shared<jbox_string_property>();
   populatePropertyTag(p);
+  populatePersistence(p);
   p->fDefaultValue = L.getTableValueAsString("default", 1);
   p->fMaxSize = L.getTableValueAsNumber("max_size", 1);
   return addObjectOnTopOfStack(std::move(p));
@@ -348,27 +351,162 @@ void MotherboardDef::luaPropertySet(char const *iKey, jbox_object_map_t &oMap)
   lua_pop(L, 1);
 }
 
+//------------------------------------------------------------------------
+// setDefaultPersistence
+//------------------------------------------------------------------------
+template<typename T>
+void setDefaultPersistence(T o, EPersistence p) { if(!o->fPersistence) o->fPersistence = p; }
 
 //------------------------------------------------------------------------
-// toJBoxProperty
+// setNoPersistence
 //------------------------------------------------------------------------
-std::optional<jbox_property> toJBoxProperty(std::optional<impl::jbox_object> iObject)
+template<typename T>
+void setNoPersistence(std::string name, T o) {
+  RE_MOCK_ASSERT(o->fPersistence == std::nullopt, "[%s] property cannot be persisted", name.c_str());
+  o->fPersistence = EPersistence::kNone;
+}
+
+//------------------------------------------------------------------------
+// to_gui_jbox_property
+// From the doc: Properties in the gui_owner scope are not stored in
+// documents and patches by default.
+//------------------------------------------------------------------------
+std::optional<gui_jbox_property> to_gui_jbox_property(std::string iKey, std::optional<impl::jbox_object> iObject)
 {
   struct visitor
   {
-    std::optional<jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
-    std::optional<jbox_property> operator()(std::shared_ptr<jbox_native_object> o) { return o; }
-    std::optional<jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) { return o; }
-    std::optional<jbox_property> operator()(std::shared_ptr<jbox_number_property> o) { return o; }
-    std::optional<jbox_property> operator()(std::shared_ptr<jbox_string_property> o) { return o; }
-    std::optional<jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
-    std::optional<jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_performance_property>) { return std::nullopt; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
+
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) { return o; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_number_property> o) { return o; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_string_property> o) { return o; }
   };
 
   if(!iObject)
     return std::nullopt;
 
-  return std::visit(visitor{}, iObject.value());
+  auto res = std::visit(visitor{}, iObject.value());
+  if(res)
+    std::visit([iKey](auto p) {
+                 RE_MOCK_ASSERT(p->fPropertyTag == 0, "[%s] gui_owner property cannot have a property_tag", iKey.c_str());
+                 setDefaultPersistence(p, EPersistence::kNone);
+               },
+               *res);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// to_document_jbox_property
+// From the doc: Properties in the document_owner scope are stored in
+// song documents and patches by default (except for performance properties)
+//------------------------------------------------------------------------
+std::optional<document_jbox_property> to_document_jbox_property(std::string iKey, std::optional<impl::jbox_object> iObject)
+{
+  struct visitor
+  {
+    std::string fKey{};
+
+    std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
+
+    std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) {
+      setDefaultPersistence(o, EPersistence::kPatch);
+      return o;
+    }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_number_property> o) {
+      setDefaultPersistence(o, EPersistence::kPatch);
+      return o;
+    }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_string_property> o) {
+      setDefaultPersistence(o, EPersistence::kPatch);
+      return o;
+    }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_performance_property> o) {
+      RE_MOCK_ASSERT(o->fType != jbox_performance_property::Type::UNKNOWN);
+      switch(o->fType)
+      {
+        case jbox_performance_property::Type::MOD_WHEEL:
+        case jbox_performance_property::Type::EXPRESSION:
+          break;
+
+        default:
+          // should not be reached
+          RE_MOCK_ASSERT(o->fPersistence == std::nullopt,
+                         "[%s] only modwhell and expression properties can be persisted",
+                         fKey.c_str());
+          break;
+      }
+      setDefaultPersistence(o, EPersistence::kNone);
+      return o;
+    }
+  };
+
+  if(!iObject)
+    return std::nullopt;
+
+  return std::visit(visitor{iKey}, iObject.value());
+}
+
+//------------------------------------------------------------------------
+// to_rtc_jbox_property
+// Cannot be persisted
+//------------------------------------------------------------------------
+std::optional<rtc_jbox_property> to_rtc_jbox_property(std::string iKey, std::optional<impl::jbox_object> iObject)
+{
+  struct visitor
+  {
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_performance_property>) { return std::nullopt; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
+
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_native_object> o) { return o; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) { return o; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_number_property> o) { return o; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_string_property> o) { return o; }
+  };
+
+  if(!iObject)
+    return std::nullopt;
+
+  auto res = std::visit(visitor{}, iObject.value());
+  if(res)
+    std::visit([iKey](auto p) { setNoPersistence(iKey, p); }, *res);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// to_rt_jbox_property
+// Cannot be persisted
+//------------------------------------------------------------------------
+std::optional<rt_jbox_property> to_rt_jbox_property(std::string iKey, std::optional<impl::jbox_object> iObject)
+{
+  struct visitor
+  {
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_performance_property>) { return std::nullopt; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
+
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) { return o; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_number_property> o) { return o; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_string_property> o) { return o; }
+  };
+
+  if(!iObject)
+    return std::nullopt;
+
+  auto res = std::visit(visitor{}, iObject.value());
+  if(res)
+    std::visit([iKey](auto p) { setNoPersistence(iKey, p); }, *res);
+  return res;
 }
 
 //------------------------------------------------------------------------
@@ -429,6 +567,29 @@ void MotherboardDef::populatePropertyTag(jbox_property iProperty)
 }
 
 //------------------------------------------------------------------------
+// MotherboardDef::populatePersistence
+//------------------------------------------------------------------------
+void MotherboardDef::populatePersistence(jbox_property iProperty)
+{
+  RE_MOCK_ASSERT(lua_gettop(L) > 0, "Missing table... Did you use () instead of {}?");
+
+  std::optional<EPersistence> persistence = std::nullopt;
+
+  auto persistenceString = L.getTableValueAsOptionalString("persistence", 1);
+  if(persistenceString)
+  {
+    if(*persistenceString == "patch")
+      persistence = EPersistence::kPatch;
+    else if(*persistenceString == "song")
+      persistence = EPersistence::kSong;
+    else
+      RE_MOCK_ASSERT(*persistenceString == "none", "persistence [%s] should be patch/song/none", persistenceString->c_str());
+  }
+
+  std::visit([persistence](auto &t) { t->fPersistence = persistence; }, iProperty);
+}
+
+//------------------------------------------------------------------------
 // MotherboardDef::fromFile
 //------------------------------------------------------------------------
 std::unique_ptr<MotherboardDef> MotherboardDef::fromFile(std::string const &iLuaFilename)
@@ -448,12 +609,14 @@ std::unique_ptr<MotherboardDef> MotherboardDef::fromString(std::string const &iL
   return res;
 }
 
-
 //------------------------------------------------------------------------
 // MotherboardDef::getCustomProperties
 //------------------------------------------------------------------------
-std::unique_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
+std::shared_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
 {
+  if(fCustomProperties)
+    return fCustomProperties;
+
   auto set = std::make_unique<JboxPropertySet>();
 
   if(lua_getglobal(L, "custom_properties") != LUA_TNIL)
@@ -468,37 +631,47 @@ std::unique_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
 
       {
         jbox_object_map_t map{};
+        luaPropertySet("gui_owner", map);
+        filter<gui_jbox_property>(map, set->gui_owner, to_gui_jbox_property);
+      }
+
+      {
+        jbox_object_map_t map{};
         luaPropertySet("document_owner", map);
-        filter(map, set->document_owner);
+        filter<document_jbox_property>(map, set->document_owner, to_document_jbox_property);
       }
 
       {
         jbox_object_map_t map{};
         luaPropertySet("rtc_owner", map);
-        filter(map, set->rtc_owner);
+        filter<rtc_jbox_property>(map, set->rtc_owner, to_rtc_jbox_property);
       }
 
       {
         jbox_object_map_t map{};
         luaPropertySet("rt_owner", map);
-        filter(map, set->rt_owner);
+        filter<rt_jbox_property>(map, set->rt_owner, to_rt_jbox_property);
       }
     }
   }
 
   lua_pop(L, 1);
 
-  return set;
+  fCustomProperties = std::move(set);
+
+  return fCustomProperties;
 }
 
 //------------------------------------------------------------------------
 // jbox_property::filter
 //------------------------------------------------------------------------
-void MotherboardDef::filter(MotherboardDef::jbox_object_map_t &iMap, MotherboardDef::jbox_property_map_t &oMap)
+template<typename jbox_property_type>
+void MotherboardDef::filter(jbox_object_map_t &iMap, std::map<std::string, jbox_property_type> &oMap,
+                            std::function<std::optional<jbox_property_type>(std::string, std::optional<impl::jbox_object>)> iFilter)
 {
   for(auto iter: iMap)
   {
-    auto property = toJBoxProperty(iter.second);
+    auto property = iFilter(iter.first, iter.second);
     if(property)
       oMap[iter.first] = property.value();
   }

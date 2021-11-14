@@ -58,7 +58,12 @@ T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
 
 struct JboxProperty
 {
-  JboxProperty(TJBox_PropertyRef const &iPropertyRef, std::string iPropertyPath, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iTag);
+  JboxProperty(TJBox_PropertyRef const &iPropertyRef,
+               std::string iPropertyPath,
+               PropertyOwner iOwner,
+               TJBox_Value const &iInitialValue,
+               TJBox_Tag iTag,
+               lua::EPersistence iPersistence);
 
   inline TJBox_Value loadValue() const { return fValue; };
   std::optional<TJBox_PropertyDiff> storeValue(TJBox_Value const &iValue);
@@ -69,8 +74,10 @@ struct JboxProperty
   const std::string fPropertyPath;
   const PropertyOwner fOwner;
   const TJBox_Tag fTag;
+  const lua::EPersistence fPersistence;
 
 protected:
+  const TJBox_Value fInitialValue;
   TJBox_Value fValue;
   bool fWatched{};
 };
@@ -94,7 +101,11 @@ struct JboxObject
   friend class re::mock::Motherboard;
 
 protected:
-  void addProperty(const std::string& iPropertyName, PropertyOwner iOwner, TJBox_Value const &iInitialValue, TJBox_Tag iPropertyTag);
+  void addProperty(const std::string& iPropertyName,
+                   PropertyOwner iOwner,
+                   TJBox_Value const &iInitialValue,
+                   TJBox_Tag iPropertyTag,
+                   lua::EPersistence iPersistence = lua::EPersistence::kNone);
   JboxProperty *getProperty(std::string const &iPropertyName) const;
   JboxProperty *getProperty(TJBox_Tag iPropertyTag) const;
 
@@ -118,10 +129,11 @@ struct NativeObject
   }
 };
 
-struct RTString
+struct String
 {
   int fMaxSize{};
   std::string fValue{};
+  inline bool isRTString() const { return fMaxSize > 0; }
 };
 
 }

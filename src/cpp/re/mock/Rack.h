@@ -138,6 +138,8 @@ public:
     template<typename T>
     inline const T *getNativeObjectRO(std::string const &iPropertyPath) const { return motherboard().getNativeObjectRO<T>(iPropertyPath); }
 
+    inline void loadPatch(ConfigFile const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
+    inline void loadPatch(ConfigString const &iPatchString) { motherboard().loadPatch(iPatchString); }
 
     template<typename T>
     inline T* getInstance() const { return motherboard().getInstance<T>(); }

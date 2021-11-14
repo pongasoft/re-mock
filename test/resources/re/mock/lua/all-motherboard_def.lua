@@ -4,7 +4,12 @@ local documentOwnerProperties = {
   doc_boolean = jbox.boolean { property_tag = 100, default = true },
   doc_number = jbox.number { property_tag = 101, default = 3 },
   doc_string = jbox.string { property_tag = 103, default = "abcd" },
-  doc_pitch_bend = jbox.performance_pitchbend { property_tag = 104 }
+  doc_mod_wheel = jbox.performance_modwheel { property_tag = 104 },
+  doc_pitch_bend = jbox.performance_pitchbend { property_tag = 105 },
+  doc_sustain_pedal = jbox.performance_sustainpedal { property_tag = 106 },
+  doc_expression = jbox.performance_expression { property_tag = 107 },
+  doc_breath_control = jbox.performance_breathcontrol { property_tag = 108 },
+  doc_aftertouch = jbox.performance_aftertouch { property_tag = 109 },
 }
 
 local rtOwnerProperties = {
@@ -13,7 +18,11 @@ local rtOwnerProperties = {
 }
 
 -- ignored
-local guiOwnerProperties = {}
+local guiOwnerProperties = {
+  gui_boolean = jbox.boolean { default = true },
+  gui_number = jbox.number { default = 5 },
+  gui_string = jbox.string { default = "efg" },
+}
 
 -- Audio Inputs/Outputs
 audio_outputs = {}
