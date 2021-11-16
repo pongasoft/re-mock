@@ -252,6 +252,7 @@ protected:
   Realtime fRealtime{};
   ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};
   ObjectManager<std::unique_ptr<impl::String>> fStrings{};
+  std::vector<int> fGCStrings{}; // garbage collector for fStrings
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
   NoteEvents fNoteOutEvents{};

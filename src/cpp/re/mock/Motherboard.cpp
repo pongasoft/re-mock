@@ -623,6 +623,14 @@ void Motherboard::nextFrame()
   // clearing input buffers (consumed)
   for(auto id: fInputDSPBuffers)
     fDSPBuffers.get(id).fill(0);
+
+  // garbage collect old strings
+  if(!fGCStrings.empty())
+  {
+    for(auto id: fGCStrings)
+      fStrings.remove(id);
+    fGCStrings.clear();
+  }
 }
 
 //------------------------------------------------------------------------
@@ -1059,14 +1067,14 @@ void Motherboard::setString(std::string const &iPropertyPath, std::string iValue
 {
   auto property = getProperty(iPropertyPath);
   RE_MOCK_ASSERT(property->fOwner != PropertyOwner::kRTOwner);
-  auto &s = fStrings.get(jbox_get_string_id(property->loadValue()));
+  auto previousId = jbox_get_string_id(property->loadValue());
+  auto &s = fStrings.get(previousId);
   RE_MOCK_ASSERT(!s->isRTString());
-  // Implementation note: the next line is commented out on purpose. Although this introduces a leak, it is
-  // necessary to keep the old string at least until the next frame (since it can be queried via the fPreviousValue
-  // field of the diff). Due to the nature of this code/framework, it is currently not an issue. A proper
-  // implementation would be to do cleanup after nextFrame.
-  // fStrings.remove(jbox_get_string_id(property->loadValue())); commented ON PURPOSE!!!!
-  storeProperty(property->fPropertyRef, makeString(iValue));
+  if(s->fValue != iValue)
+  {
+    fGCStrings.emplace_back(previousId); // garbage collect old string
+    storeProperty(property->fPropertyRef, makeString(iValue));
+  }
 }
 
 //------------------------------------------------------------------------

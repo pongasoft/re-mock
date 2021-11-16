@@ -19,6 +19,7 @@
 #include <algorithm>
 #include "Errors.h"
 #include "Jukebox.h"
+#include "MockJukebox.h"
 #include "Rack.h"
 
 #ifdef __cplusplus
@@ -257,7 +258,25 @@ void JBox_FFTRealInverse(TJBox_Int32 iFFTSize, TJBox_Float32 ioData[])
   throw re::mock::Exception("JBox_FFTRealInverse: Not implemented yet");
 }
 
-
 #ifdef __cplusplus
+}
+
+namespace re::mock {
+
+bool JBox_IsSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs)
+{
+  return re::mock::Rack::currentMotherboard().isSameValue(lhs, rhs);
+}
+
+std::string JBox_toString(TJBox_Value const &iValue)
+{
+  return re::mock::Rack::currentMotherboard().toString(iValue);
+}
+
+std::string JBox_toString(TJBox_PropertyRef const &iPropertyRef)
+{
+  return re::mock::Rack::currentMotherboard().toString(iPropertyRef);
+}
+
 }
 #endif

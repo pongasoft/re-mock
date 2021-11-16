@@ -19,6 +19,7 @@
 #include <re/mock/Patch.h>
 #include <re/mock/Rack.h>
 #include <re/mock/MockDevices.h>
+#include <re/mock/MockJukebox.h>
 #include <gtest/gtest.h>
 #include <re_mock_build.h>
 #include <re/mock/stl.h>
@@ -98,12 +99,15 @@ TEST(Patch, LoadDefault)
     void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
     {
       fDiffs.clear();
-
       for(int i = 0; i < iDiffCount; i++)
-        fDiffs.emplace_back(iPropertyDiffs[i]);
+      {
+        auto diff = iPropertyDiffs[i];
+        fDiffs[JBox_toString(diff.fPropertyRef)] =
+          JBox_toString(diff.fPreviousValue) + "->" + JBox_toString(diff.fCurrentValue) + "@" + std::to_string(diff.fAtFrameIndex);
+      }
     }
 
-    std::vector<TJBox_PropertyDiff> fDiffs{};
+    std::map<std::string, std::string> fDiffs{};
   };
 
   auto c = DeviceConfig<Device>::fromSkeleton()
@@ -119,28 +123,17 @@ TEST(Patch, LoadDefault)
 
   auto re = rack.newDevice(c);
 
-  auto computeDiffs = [&re]() {
-    std::map<std::string, std::string> diffMap{};
-
-    for(auto &diff: re->fDiffs)
-      diffMap[re.toString(diff.fPropertyRef)] =
-        re.toString(diff.fPreviousValue) + "->" + re.toString(diff.fCurrentValue) + "@" + std::to_string(diff.fAtFrameIndex);
-    return diffMap;
-  };
-
   // first frame: get default_value->patch_value
   rack.nextFrame();
   ASSERT_EQ(3, re->fDiffs.size());
 
   {
-    auto diffMap = computeDiffs();
-
     std::map<std::string, std::string> expected{};
     expected["/custom_properties/prop_float"] = "0.800000->0.500000@0";
     expected["/custom_properties/prop_bool"] = "false->true@0";
     expected["/custom_properties/prop_string"] = "abcd->ABC@0";
 
-    ASSERT_EQ(expected, diffMap);
+    ASSERT_EQ(expected, re->fDiffs);
   }
 
   // loads a patch string (with 1 change)
@@ -166,12 +159,10 @@ TEST(Patch, LoadDefault)
   ASSERT_EQ(1, re->fDiffs.size());
 
   {
-    auto diffMap = computeDiffs();
-
     std::map<std::string, std::string> expected{};
     expected["/custom_properties/prop_string"] = "ABC->DEF@0";
 
-    ASSERT_EQ(expected, diffMap);
+    ASSERT_EQ(expected, re->fDiffs);
   }
 
   // load a patch file (2 changes)
@@ -180,13 +171,11 @@ TEST(Patch, LoadDefault)
   ASSERT_EQ(2, re->fDiffs.size());
 
   {
-    auto diffMap = computeDiffs();
-
     std::map<std::string, std::string> expected{};
     expected["/custom_properties/prop_float"] = "0.500000->1.000000@0";
     expected["/custom_properties/prop_string"] = "DEF->Kooza?@0";
 
-    ASSERT_EQ(expected, diffMap);
+    ASSERT_EQ(expected, re->fDiffs);
   }
 
   // load the same patch file (no change!)
