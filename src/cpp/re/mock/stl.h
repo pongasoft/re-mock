@@ -24,6 +24,8 @@
 #include <cmath>
 #include <sstream>
 #include <ostream>
+#include <string>
+#include <variant>
 
 namespace re::mock::stl {
 
@@ -150,21 +152,6 @@ template <class... Args>
 inline constexpr auto variant_cast(const std::variant<Args...>& v) -> stl::impl::variant_cast_proxy<Args...>
 {
   return {v};
-}
-
-/**
- * Trim a string (removes whitespace from front and back) */
-inline std::string trim(std::string const &s)
-{
-  auto str = s;
-  auto it1 = std::find_if(str.rbegin(), str.rend(),
-                          [](char ch) { return !std::isspace<char>(ch, std::locale::classic()); });
-  str.erase(it1.base(), str.end());
-
-  auto it2 = std::find_if(str.begin(), str.end(),
-                          [](char ch) { return !std::isspace<char>(ch, std::locale::classic()); });
-  str.erase(str.begin(), it2);
-  return str;
 }
 
 }

@@ -121,9 +121,9 @@ Patch createPatch(XMLDocument const &iDoc)
 
   while(v)
   {
-    auto property = stl::trim(getAttributeValue(v, "property"));
-    auto type = stl::trim(getAttributeValue(v, "type"));
-    auto value = stl::trim(v->GetText());
+    auto property = fmt::trim(getAttributeValue(v, "property"));
+    auto type = fmt::trim(getAttributeValue(v, "type"));
+    auto value = fmt::trim(v->GetText());
 
     if(type == "boolean")
     {

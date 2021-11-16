@@ -81,11 +81,9 @@ struct Info
   DeviceType fDeviceType{DeviceType::kUnknown};
   bool fSupportPatches{};
   std::optional<ConfigSource> fDefaultPatch{};
-  std::optional<std::string> fDeviceRootDir{};
 
   Info &device_type(DeviceType t) { fDeviceType = t; return *this; }
   Info &default_patch(ConfigSource s);
-  Info &device_root_dir(std::string s) { fDeviceRootDir = s; return *this;}
 
   static Info fromSkeleton(DeviceType iDeviceType);
   static Info from(ConfigFile iFile);
@@ -131,23 +129,40 @@ struct Config
   explicit Config(DeviceType iDeviceType) { fInfo.device_type(iDeviceType); }
   explicit Config(Info const &iInfo) :fInfo{iInfo} {}
 
+  bool debug() const { return fDebug; }
   Config &debug(bool iDebug = true) { fDebug = iDebug; return *this; }
 
   Info const &info() const { return fInfo; }
 
   Config &default_patch(ConfigSource s) { fInfo.default_patch(s); return *this; }
-  Config &device_root_dir(std::string s) { fInfo.device_root_dir(s); return *this;}
 
+  std::optional<std::string> device_root_dir() const { return fDeviceRootDir; };
+  Config &device_root_dir(std::string s) { fDeviceRootDir = s; return *this;}
+
+  std::optional<std::string> device_resources_dir() const { return fDeviceResourcesDir; };
+  Config &device_resources_dir(std::string s) { fDeviceResourcesDir = s; return *this; }
+
+  /**
+   * Returns the resource relative to `device_resources_dir()` (if device_resources_dir exists).
+   *
+   * @param iRelativeResourcePath must use Unix like path
+   *                              (which is what the SDK uses (for example: `/Public/Default.repatch`)) */
+  std::optional<ConfigFile> resource_file(ConfigFile iRelativeResourcePath) const;
+  inline std::optional<ConfigFile> resource_file(std::string iRelativeResourcePath) const { return resource_file(ConfigFile{iRelativeResourcePath}); }
+
+  std::vector<ConfigSource> const &mdef() const { return fMotherboardDefs; }
   Config &mdef(ConfigFile iFile) { fMotherboardDefs.emplace_back(iFile); return *this; }
   Config &mdef(ConfigString iString) { fMotherboardDefs.emplace_back(iString); return *this; }
   Config &mdef_string(std::string iString) { return mdef(ConfigString{iString}); }
   Config &mdef_file(std::string iFile) { return mdef(ConfigFile{iFile}); }
 
+  std::vector<ConfigSource> const &rtc() const { return fRealtimeControllers; }
   Config &rtc(ConfigFile iFile) { fRealtimeControllers.emplace_back(iFile); return *this; }
   Config &rtc(ConfigString iString) { fRealtimeControllers.emplace_back(iString); return *this; }
   Config &rtc_string(std::string iString) { return rtc(ConfigString{iString}); }
   Config &rtc_file(std::string iFile) { return rtc(ConfigFile{iFile}); }
 
+  rt_callback_t rt() const { return fRealtime; }
   Config &rt(rt_callback_t iCallback)
   {
     if(iCallback)
@@ -179,9 +194,12 @@ struct Config
   static ConfigString skeletonMotherboardDef();
   static ConfigString skeletonRealtimeController();
 
+
 protected:
   bool fDebug{};
   Info fInfo{};
+  std::optional<std::string> fDeviceRootDir{};
+  std::optional<std::string> fDeviceResourcesDir{};
   std::vector<ConfigSource> fMotherboardDefs{};
   std::vector<ConfigSource> fRealtimeControllers{};
   rt_callback_t fRealtime{};
@@ -195,10 +213,17 @@ struct DeviceConfig
   explicit DeviceConfig(DeviceType iDeviceType) : fConfig{iDeviceType} {}
   explicit DeviceConfig(Info const &iInfo) : fConfig{iInfo} {}
 
+  bool debug() const { return fConfig.debug(); }
+  Info const &info() const { return fConfig.info(); }
+  std::optional<std::string> device_root_dir() const { return fConfig.device_root_dir(); };
+  std::optional<std::string> device_resources_dir() const { return fConfig.device_resources_dir(); };
+  std::optional<ConfigFile> resource_file(ConfigFile iRelativeResourcePath) const { return fConfig.resource_file(iRelativeResourcePath); }
+
   DeviceConfig &debug(bool iDebug = true) { fConfig.debug(iDebug); return *this; }
 
   DeviceConfig &default_patch(ConfigSource s) { fConfig.default_patch(s); return *this; }
   DeviceConfig &device_root_dir(std::string s) { fConfig.device_root_dir(s); return *this;}
+  DeviceConfig &device_resources_dir(std::string s) { fConfig.device_resources_dir(s); return *this;}
 
   DeviceConfig &mdef(ConfigFile iFile) { fConfig.mdef(iFile); return *this; }
   DeviceConfig &mdef(ConfigString iString) { fConfig.mdef(iString); return *this; }
@@ -338,6 +363,7 @@ DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iDeviceRootFo
 {
   return DeviceConfig<T>(Info::from_file(fmt::path(iDeviceRootFolder, "info.lua")))
     .device_root_dir(iDeviceRootFolder)
+    .device_resources_dir(fmt::path(iDeviceRootFolder, "Resources"))
     .mdef_file(fmt::path(iDeviceRootFolder, "motherboard_def.lua"))
     .rtc_file(fmt::path(iDeviceRootFolder, "realtime_controller.lua"))
     .rt_jbox_export(iDestroyNativeObject);

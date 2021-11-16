@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<JukeboxPatch version="2.0"  deviceProductID="com.acme.Kooza"  deviceVersion="1.0.0d1" >
+    <DeviceNameInEnglish>
+        Kooza
+    </DeviceNameInEnglish>
+    <Properties>
+        <Object name="custom_properties" >
+            <Value property="gui_prop_float"  type="number" >
+                0.1
+            </Value>
+            <Value property="prop_float"  type="number" >
+                1.0
+            </Value>
+            <Value property="prop_bool"  type="boolean" >
+                true
+            </Value>
+            <!-- Kooza? -->
+            <Value property="prop_string"  type="string" >
+                4B6f6F7a613F
+            </Value>
+        </Object>
+        <Object name="transport" />
+    </Properties>
+</JukeboxPatch>

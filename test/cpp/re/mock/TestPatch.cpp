@@ -20,6 +20,8 @@
 #include <re/mock/Rack.h>
 #include <re/mock/MockDevices.h>
 #include <gtest/gtest.h>
+#include <re_mock_build.h>
+#include <re/mock/stl.h>
 
 namespace re::mock::Test {
 
@@ -105,6 +107,7 @@ TEST(Patch, LoadDefault)
   };
 
   auto c = DeviceConfig<Device>::fromSkeleton()
+    .device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"))
     .default_patch(ConfigString{defaultPatchString})
     .mdef(Config::gui_owner_property("gui_prop_float", lua::jbox_number_property{}.default_value(0.9))) // ignored
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
@@ -116,16 +119,21 @@ TEST(Patch, LoadDefault)
 
   auto re = rack.newDevice(c);
 
-  rack.nextFrame();
-
-  ASSERT_EQ(3, re->fDiffs.size());
-
-  {
+  auto computeDiffs = [&re]() {
     std::map<std::string, std::string> diffMap{};
 
     for(auto &diff: re->fDiffs)
       diffMap[re.toString(diff.fPropertyRef)] =
         re.toString(diff.fPreviousValue) + "->" + re.toString(diff.fCurrentValue) + "@" + std::to_string(diff.fAtFrameIndex);
+    return diffMap;
+  };
+
+  // first frame: get default_value->patch_value
+  rack.nextFrame();
+  ASSERT_EQ(3, re->fDiffs.size());
+
+  {
+    auto diffMap = computeDiffs();
 
     std::map<std::string, std::string> expected{};
     expected["/custom_properties/prop_float"] = "0.800000->0.500000@0";
@@ -135,6 +143,7 @@ TEST(Patch, LoadDefault)
     ASSERT_EQ(expected, diffMap);
   }
 
+  // loads a patch string (with 1 change)
   auto patchString = R"(
 <?xml version="1.0"?>
 <JukeboxPatch version="2.0"  deviceProductID="com.acme.Kooza"  deviceVersion="1.0.0d1" >
@@ -153,17 +162,11 @@ TEST(Patch, LoadDefault)
 )";
 
   re.loadPatch(ConfigString{patchString});
-
   rack.nextFrame();
-
   ASSERT_EQ(1, re->fDiffs.size());
 
   {
-    std::map<std::string, std::string> diffMap{};
-
-    for(auto &diff: re->fDiffs)
-      diffMap[re.toString(diff.fPropertyRef)] =
-        re.toString(diff.fPreviousValue) + "->" + re.toString(diff.fCurrentValue) + "@" + std::to_string(diff.fAtFrameIndex);
+    auto diffMap = computeDiffs();
 
     std::map<std::string, std::string> expected{};
     expected["/custom_properties/prop_string"] = "ABC->DEF@0";
@@ -171,6 +174,28 @@ TEST(Patch, LoadDefault)
     ASSERT_EQ(expected, diffMap);
   }
 
+  // load a patch file (2 changes)
+  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
+  rack.nextFrame();
+  ASSERT_EQ(2, re->fDiffs.size());
+
+  {
+    auto diffMap = computeDiffs();
+
+    std::map<std::string, std::string> expected{};
+    expected["/custom_properties/prop_float"] = "0.500000->1.000000@0";
+    expected["/custom_properties/prop_string"] = "DEF->Kooza?@0";
+
+    ASSERT_EQ(expected, diffMap);
+  }
+
+  // load the same patch file (no change!)
+  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
+  rack.nextFrame();
+  ASSERT_EQ(0, re->fDiffs.size());
+
+  // invalid path
+  ASSERT_THROW(re.loadPatch(ConfigFile{fmt::path("invalid", "path", "to", "patch")}), Exception);
 }
 
 }

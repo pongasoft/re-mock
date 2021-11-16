@@ -23,10 +23,17 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include "stl.h"
 
 namespace re::mock::fmt {
 
 namespace impl {
+
+#ifdef _WIN32
+constexpr char pathSeparator = '\\';
+#else
+constexpr char pathSeparator = '/';
+#endif
 
 template<typename T>
 constexpr auto printf_arg(T const &t) { return t; }
@@ -144,16 +151,41 @@ inline std::string path(std::string const &path)
 //------------------------------------------------------------------------
 // path
 //------------------------------------------------------------------------
+inline std::string path(std::vector<std::string> const &children)
+{
+  return stl::join_to_string(children, std::string(1, impl::pathSeparator));
+}
+
+template<typename ... Args>
+std::string path(std::string const &dir, std::vector<std::string> const &children, Args ... more);
+
+//------------------------------------------------------------------------
+// path
+//------------------------------------------------------------------------
 template<typename ... Args>
 inline std::string path(std::string const &dir, std::string const &child, Args ... children)
 {
-#ifdef _WIN32
-  constexpr char pathSeparator = '\\';
-#else
-  constexpr char pathSeparator = '/';
-#endif
-  return path(dir + pathSeparator + child, std::forward<Args>(children)...);
+  return path(dir + impl::pathSeparator + child, std::forward<Args>(children)...);
 }
+
+//------------------------------------------------------------------------
+// path
+//------------------------------------------------------------------------
+template<typename ... Args>
+inline std::string path(std::string const &dir, std::vector<std::string> const &children, Args ... more)
+{
+  return path(dir, path(children), std::forward<Args>(more)...);
+}
+
+//------------------------------------------------------------------------
+// Trim a string (removes whitespace from front and back)
+//------------------------------------------------------------------------
+std::string trim(std::string const &s);
+
+//------------------------------------------------------------------------
+// Split a string
+//------------------------------------------------------------------------
+std::vector<std::string> split(const std::string &s, char delimiter, bool includeEmptyTokens = false);
 
 }
 

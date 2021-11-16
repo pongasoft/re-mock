@@ -319,6 +319,19 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
                        iPropertyName, defaultValue, impl::property_tag(iProperty.fPropertyTag)) };
 }
 
+//------------------------------------------------------------------------
+// Config::resource_file
+//------------------------------------------------------------------------
+std::optional<ConfigFile> Config::resource_file(ConfigFile iRelativeResourcePath) const
+{
+  if(fDeviceResourcesDir)
+  {
+    return ConfigFile{fmt::path(*fDeviceResourcesDir, fmt::split(iRelativeResourcePath.fFilename, '/'))};
+  }
+  else
+    return std::nullopt;
+}
+
 namespace impl {
 
 //------------------------------------------------------------------------

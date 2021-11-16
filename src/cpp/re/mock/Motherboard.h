@@ -128,10 +128,10 @@ public: // used by regular code
     return getNativeObjectRW<T>("/custom_properties/instance");
   }
 
-  void loadPatchRelativeToDeviceRootDir(ConfigFile const &iPatchFile);
   inline void loadPatch(ConfigFile const &iPatchFile) { loadPatch(Patch::from(iPatchFile)); }
   inline void loadPatch(ConfigString const &iPatchString) { loadPatch(Patch::from(iPatchString)); }
 
+  bool isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) const;
   std::string toString(TJBox_Value const &iValue) const;
   std::string toString(std::string const &iPropertyPath) const { return toString(getValue(iPropertyPath)); }
   std::string toString(TJBox_PropertyRef const &iPropertyRef) const;
@@ -169,11 +169,11 @@ public: // used by Jukebox.cpp (need to be public)
 
 protected:
 
-  static std::unique_ptr<Motherboard> create(int iInstanceId, int iSampleRate);
+  static std::unique_ptr<Motherboard> create(int iInstanceId, int iSampleRate, Config const &iConfig);
 
-  Motherboard();
+  Motherboard(Config const &iConfig);
 
-  void init(Config const &iConfig);
+  void init();
 
   impl::JboxObject *addObject(std::string const &iObjectPath);
   inline impl::JboxObject *getObject(std::string const &iObjectPath) const { return getObject(getObjectRef(iObjectPath)); }
@@ -214,6 +214,8 @@ protected:
 
   void addPropertyDiff(TJBox_PropertyDiff const &iDiff);
 
+  ConfigFile getResourceFile(ConfigFile const &iUnixPath) const;
+
   void loadPatch(Patch const &iPatch);
 
 protected:
@@ -235,7 +237,7 @@ protected:
   };
 
 protected:
-  Info fInfo{};
+  Config fConfig;
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, lua::gui_jbox_property> fGUIProperties{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};

@@ -63,7 +63,7 @@ namespace re::mock {
 //------------------------------------------------------------------------
 // Motherboard::Motherboard
 //------------------------------------------------------------------------
-Motherboard::Motherboard()
+Motherboard::Motherboard(Config const &iConfig) : fConfig{iConfig}
 {
 //  DLOG_F(INFO, "Motherboard(%p)", this);
 
@@ -226,9 +226,9 @@ void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iP
 //------------------------------------------------------------------------
 // Motherboard::create
 //------------------------------------------------------------------------
-std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRate)
+std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRate, Config const &iConfig)
 {
-  auto res = std::unique_ptr<Motherboard>(new Motherboard());
+  auto res = std::unique_ptr<Motherboard>(new Motherboard(iConfig));
 
   // /environment/instance_id
   auto idProp = std::make_shared<lua::jbox_number_property>();
@@ -260,18 +260,15 @@ struct MockJBoxVisitor
 //------------------------------------------------------------------------
 // Motherboard::init
 //------------------------------------------------------------------------
-void Motherboard::init(Config const &iConfig)
+void Motherboard::init()
 {
-  // store the info
-  fInfo = iConfig.fInfo;
-
   // lua::MotherboardDef
   lua::MotherboardDef def{};
   MockJBoxVisitor defVisitor{def};
-  for(auto &v: iConfig.fMotherboardDefs)
+  for(auto &v: fConfig.fMotherboardDefs)
     std::visit(defVisitor, v);
 
-  if(iConfig.fDebug)
+  if(fConfig.fDebug)
   {
     std::cout << "---- MotherboardDef -----\n";
     std::cout << defVisitor.fCode << "\n";
@@ -281,10 +278,10 @@ void Motherboard::init(Config const &iConfig)
   // lua::RealtimeController
   fRealtimeController = std::make_unique<lua::RealtimeController>();
   MockJBoxVisitor rtcVisitor{*fRealtimeController};
-  for(auto &v: iConfig.fRealtimeControllers)
+  for(auto &v: fConfig.fRealtimeControllers)
     std::visit(rtcVisitor, v);
 
-  if(iConfig.fDebug)
+  if(fConfig.fDebug)
   {
     std::cout << "---- RealtimeController -----\n";
     std::cout << rtcVisitor.fCode << "\n";
@@ -292,8 +289,8 @@ void Motherboard::init(Config const &iConfig)
   }
 
   // Realtime
-  if(iConfig.fRealtime)
-    iConfig.fRealtime(fRealtime);
+  if(fConfig.fRealtime)
+    fConfig.fRealtime(fRealtime);
 
   // audio_inputs
   {
@@ -341,21 +338,15 @@ void Motherboard::init(Config const &iConfig)
     addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTCOwner, stl::variant_cast(prop.second));
 
   // load the default patch if there is one
-  if(fInfo.fSupportPatches)
+  if(fConfig.info().fSupportPatches)
   {
-    RE_MOCK_ASSERT(fInfo.fDefaultPatch != std::nullopt, "support_patches is set to true but no default patch provided");
+    RE_MOCK_ASSERT(fConfig.info().fDefaultPatch != std::nullopt, "support_patches is set to true but no default patch provided");
 
-    auto defaultPatch = *fInfo.fDefaultPatch;
+    auto defaultPatch = *fConfig.info().fDefaultPatch;
     if(std::holds_alternative<ConfigString>(defaultPatch))
       loadPatch(std::get<ConfigString>(defaultPatch));
     else
-    {
-      auto patchFile = std::get<ConfigFile>(defaultPatch);
-      if(fInfo.fDeviceRootDir)
-        loadPatchRelativeToDeviceRootDir(patchFile);
-      else
-        loadPatch(patchFile);
-    }
+      loadPatch(getResourceFile(std::get<ConfigFile>(defaultPatch)));
   }
 
   // rt_input_setup.notify
@@ -372,7 +363,7 @@ void Motherboard::init(Config const &iConfig)
   }
 
   // extra properties based on device type
-  switch(iConfig.info().fDeviceType)
+  switch(fConfig.info().fDeviceType)
   {
     case DeviceType::kStudioFX:
     case DeviceType::kCreativeFX:
@@ -394,7 +385,7 @@ void Motherboard::init(Config const &iConfig)
     }
 
     case DeviceType::kUnknown:
-      RE_MOCK_ASSERT(iConfig.info().fDeviceType != DeviceType::kUnknown);
+      RE_MOCK_ASSERT(fConfig.info().fDeviceType != DeviceType::kUnknown);
       break;
 
     default:
@@ -909,6 +900,45 @@ void Motherboard::setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iVal
 }
 
 //------------------------------------------------------------------------
+// Motherboard::isSameValue
+//------------------------------------------------------------------------
+bool Motherboard::isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) const
+{
+  if(JBox_GetType(lhs) != JBox_GetType(rhs))
+    return false;
+
+  switch(JBox_GetType(lhs))
+  {
+    case kJBox_Nil:
+    case kJBox_Incompatible:
+      return true;
+
+    case kJBox_Number:
+      return stl::almost_equal(JBox_GetNumber(lhs), JBox_GetNumber(rhs));
+
+    case kJBox_String:
+      return toString(lhs) == toString(rhs);
+
+    case kJBox_Boolean:
+      return JBox_GetBoolean(lhs) == JBox_GetBoolean(rhs);
+
+    case kJBox_Sample:
+    case kJBox_BLOB:
+      // TODO implement
+      return false;
+
+    case kJBox_DSPBuffer:
+      return jbox_get_dsp_id(lhs) == jbox_get_dsp_id(rhs);
+
+    case kJBox_NativeObject:
+      return jbox_get_native_object_id(lhs) == jbox_get_native_object_id(rhs);
+  }
+
+  return false;
+}
+
+
+//------------------------------------------------------------------------
 // Motherboard::toString
 //------------------------------------------------------------------------
 std::string Motherboard::toString(TJBox_Value const &iValue) const
@@ -1128,9 +1158,18 @@ void Motherboard::loadPatch(Patch const &iPatch)
       std::string fName{};
       Motherboard *fMotherboard{};
 
-      void operator()(patch_boolean_property const &o) { fMotherboard->setBool(fName, o.fValue); }
-      void operator()(patch_number_property const &o) { fMotherboard->setNum(fName, o.fValue); }
-      void operator()(patch_string_property const &o) { fMotherboard->setString(fName, o.fValue); }
+      void operator()(patch_boolean_property const &o) {
+        if(fMotherboard->getBool(fName) != o.fValue)
+          fMotherboard->setBool(fName, o.fValue);
+      }
+      void operator()(patch_number_property const &o) {
+        if(!stl::almost_equal(fMotherboard->getNum(fName), o.fValue))
+          fMotherboard->setNum(fName, o.fValue);
+      }
+      void operator()(patch_string_property const &o) {
+        if(fMotherboard->getString(fName) != o.fValue)
+          fMotherboard->setString(fName, o.fValue);
+      }
     };
 
     std::visit(visitor{name, this}, property);
@@ -1138,13 +1177,15 @@ void Motherboard::loadPatch(Patch const &iPatch)
 }
 
 //------------------------------------------------------------------------
-// Motherboard::loadPatchRelativeToDeviceRootDir
+// Motherboard::getResourceFile
 //------------------------------------------------------------------------
-void Motherboard::loadPatchRelativeToDeviceRootDir(ConfigFile const &iPatchFile)
+ConfigFile Motherboard::getResourceFile(ConfigFile const &iUnixPath) const
 {
-  RE_MOCK_ASSERT(fInfo.fDeviceRootDir != std::nullopt, "no device root dir provided");
-  auto path = fmt::path(*fInfo.fDeviceRootDir, "Resources", iPatchFile.fFilename);
-  loadPatch(Patch::from(ConfigFile{path.c_str()}));
+  auto res = fConfig.resource_file(iUnixPath);
+  if(res)
+    return *res;
+  else
+    return ConfigFile{fmt::path(fmt::split(iUnixPath.fFilename, '/'))};
 }
 
 //------------------------------------------------------------------------
@@ -1272,8 +1313,8 @@ impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef,
 std::optional<TJBox_PropertyDiff> impl::JboxProperty::storeValue(TJBox_Value const &iValue)
 {
   RE_MOCK_ASSERT(iValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
-          fValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
-          iValue.fSecret[0] == fValue.fSecret[0],
+                 fInitialValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
+                 iValue.fSecret[0] == fInitialValue.fSecret[0],
                  "invalid property type for [%s]", fPropertyPath.c_str());
 
   if(fWatched)
