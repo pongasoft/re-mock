@@ -17,6 +17,7 @@
  */
 
 #include "Config.h"
+#include "lua/InfoLua.h"
 
 namespace re::mock {
 
@@ -63,12 +64,13 @@ rt_input_setup = { notify = { } }
 }
 
 //------------------------------------------------------------------------
-// Config::skeleton
+// Config::fromSkeleton
 //------------------------------------------------------------------------
-Config Config::fromSkeleton()
+Config Config::fromSkeleton(Info const &iInfo)
 {
-  return Config().mdef(skeletonMotherboardDef()).rtc(skeletonRealtimeController());
+  return Config(iInfo).mdef(skeletonMotherboardDef()).rtc(skeletonRealtimeController());
 }
+
 
 //------------------------------------------------------------------------
 // Config::stereoOut
@@ -192,6 +194,30 @@ inline ConfigString custom_property(std::string const &iPropertyType,
 }
 
 //------------------------------------------------------------------------
+// Config::gui_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
+{
+  return impl::custom_property("gui_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::gui_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+{
+  return impl::custom_property("gui_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::document_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
+{
+  return impl::custom_property("gui_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
 // Config::document_owner_property
 //------------------------------------------------------------------------
 ConfigString Config::document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
@@ -291,6 +317,99 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
   }
   return { fmt::printf(R"(rtc_owner_properties["%s"] = jbox.native_object { %s%s })",
                        iPropertyName, defaultValue, impl::property_tag(iProperty.fPropertyTag)) };
+}
+
+namespace impl {
+
+//------------------------------------------------------------------------
+// deviceTypeFromString
+//------------------------------------------------------------------------
+DeviceType deviceTypeFromString(std::string s)
+{
+  if(s == "instrument")
+    return DeviceType::kInstrument;
+  if(s == "creative_fx")
+    return DeviceType::kCreativeFX;
+  if(s == "studio_fx")
+    return DeviceType::kStudioFX;
+  if(s == "helper")
+    return DeviceType::kHelper;
+  if(s == "note_player")
+    return DeviceType::kNotePlayer;
+
+  RE_MOCK_ASSERT(false, "Invalid device type: %s", s);
+
+  // not reached
+  return DeviceType::kHelper;
+}
+
+//------------------------------------------------------------------------
+// fromInfoLua
+//------------------------------------------------------------------------
+Info fromInfoLua(lua::InfoLua &iInfo)
+{
+  Info res{};
+
+  res.device_type(deviceTypeFromString(iInfo.device_type()));
+  res.default_patch(ConfigFile{iInfo.default_patch()});
+  res.fSupportPatches = iInfo.supports_patches();
+
+  if(res.fSupportPatches)
+    RE_MOCK_ASSERT(!std::get<ConfigFile>(*res.fDefaultPatch).fFilename.empty(),
+                   "info.lua: support_patches is set to true but no default patch provided");
+
+  return res;
+}
+
+}
+
+//------------------------------------------------------------------------
+// Info::info
+//------------------------------------------------------------------------
+Info Info::from(ConfigFile iFile)
+{
+  auto luaInfo = lua::InfoLua::fromFile(iFile.fFilename);
+  return impl::fromInfoLua(*luaInfo);
+}
+
+//------------------------------------------------------------------------
+// Info::info
+//------------------------------------------------------------------------
+Info Info::from(ConfigString iString)
+{
+  auto luaInfo = lua::InfoLua::fromString(iString.fString);
+  return impl::fromInfoLua(*luaInfo);
+}
+
+//------------------------------------------------------------------------
+// Info::fromSkeleton
+//------------------------------------------------------------------------
+Info Info::fromSkeleton(DeviceType iDeviceType)
+{
+  Info info{iDeviceType};
+  return info;
+}
+
+//------------------------------------------------------------------------
+// Info::fromSkeleton
+//------------------------------------------------------------------------
+Info &Info::default_patch(ConfigSource s)
+{
+  fDefaultPatch = s;
+  if(!fDefaultPatch)
+    fSupportPatches = false;
+  else
+  {
+    struct visitor
+    {
+      bool operator()(ConfigFile c) { return !c.fFilename.empty(); }
+      bool operator()(ConfigString c) { return !c.fString.empty(); }
+    };
+
+    fSupportPatches = std::visit(visitor{}, *fDefaultPatch);
+  }
+
+  return *this;
 }
 
 }

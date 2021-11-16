@@ -69,6 +69,7 @@ set(re-mock_BUILD_HEADERS
     ${re-mock_CPP_SRC_DIR}/re/mock/Rack.h
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.h
     ${re-mock_CPP_SRC_DIR}/re/mock/stl.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/InfoLua.h
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/LuaState.h
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/MockJBox.h
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.h
@@ -84,6 +85,7 @@ set(re-mock_BUILD_SOURCES
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Patch.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/lua/InfoLua.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/MockJBox.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/MotherboardDef.cpp
@@ -134,6 +136,7 @@ if(re-mock_DEV_BUILD)
       "${re-mock_CPP_TST_DIR}/re/mock/TestPatch.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRack.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/lua/TestInfoLua.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestMotherboardDef.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestRealtimeController.cpp"

@@ -17,6 +17,8 @@
  */
 
 #include <re/mock/Patch.h>
+#include <re/mock/Rack.h>
+#include <re/mock/MockDevices.h>
 #include <gtest/gtest.h>
 
 namespace re::mock::Test {
@@ -54,6 +56,121 @@ TEST(Patch, String)
   ASSERT_FLOAT_EQ(0.5, std::get<patch_number_property>(patch.fProperties["prop_number"]).fValue);
   ASSERT_TRUE(std::get<patch_boolean_property>(patch.fProperties["prop_boolean"]).fValue);
   ASSERT_EQ("ABC", std::get<patch_string_property>(patch.fProperties["prop_string"]).fValue);
+}
+
+// Patch.LoadDefault
+TEST(Patch, LoadDefault)
+{
+  auto defaultPatchString = R"(
+<?xml version="1.0"?>
+<JukeboxPatch version="2.0"  deviceProductID="com.acme.Kooza"  deviceVersion="1.0.0d1" >
+    <DeviceNameInEnglish>
+        Kooza
+    </DeviceNameInEnglish>
+    <Properties>
+        <Object name="custom_properties" >
+            <Value property="gui_prop_float"  type="number" >
+                0.3
+            </Value>
+            <Value property="prop_float"  type="number" >
+                0.5
+            </Value>
+            <Value property="prop_bool"  type="boolean" >
+                true
+            </Value>
+            <Value property="prop_string"  type="string" >
+                414243
+            </Value>
+        </Object>
+        <Object name="transport" />
+    </Properties>
+</JukeboxPatch>
+)";
+
+  Rack rack{};
+
+  struct Device : public MockDevice
+  {
+    Device(int iSampleRate) : MockDevice(iSampleRate) {}
+
+    void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
+    {
+      fDiffs.clear();
+
+      for(int i = 0; i < iDiffCount; i++)
+        fDiffs.emplace_back(iPropertyDiffs[i]);
+    }
+
+    std::vector<TJBox_PropertyDiff> fDiffs{};
+  };
+
+  auto c = DeviceConfig<Device>::fromSkeleton()
+    .default_patch(ConfigString{defaultPatchString})
+    .mdef(Config::gui_owner_property("gui_prop_float", lua::jbox_number_property{}.default_value(0.9))) // ignored
+    .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
+    .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}))
+    .mdef(Config::document_owner_property("prop_string", lua::jbox_string_property{}.default_value("abcd")))
+    .rtc(Config::rt_input_setup_notify("/custom_properties/prop_float"))
+    .rtc(Config::rt_input_setup_notify("/custom_properties/prop_bool"))
+    .rtc(Config::rt_input_setup_notify("/custom_properties/prop_string"));
+
+  auto re = rack.newDevice(c);
+
+  rack.nextFrame();
+
+  ASSERT_EQ(3, re->fDiffs.size());
+
+  {
+    std::map<std::string, std::string> diffMap{};
+
+    for(auto &diff: re->fDiffs)
+      diffMap[re.toString(diff.fPropertyRef)] =
+        re.toString(diff.fPreviousValue) + "->" + re.toString(diff.fCurrentValue) + "@" + std::to_string(diff.fAtFrameIndex);
+
+    std::map<std::string, std::string> expected{};
+    expected["/custom_properties/prop_float"] = "0.800000->0.500000@0";
+    expected["/custom_properties/prop_bool"] = "false->true@0";
+    expected["/custom_properties/prop_string"] = "abcd->ABC@0";
+
+    ASSERT_EQ(expected, diffMap);
+  }
+
+  auto patchString = R"(
+<?xml version="1.0"?>
+<JukeboxPatch version="2.0"  deviceProductID="com.acme.Kooza"  deviceVersion="1.0.0d1" >
+    <DeviceNameInEnglish>
+        Kooza
+    </DeviceNameInEnglish>
+    <Properties>
+        <Object name="custom_properties" >
+            <Value property="prop_string"  type="string" >
+                444546
+            </Value>
+        </Object>
+        <Object name="transport" />
+    </Properties>
+</JukeboxPatch>
+)";
+
+  re.loadPatch(ConfigString{patchString});
+
+  rack.nextFrame();
+
+  ASSERT_EQ(1, re->fDiffs.size());
+
+  {
+    std::map<std::string, std::string> diffMap{};
+
+    for(auto &diff: re->fDiffs)
+      diffMap[re.toString(diff.fPropertyRef)] =
+        re.toString(diff.fPreviousValue) + "->" + re.toString(diff.fCurrentValue) + "@" + std::to_string(diff.fAtFrameIndex);
+
+    std::map<std::string, std::string> expected{};
+    expected["/custom_properties/prop_string"] = "ABC->DEF@0";
+
+    ASSERT_EQ(expected, diffMap);
+  }
+
 }
 
 }

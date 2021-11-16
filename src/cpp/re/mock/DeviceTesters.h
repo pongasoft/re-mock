@@ -103,9 +103,11 @@ class HelperTester : public DeviceTester
 {
 public:
   explicit HelperTester(DeviceConfig<Helper> const &iDeviceConfig, int iSampleRate = 44100) :
-    DeviceTester(iDeviceConfig.clone().device_type(DeviceType::kHelper).getConfig(), iSampleRate),
+    DeviceTester(iDeviceConfig.getConfig(), iSampleRate),
     fHelper{getExtensionDevice<Helper>()}
-    {}
+    {
+      RE_MOCK_ASSERT(iDeviceConfig.getConfig().info().fDeviceType == DeviceType::kHelper);
+    }
 
   inline Rack::ExtensionDevice<Helper> &device() { return fHelper; }
   inline Rack::ExtensionDevice<Helper> const &device() const { return fHelper; }
@@ -146,9 +148,11 @@ class StudioEffectTester : public ExtensionEffectTester
 {
 public:
   explicit StudioEffectTester(DeviceConfig<Effect> const &iDeviceConfig, int iSampleRate = 44100) :
-    ExtensionEffectTester(iDeviceConfig.clone().device_type(DeviceType::kStudioFX).getConfig(), iSampleRate),
+    ExtensionEffectTester(iDeviceConfig.getConfig(), iSampleRate),
     fEffect{getExtensionDevice<Effect>()}
-  {}
+  {
+    RE_MOCK_ASSERT(iDeviceConfig.getConfig().info().fDeviceType == DeviceType::kStudioFX);
+  }
 
   inline Rack::ExtensionDevice<Effect> &device() { return fEffect; }
   inline Rack::ExtensionDevice<Effect> const &device() const { return fEffect; }
@@ -162,9 +166,11 @@ class CreativeEffectTester : public ExtensionEffectTester
 {
 public:
   explicit CreativeEffectTester(DeviceConfig<Effect> const &iDeviceConfig, int iSampleRate = 44100) :
-    ExtensionEffectTester(iDeviceConfig.clone().device_type(DeviceType::kCreativeFX).getConfig(), iSampleRate),
+    ExtensionEffectTester(iDeviceConfig.getConfig(), iSampleRate),
     fEffect{getExtensionDevice<Effect>()}
-  {}
+  {
+    RE_MOCK_ASSERT(iDeviceConfig.getConfig().info().fDeviceType == DeviceType::kCreativeFX);
+  }
 
   inline Rack::ExtensionDevice<Effect> &device() { return fEffect; }
   inline Rack::ExtensionDevice<Effect> const &device() const { return fEffect; }
@@ -196,7 +202,7 @@ class InstrumentTester : public ExtensionInstrumentTester
 {
 public:
   explicit InstrumentTester(DeviceConfig<Instrument> const &iDeviceConfig, int iSampleRate = 44100) :
-    ExtensionInstrumentTester(iDeviceConfig.clone().device_type(DeviceType::kInstrument).getConfig(), iSampleRate),
+    ExtensionInstrumentTester(iDeviceConfig.getConfig(), iSampleRate),
     fInstrument{getExtensionDevice<Instrument>()}
   {}
 
@@ -233,7 +239,7 @@ class NotePlayerTester : public ExtensionNotePlayerTester
 {
 public:
   explicit NotePlayerTester(DeviceConfig<NotePlayer> const &iDeviceConfig, int iSampleRate = 44100) :
-    ExtensionNotePlayerTester(iDeviceConfig.clone().device_type(DeviceType::kNotePlayer).getConfig(), iSampleRate),
+    ExtensionNotePlayerTester(iDeviceConfig.getConfig(), iSampleRate),
     fNotePlayer{getExtensionDevice<NotePlayer>()}
   {}
 

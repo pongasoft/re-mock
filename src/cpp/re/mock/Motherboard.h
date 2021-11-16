@@ -128,6 +128,7 @@ public: // used by regular code
     return getNativeObjectRW<T>("/custom_properties/instance");
   }
 
+  void loadPatchRelativeToDeviceRootDir(ConfigFile const &iPatchFile);
   inline void loadPatch(ConfigFile const &iPatchFile) { loadPatch(Patch::from(iPatchFile)); }
   inline void loadPatch(ConfigString const &iPatchString) { loadPatch(Patch::from(iPatchString)); }
 
@@ -234,6 +235,7 @@ protected:
   };
 
 protected:
+  Info fInfo{};
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, lua::gui_jbox_property> fGUIProperties{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};

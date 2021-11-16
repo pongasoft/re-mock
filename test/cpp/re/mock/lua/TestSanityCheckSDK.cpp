@@ -18,8 +18,10 @@
 
 #include <re/mock/lua/MotherboardDef.h>
 #include <re/mock/lua/RealtimeController.h>
+#include <re/mock/lua/InfoLua.h>
 #include <gtest/gtest.h>
 #include <re_mock_build.h>
+#include <re/mock/Patch.h>
 
 namespace re::mock::lua::Test {
 
@@ -46,6 +48,29 @@ TEST(SanityCheck, SDKExamples)
 {
   for(auto &p: SDK_EXAMPLES)
   {
+    {
+      auto path = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "info.lua");
+
+
+      auto def = InfoLua::fromFile(path);
+
+      int patchPropertiesCount = 0;
+
+      if(def->supports_patches())
+      {
+        auto patchFile = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "Resources", def->default_patch());
+        auto patch = Patch::from(ConfigFile{patchFile});
+        patchPropertiesCount = patch.fProperties.size();
+      }
+
+      std::cout << p << "/info.lua: "
+                << "device_type=" << def->device_type()
+                << ";supports_patches=" << def->supports_patches()
+                << ";default_patch=" << def->default_patch()
+                << ";patch_properties_count=" << patchPropertiesCount
+                << std::endl;
+    }
+
     {
       auto path = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "motherboard_def.lua");
 

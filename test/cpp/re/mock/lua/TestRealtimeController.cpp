@@ -26,7 +26,7 @@ using namespace testing;
 
 std::string getResourceFile(std::string iFilename);
 
-// MotherboardDef.Empty
+// RealtimeController.Empty
 TEST(RealtimeController, Empty)
 {
   auto def = RealtimeController::fromString("print('hello from lua')");
@@ -40,7 +40,7 @@ TEST(RealtimeController, Empty)
   ASSERT_EQ(def->getStackString(), "<empty>");
 }
 
-// MotherboardDef.BlankEffect
+// RealtimeController.BlankEffect
 TEST(RealtimeController, BlankEffect)
 {
   // file generated from re-quickstart for a blank effect

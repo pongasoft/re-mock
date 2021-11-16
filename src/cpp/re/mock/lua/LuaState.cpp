@@ -107,6 +107,35 @@ std::string LuaState::getStackString(lua_State *L, char const *iMessage)
 }
 
 //------------------------------------------------------------------------
+// LuaState::getGlobalAsBoolean
+//------------------------------------------------------------------------
+bool LuaState::getGlobalAsBoolean(char const *iKey)
+{
+  auto res = false;
+  if(lua_getglobal(L, iKey) != LUA_TNIL)
+    res = lua_toboolean(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// LuaState::getGlobalAsString
+//------------------------------------------------------------------------
+std::string LuaState::getGlobalAsString(char const *iKey)
+{
+  std::string res = "";
+
+  if(lua_getglobal(L, iKey) != LUA_TNIL)
+  {
+    auto s = lua_tostring(L, -1);
+    if(s != nullptr)
+      res = std::string(s);
+  }
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
 // LuaState::getTableValueAsNumber
 //------------------------------------------------------------------------
 lua_Number LuaState::getTableValueAsNumber(char const *iKey, int idx)
@@ -212,6 +241,5 @@ int LuaState::runLuaCode(std::string const &iSource)
 
   return res;
 }
-
 
 }

@@ -29,7 +29,7 @@ TEST(Rack, Basic)
 {
   Rack rack{};
 
-  auto re = rack.newExtension(Config{});
+  auto re = rack.newExtension(Config{DeviceType::kHelper});
 
   ASSERT_THROW(JBox_GetMotherboardObjectRef("/custom_properties"), Exception);
 

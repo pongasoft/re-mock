@@ -61,7 +61,10 @@ TEST(StudioEffectTester, Usage)
 // InstrumentTester.Usage
 TEST(InstrumentTester, Usage)
 {
-  InstrumentTester<MAUSrc> tester(MAUSrc::CONFIG);
+  // the MAUSrc configuration defines it as a helper, so we need to redefine it as an instrument
+  auto config = DeviceConfig<MAUSrc>::fromSkeleton(DeviceType::kInstrument).mdef(Config::stereo_audio_out());
+
+  InstrumentTester<MAUSrc> tester(config);
 
   tester.device()->fBuffer = MockAudioDevice::buffer(1.0, 2.0);
 

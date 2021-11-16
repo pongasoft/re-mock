@@ -40,6 +40,7 @@ enum class PropertyOwner {
 
 enum class DeviceType
 {
+  kUnknown,
   kInstrument,
   kCreativeFX,
   kStudioFX,
@@ -73,6 +74,26 @@ struct Realtime
 struct ConfigFile { std::string fFilename{}; };
 struct ConfigString { std::string fString{}; };
 
+using ConfigSource = std::variant<ConfigFile, ConfigString>;
+
+struct Info
+{
+  DeviceType fDeviceType{DeviceType::kUnknown};
+  bool fSupportPatches{};
+  std::optional<ConfigSource> fDefaultPatch{};
+  std::optional<std::string> fDeviceRootDir{};
+
+  Info &device_type(DeviceType t) { fDeviceType = t; return *this; }
+  Info &default_patch(ConfigSource s);
+  Info &device_root_dir(std::string s) { fDeviceRootDir = s; return *this;}
+
+  static Info fromSkeleton(DeviceType iDeviceType);
+  static Info from(ConfigFile iFile);
+  static Info from(ConfigString iString);
+  static Info from_string(std::string iString) { return from(ConfigString{iString}); }
+  static Info from_file(std::string iFile) { return from(ConfigFile{iFile}); }
+};
+
 struct Config
 {
   constexpr static auto LEFT_SOCKET = "L";
@@ -80,6 +101,10 @@ struct Config
   constexpr static auto SOCKET = "C";
 
   using rt_callback_t = std::function<void (Realtime &rt)>;
+
+  static ConfigString gui_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
+  static ConfigString gui_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static ConfigString gui_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
 
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
@@ -103,61 +128,25 @@ struct Config
   static ConfigString rt_input_setup_notify(std::string const &iPropertyName);
   static ConfigString rt_input_setup_notify_all_notes();
 
-  Config &debug(bool iDebug = true)
-  {
-    fDebug = iDebug;
-    return *this;
-  }
+  explicit Config(DeviceType iDeviceType) { fInfo.device_type(iDeviceType); }
+  explicit Config(Info const &iInfo) :fInfo{iInfo} {}
 
-  Config &device_type(DeviceType iDeviceType)
-  {
-    fDeviceType = iDeviceType;
-    return *this;
-  }
+  Config &debug(bool iDebug = true) { fDebug = iDebug; return *this; }
 
-  Config &mdef(ConfigFile iFile)
-  {
-    fMotherboardDefs.emplace_back(iFile);
-    return *this;
-  }
+  Info const &info() const { return fInfo; }
 
-  Config &mdef(ConfigString iString)
-  {
-    fMotherboardDefs.emplace_back(iString);
-    return *this;
-  }
+  Config &default_patch(ConfigSource s) { fInfo.default_patch(s); return *this; }
+  Config &device_root_dir(std::string s) { fInfo.device_root_dir(s); return *this;}
 
-  Config &mdef_string(std::string iString)
-  {
-    return mdef(ConfigString{iString});
-  }
+  Config &mdef(ConfigFile iFile) { fMotherboardDefs.emplace_back(iFile); return *this; }
+  Config &mdef(ConfigString iString) { fMotherboardDefs.emplace_back(iString); return *this; }
+  Config &mdef_string(std::string iString) { return mdef(ConfigString{iString}); }
+  Config &mdef_file(std::string iFile) { return mdef(ConfigFile{iFile}); }
 
-  Config &mdef_file(std::string iFile)
-  {
-    return mdef(ConfigFile{iFile});
-  }
-
-  Config &rtc(ConfigFile iFile)
-  {
-    fRealtimeControllers.emplace_back(iFile);
-    return *this;
-  }
-
-  Config &rtc(ConfigString iString)
-  {
-    fRealtimeControllers.emplace_back(iString);
-    return *this;
-  }
-
-  Config &rtc_string(std::string iString)
-  {
-    return rtc(ConfigString{iString});
-  }
-
-  Config &rtc_file(std::string iFile)
-  {
-    return rtc(ConfigFile{iFile});
-  }
+  Config &rtc(ConfigFile iFile) { fRealtimeControllers.emplace_back(iFile); return *this; }
+  Config &rtc(ConfigString iString) { fRealtimeControllers.emplace_back(iString); return *this; }
+  Config &rtc_string(std::string iString) { return rtc(ConfigString{iString}); }
+  Config &rtc_file(std::string iFile) { return rtc(ConfigFile{iFile}); }
 
   Config &rt(rt_callback_t iCallback)
   {
@@ -177,15 +166,13 @@ struct Config
     return *this;
   }
 
-  Config &default_patch(ConfigString iString) { fDefaultPatch = iString; return *this; };
-  Config &default_patch(ConfigFile iFile) { fDefaultPatch = iFile; return *this; };
-
   Config clone() const { return *this; }
 
   template<typename T>
   Config &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
-  static Config fromSkeleton();
+  static Config fromSkeleton(Info const &iInfo);
+  static Config fromSkeleton(DeviceType iDeviceType = DeviceType::kHelper) { return fromSkeleton(Info::fromSkeleton(iDeviceType)); }
 
   friend class Motherboard;
 
@@ -194,11 +181,10 @@ struct Config
 
 protected:
   bool fDebug{};
-  DeviceType fDeviceType{DeviceType::kHelper};
-  std::vector<std::variant<ConfigFile, ConfigString>> fMotherboardDefs{};
-  std::vector<std::variant<ConfigFile, ConfigString>> fRealtimeControllers{};
+  Info fInfo{};
+  std::vector<ConfigSource> fMotherboardDefs{};
+  std::vector<ConfigSource> fRealtimeControllers{};
   rt_callback_t fRealtime{};
-  std::optional<std::variant<ConfigFile, ConfigString>> fDefaultPatch{};
 };
 
 template<typename T>
@@ -206,67 +192,25 @@ struct DeviceConfig
 {
   using rt_callback_t = std::function<void (Realtime &rt)>;
 
-  DeviceConfig &debug(bool iDebug = true)
-  {
-    fConfig.debug(iDebug);
-    return *this;
-  }
+  explicit DeviceConfig(DeviceType iDeviceType) : fConfig{iDeviceType} {}
+  explicit DeviceConfig(Info const &iInfo) : fConfig{iInfo} {}
 
-  DeviceConfig &device_type(DeviceType iDeviceType)
-  {
-    fConfig.device_type(iDeviceType);
-    return *this;
-  }
+  DeviceConfig &debug(bool iDebug = true) { fConfig.debug(iDebug); return *this; }
 
-  DeviceConfig &mdef(ConfigFile iFile)
-  {
-    fConfig.mdef(iFile);
-    return *this;
-  }
+  DeviceConfig &default_patch(ConfigSource s) { fConfig.default_patch(s); return *this; }
+  DeviceConfig &device_root_dir(std::string s) { fConfig.device_root_dir(s); return *this;}
 
-  DeviceConfig &mdef(ConfigString iString)
-  {
-    fConfig.mdef(iString);
-    return *this;
-  }
+  DeviceConfig &mdef(ConfigFile iFile) { fConfig.mdef(iFile); return *this; }
+  DeviceConfig &mdef(ConfigString iString) { fConfig.mdef(iString); return *this; }
+  DeviceConfig &mdef_string(std::string iString) { return mdef(ConfigString{iString}); }
+  DeviceConfig &mdef_file(std::string iFile) { return mdef(ConfigFile{iFile}); }
 
-  DeviceConfig &mdef_string(std::string iString)
-  {
-    return mdef(ConfigString{iString});
-  }
+  DeviceConfig &rtc(ConfigFile iFile) { fConfig.rtc(iFile); return *this; }
+  DeviceConfig &rtc(ConfigString iString) { fConfig.rtc(iString); return *this; }
+  DeviceConfig &rtc_string(std::string iString) { return rtc(ConfigString{iString}); }
+  DeviceConfig &rtc_file(std::string iFile) { return rtc(ConfigFile{iFile}); }
 
-  DeviceConfig &mdef_file(std::string iFile)
-  {
-    return mdef(ConfigFile{iFile});
-  }
-
-  DeviceConfig &rtc(ConfigFile iFile)
-  {
-    fConfig.rtc(iFile);
-    return *this;
-  }
-
-  DeviceConfig &rtc(ConfigString iString)
-  {
-    fConfig.rtc(iString);
-    return *this;
-  }
-
-  DeviceConfig &rtc_string(std::string iString)
-  {
-    return rtc(ConfigString{iString});
-  }
-
-  DeviceConfig &rtc_file(std::string iFile)
-  {
-    return rtc(ConfigFile{iFile});
-  }
-
-  DeviceConfig &rt(rt_callback_t iCallback)
-  {
-    fConfig.rt(std::move(iCallback));
-    return *this;
-  }
+  DeviceConfig &rt(rt_callback_t iCallback) { fConfig.rt(std::move(iCallback)); return *this; }
 
   DeviceConfig &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>())
   {
@@ -274,21 +218,23 @@ struct DeviceConfig
     return *this;
   }
 
-  DeviceConfig &default_patch(ConfigString iString) { fConfig.default_patch(iString); return *this; };
-  DeviceConfig &default_patch(ConfigFile iFile) { fConfig.default_patch(iFile); return *this; };
-
   DeviceConfig clone() const { return *this; }
 
-  static DeviceConfig fromJBoxExport(std::string const &iMotherboardDefFile,
+  static DeviceConfig fromJBoxExport(std::string const &iDeviceRootFolder,
+                                     std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
+
+  static DeviceConfig fromJBoxExport(std::string const &iInfoFile,
+                                     std::string const &iMotherboardDefFile,
                                      std::string const &iRealtimeControllerFile,
                                      std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
-  static DeviceConfig fromSkeleton();
+  static DeviceConfig fromSkeleton(Info const &iInfo);
+  static DeviceConfig fromSkeleton(DeviceType iDeviceType = DeviceType::kHelper) { return fromSkeleton(Info::fromSkeleton(iDeviceType)); }
 
   const Config &getConfig() const { return fConfig; }
 
 private:
-  Config fConfig{};
+  Config fConfig;
 };
 
 //------------------------------------------------------------------------
@@ -372,11 +318,12 @@ Config &Config::rt_jbox_export(std::optional<Realtime::destroy_native_object_t> 
 // DeviceConfig::fromJBoxExport
 //------------------------------------------------------------------------
 template<typename T>
-DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iMotherboardDefFile,
+DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iInfoFile,
+                                                std::string const &iMotherboardDefFile,
                                                 std::string const &iRealtimeControllerFile,
                                                 std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject)
 {
-  return DeviceConfig<T>()
+  return DeviceConfig<T>(Info::from_file(iInfoFile))
     .mdef_file(iMotherboardDefFile)
     .rtc_file(iRealtimeControllerFile)
     .rt_jbox_export(iDestroyNativeObject);
@@ -386,15 +333,30 @@ DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iMotherboardD
 // DeviceConfig::fromSkeleton
 //------------------------------------------------------------------------
 template<typename T>
-DeviceConfig<T> DeviceConfig<T>::fromSkeleton()
+DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iDeviceRootFolder,
+                                                std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject)
 {
-  return DeviceConfig<T>()
+  return DeviceConfig<T>(Info::from_file(fmt::path(iDeviceRootFolder, "info.lua")))
+    .device_root_dir(iDeviceRootFolder)
+    .mdef_file(fmt::path(iDeviceRootFolder, "motherboard_def.lua"))
+    .rtc_file(fmt::path(iDeviceRootFolder, "realtime_controller.lua"))
+    .rt_jbox_export(iDestroyNativeObject);
+}
+
+//------------------------------------------------------------------------
+// DeviceConfig::fromSkeleton
+//------------------------------------------------------------------------
+template<typename T>
+DeviceConfig<T> DeviceConfig<T>::fromSkeleton(Info const &iInfo)
+{
+  return DeviceConfig<T>(iInfo)
     .mdef(Config::skeletonMotherboardDef())
     .rtc(Config::skeletonRealtimeController())
     .rt([](Realtime &rt) {
       rt = Realtime::byDefault<T>();
     });
 }
+
 
 
 }

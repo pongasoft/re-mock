@@ -210,6 +210,8 @@ ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig, int iS
   fSrc{fRack.newDevice<MAUSrc>(MAUSrc::CONFIG)},
   fDst{fRack.newDevice<MAUDst>(MAUDst::CONFIG)}
 {
+  RE_MOCK_ASSERT(iDeviceConfig.info().fDeviceType == DeviceType::kCreativeFX ||
+                 iDeviceConfig.info().fDeviceType == DeviceType::kStudioFX);
 }
 
 //------------------------------------------------------------------------
@@ -260,6 +262,7 @@ ExtensionInstrumentTester::ExtensionInstrumentTester(Config const &iDeviceConfig
   DeviceTester(iDeviceConfig, iSampleRate),
   fDst{fRack.newDevice<MAUDst>(MAUDst::CONFIG)}
 {
+  RE_MOCK_ASSERT(iDeviceConfig.info().fDeviceType == DeviceType::kInstrument);
 }
 
 //------------------------------------------------------------------------
@@ -308,6 +311,7 @@ ExtensionNotePlayerTester::ExtensionNotePlayerTester(Config const &iDeviceConfig
   fSrc{wireNewNotePlayerSrc()},
   fDst{wireNewNotePlayerDst()}
 {
+  RE_MOCK_ASSERT(iDeviceConfig.info().fDeviceType == DeviceType::kNotePlayer);
 }
 
 //------------------------------------------------------------------------

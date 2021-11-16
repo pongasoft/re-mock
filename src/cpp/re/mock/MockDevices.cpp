@@ -241,7 +241,7 @@ MockAudioDevice::StereoSocket MockAudioDevice::StereoSocket::output()
 // MAUSrc::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MAUSrc> MAUSrc::CONFIG = 
-  DeviceConfig<MAUSrc>::fromSkeleton().device_type(DeviceType::kHelper).mdef(Config::stereo_audio_out());
+  DeviceConfig<MAUSrc>::fromSkeleton(DeviceType::kHelper).mdef(Config::stereo_audio_out());
 
 //------------------------------------------------------------------------
 // MAUSrc::MAUSrc
@@ -263,7 +263,7 @@ void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 // MAUDst::Config
 //------------------------------------------------------------------------
 const DeviceConfig<MAUDst> MAUDst::CONFIG = 
-  DeviceConfig<MAUDst>::fromSkeleton().device_type(DeviceType::kHelper).mdef(Config::stereo_audio_in());
+  DeviceConfig<MAUDst>::fromSkeleton(DeviceType::kHelper).mdef(Config::stereo_audio_in());
 
 //------------------------------------------------------------------------
 // MAUDst::MAUDst
@@ -284,8 +284,7 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 //------------------------------------------------------------------------
 // MAUPst::Config
 //------------------------------------------------------------------------
-const DeviceConfig<MAUPst> MAUPst::CONFIG = DeviceConfig<MAUPst>::fromSkeleton()
-  .device_type(DeviceType::kStudioFX)
+const DeviceConfig<MAUPst> MAUPst::CONFIG = DeviceConfig<MAUPst>::fromSkeleton(DeviceType::kStudioFX)
   .mdef(Config::stereo_audio_out())
   .mdef(Config::stereo_audio_in());
 
@@ -379,7 +378,7 @@ bool MockCVDevice::eq(TJBox_Float64 iCV1, TJBox_Float64 iCV2)
 // MCVSrc::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MCVSrc> MCVSrc::CONFIG =
-  DeviceConfig<MCVSrc>::fromSkeleton().device_type(DeviceType::kHelper).mdef(Config::cv_out());
+  DeviceConfig<MCVSrc>::fromSkeleton(DeviceType::kHelper).mdef(Config::cv_out());
 
 //------------------------------------------------------------------------
 // MCVSrc::MCVSrc
@@ -401,7 +400,7 @@ void MCVSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 // MCVDst::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MCVDst> MCVDst::CONFIG =
-  DeviceConfig<MCVDst>::fromSkeleton().device_type(DeviceType::kHelper).mdef(Config::cv_in());
+  DeviceConfig<MCVDst>::fromSkeleton(DeviceType::kHelper).mdef(Config::cv_in());
 
 //------------------------------------------------------------------------
 // MCVDst::MCVDst
@@ -423,8 +422,7 @@ void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 // MCVPst::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MCVPst> MCVPst::CONFIG = 
-  DeviceConfig<MCVPst>::fromSkeleton()
-  .device_type(DeviceType::kHelper)
+  DeviceConfig<MCVPst>::fromSkeleton(DeviceType::kHelper)
   .mdef(Config::cv_out())
   .mdef(Config::cv_in());
 
@@ -484,7 +482,7 @@ void MockNotePlayer::wire(Rack &iRack,
 //------------------------------------------------------------------------
 // MCVPst::CONFIG
 //------------------------------------------------------------------------
-const DeviceConfig<MNPSrc> MNPSrc::CONFIG = DeviceConfig<MNPSrc>::fromSkeleton().device_type(DeviceType::kNotePlayer);
+const DeviceConfig<MNPSrc> MNPSrc::CONFIG = DeviceConfig<MNPSrc>::fromSkeleton(DeviceType::kNotePlayer);
 
 //------------------------------------------------------------------------
 // MNPSrc::MNPSrc
@@ -509,8 +507,7 @@ void MNPSrc::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 
 //------------------------------------------------------------------------
 // MNPDst::CONFIG
 //------------------------------------------------------------------------
-const DeviceConfig<MNPDst> MNPDst::CONFIG = DeviceConfig<MNPDst>::fromSkeleton()
-  .device_type(DeviceType::kNotePlayer)
+const DeviceConfig<MNPDst> MNPDst::CONFIG = DeviceConfig<MNPDst>::fromSkeleton(DeviceType::kNotePlayer)
   .rtc(Config::rt_input_setup_notify_all_notes());
 
 //------------------------------------------------------------------------
@@ -537,8 +534,7 @@ void MNPDst::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 
 //------------------------------------------------------------------------
 // MNPPst::CONFIG
 //------------------------------------------------------------------------
-const DeviceConfig<MNPPst> MNPPst::CONFIG = DeviceConfig<MNPPst>::fromSkeleton()
-  .device_type(DeviceType::kNotePlayer)
+const DeviceConfig<MNPPst> MNPPst::CONFIG = DeviceConfig<MNPPst>::fromSkeleton(DeviceType::kNotePlayer)
   .rtc(Config::rt_input_setup_notify_all_notes());
 
 //------------------------------------------------------------------------

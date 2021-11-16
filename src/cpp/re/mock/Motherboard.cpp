@@ -262,6 +262,9 @@ struct MockJBoxVisitor
 //------------------------------------------------------------------------
 void Motherboard::init(Config const &iConfig)
 {
+  // store the info
+  fInfo = iConfig.fInfo;
+
   // lua::MotherboardDef
   lua::MotherboardDef def{};
   MockJBoxVisitor defVisitor{def};
@@ -338,8 +341,22 @@ void Motherboard::init(Config const &iConfig)
     addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTCOwner, stl::variant_cast(prop.second));
 
   // load the default patch if there is one
-  if(iConfig.fDefaultPatch)
-    std::visit([this](auto &patch) { loadPatch(patch); }, *iConfig.fDefaultPatch);
+  if(fInfo.fSupportPatches)
+  {
+    RE_MOCK_ASSERT(fInfo.fDefaultPatch != std::nullopt, "support_patches is set to true but no default patch provided");
+
+    auto defaultPatch = *fInfo.fDefaultPatch;
+    if(std::holds_alternative<ConfigString>(defaultPatch))
+      loadPatch(std::get<ConfigString>(defaultPatch));
+    else
+    {
+      auto patchFile = std::get<ConfigFile>(defaultPatch);
+      if(fInfo.fDeviceRootDir)
+        loadPatchRelativeToDeviceRootDir(patchFile);
+      else
+        loadPatch(patchFile);
+    }
+  }
 
   // rt_input_setup.notify
   for(auto &&propertyPath: fRealtimeController->getRTInputSetupNotify())
@@ -355,7 +372,7 @@ void Motherboard::init(Config const &iConfig)
   }
 
   // extra properties based on device type
-  switch(iConfig.fDeviceType)
+  switch(iConfig.info().fDeviceType)
   {
     case DeviceType::kStudioFX:
     case DeviceType::kCreativeFX:
@@ -375,6 +392,10 @@ void Motherboard::init(Config const &iConfig)
       addProperty(fEnvironmentRef, "player_bypassed", PropertyOwner::kHostOwner, prop);
       break;
     }
+
+    case DeviceType::kUnknown:
+      RE_MOCK_ASSERT(iConfig.info().fDeviceType != DeviceType::kUnknown);
+      break;
 
     default:
       // no extra properties
@@ -1114,6 +1135,16 @@ void Motherboard::loadPatch(Patch const &iPatch)
 
     std::visit(visitor{name, this}, property);
   }
+}
+
+//------------------------------------------------------------------------
+// Motherboard::loadPatchRelativeToDeviceRootDir
+//------------------------------------------------------------------------
+void Motherboard::loadPatchRelativeToDeviceRootDir(ConfigFile const &iPatchFile)
+{
+  RE_MOCK_ASSERT(fInfo.fDeviceRootDir != std::nullopt, "no device root dir provided");
+  auto path = fmt::path(*fInfo.fDeviceRootDir, "Resources", iPatchFile.fFilename);
+  loadPatch(Patch::from(ConfigFile{path.c_str()}));
 }
 
 //------------------------------------------------------------------------
