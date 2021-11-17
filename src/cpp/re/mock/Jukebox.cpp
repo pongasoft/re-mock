@@ -268,9 +268,9 @@ bool JBox_IsSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs)
   return re::mock::Rack::currentMotherboard().isSameValue(lhs, rhs);
 }
 
-std::string JBox_toString(TJBox_Value const &iValue)
+std::string JBox_toString(TJBox_Value const &iValue, char const *iFormat)
 {
-  return re::mock::Rack::currentMotherboard().toString(iValue);
+  return re::mock::Rack::currentMotherboard().toString(iValue, iFormat);
 }
 
 std::string JBox_toString(TJBox_PropertyRef const &iPropertyRef)

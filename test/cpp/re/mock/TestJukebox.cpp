@@ -17,6 +17,7 @@
  */
 
 #include <re/mock/Rack.h>
+#include <re/mock/MockJukebox.h>
 #include <gtest/gtest.h>
 #include <algorithm>
 
@@ -90,17 +91,24 @@ global_rtc = {
 
     ASSERT_FLOAT_EQ(0, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_number_default"))));
 
-    ASSERT_FLOAT_EQ(0.7, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float"))));
-    JBox_StoreMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float"), JBox_MakeNumber(0.87));
-    ASSERT_FLOAT_EQ(0.87, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float"))));
-    ASSERT_FLOAT_EQ(0.87, JBox_GetNumber(JBox_LoadMOMPropertyByTag(customProperties, 100)));
-    JBox_StoreMOMPropertyByTag(customProperties, 100, JBox_MakeNumber(0.92));
-    ASSERT_FLOAT_EQ(0.92, JBox_GetNumber(JBox_LoadMOMPropertyByTag(customProperties, 100)));
-    JBox_StoreMOMPropertyAsNumber(customProperties, 100, 0.78);
-    ASSERT_FLOAT_EQ(0.78, JBox_LoadMOMPropertyAsNumber(customProperties, 100));
-    ASSERT_EQ(100, JBox_GetPropertyTag(JBox_MakePropertyRef(customProperties, "prop_float")));
-    ASSERT_EQ(customProperties, JBox_FindPropertyByTag(customProperties, 100).fObject);
-    ASSERT_STREQ("prop_float", JBox_FindPropertyByTag(customProperties, 100).fKey);
+    {
+      ASSERT_FLOAT_EQ(0.7, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float"))));
+      JBox_StoreMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float"), JBox_MakeNumber(0.87));
+      ASSERT_FLOAT_EQ(0.87, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float"))));
+      ASSERT_FLOAT_EQ(0.87, JBox_GetNumber(JBox_LoadMOMPropertyByTag(customProperties, 100)));
+      JBox_StoreMOMPropertyByTag(customProperties, 100, JBox_MakeNumber(0.92));
+      ASSERT_FLOAT_EQ(0.92, JBox_GetNumber(JBox_LoadMOMPropertyByTag(customProperties, 100)));
+      JBox_StoreMOMPropertyAsNumber(customProperties, 100, 0.78);
+      ASSERT_FLOAT_EQ(0.78, JBox_LoadMOMPropertyAsNumber(customProperties, 100));
+      ASSERT_EQ(100, JBox_GetPropertyTag(JBox_MakePropertyRef(customProperties, "prop_float")));
+      ASSERT_EQ(customProperties, JBox_FindPropertyByTag(customProperties, 100).fObject);
+      ASSERT_STREQ("prop_float", JBox_FindPropertyByTag(customProperties, 100).fKey);
+      auto v = JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_float"));
+      ASSERT_TRUE(JBox_IsSameValue(v, JBox_MakeNumber(0.78)));
+      ASSERT_FALSE(JBox_IsSameValue(v, JBox_MakeNumber(0.5)));
+      ASSERT_EQ("0.78", JBox_toString(v, "%.2f"));
+      ASSERT_EQ("/custom_properties/prop_float", JBox_toString(JBox_MakePropertyRef(customProperties, "prop_float")));
+    }
 
     ASSERT_FALSE(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_bool_default"))));
     ASSERT_TRUE(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_bool"))));
@@ -123,6 +131,10 @@ global_rtc = {
       ASSERT_EQ('b', a[0]);
       ASSERT_EQ('c', a[1]);
       ASSERT_EQ('\0', a[2]);
+      ASSERT_TRUE(JBox_IsSameValue(sValue, sValue));
+      ASSERT_FALSE(JBox_IsSameValue(sValue, JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_string_default"))));
+      ASSERT_EQ("abcd", JBox_toString(sValue));
+      ASSERT_EQ("[abcd]", JBox_toString(sValue, "[%s]"));
     }
 
     auto s = std::array<TJBox_UInt8, 4>{'a', 'b', 0, 'c'};
@@ -152,11 +164,19 @@ global_rtc = {
       auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))));
       ASSERT_FLOAT_EQ(0.8, gain->fVolume);
       ASSERT_THROW(JBox_GetNativeObjectRW(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))), Exception);
+      ASSERT_TRUE(JBox_IsSameValue(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro")),
+                                   JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))));
+      ASSERT_FALSE(JBox_IsSameValue(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro")),
+                                   JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))));
+      ASSERT_EQ("RONativeObject[2]", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))));
+      ASSERT_EQ("O/2", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro")), "%s/%d"));
     }
 
     {
       auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))));
       ASSERT_FLOAT_EQ(0.9, gain->fVolume);
+      ASSERT_EQ("RWNativeObject[3]", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))));
+      ASSERT_EQ("W/3", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw")), "%s/%d"));
     }
 
     {

@@ -132,8 +132,8 @@ public: // used by regular code
   inline void loadPatch(ConfigString const &iPatchString) { loadPatch(Patch::from(iPatchString)); }
 
   bool isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) const;
-  std::string toString(TJBox_Value const &iValue) const;
-  std::string toString(std::string const &iPropertyPath) const { return toString(getValue(iPropertyPath)); }
+  std::string toString(TJBox_Value const &iValue, char const *iFormat = nullptr) const;
+  std::string toString(std::string const &iPropertyPath, char const *iFormat = nullptr) const { return toString(getValue(iPropertyPath), iFormat); }
   std::string toString(TJBox_PropertyRef const &iPropertyRef) const;
   std::string getObjectPath(TJBox_ObjectRef iObjectRef) const;
 

@@ -93,8 +93,8 @@ public:
     inline bool getBool(std::string const &iPropertyPath) const { return motherboard().getBool(iPropertyPath); }
     inline void setBool(std::string const &iPropertyPath, bool iValue) { motherboard().setBool(iPropertyPath, iValue); }
 
-    inline std::string toString(TJBox_Value const &iValue) { return motherboard().toString(iValue); }
-    inline std::string toString(std::string const &iPropertyPath) { return motherboard().toString(iPropertyPath); }
+    inline std::string toString(TJBox_Value const &iValue, char const *iFormat = nullptr) { return motherboard().toString(iValue, iFormat); }
+    inline std::string toString(std::string const &iPropertyPath, char const *iFormat = nullptr) { return motherboard().toString(iPropertyPath, iFormat); }
     inline std::string toString(TJBox_PropertyRef const &iPropertyRef) const { return motherboard().toString(iPropertyRef); }
     inline std::string getObjectPath(TJBox_ObjectRef iObjectRef) const { return motherboard().getObjectPath(iObjectRef); }
 

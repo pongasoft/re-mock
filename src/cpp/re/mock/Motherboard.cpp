@@ -949,7 +949,7 @@ bool Motherboard::isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) co
 //------------------------------------------------------------------------
 // Motherboard::toString
 //------------------------------------------------------------------------
-std::string Motherboard::toString(TJBox_Value const &iValue) const
+std::string Motherboard::toString(TJBox_Value const &iValue, char const *iFormat) const
 {
   switch(iValue.fSecret[0])
   {
@@ -957,19 +957,19 @@ std::string Motherboard::toString(TJBox_Value const &iValue) const
       return "Nil";
 
     case kJBox_Number:
-      return fmt::printf("%f", JBox_GetNumber(iValue));
+      return fmt::printf(iFormat ? iFormat : "%f", JBox_GetNumber(iValue));
 
     case kJBox_Boolean:
-      return fmt::printf("%s", JBox_GetBoolean(iValue) ? "true" : "false");
+      return fmt::printf(iFormat ? iFormat : "%s", JBox_GetBoolean(iValue) ? "true" : "false");
 
     case kJBox_DSPBuffer:
-      return fmt::printf("DSPBuffer[%d]", jbox_get_dsp_id(iValue));
+      return fmt::printf(iFormat ? iFormat : "DSPBuffer[%d]", jbox_get_dsp_id(iValue));
 
     case kJBox_NativeObject:
     {
       auto const id = jbox_get_native_object_id(iValue);
       auto &no = fNativeObjects.get(id);
-      return fmt::printf("R%sNativeObject[%d]",
+      return fmt::printf(iFormat ? iFormat : "R%sNativeObject[%d]",
                          no->fAccessMode == impl::NativeObject::kReadWrite ? "W" : "O", id);
     }
 
@@ -979,7 +979,7 @@ std::string Motherboard::toString(TJBox_Value const &iValue) const
     case kJBox_String:
     {
       auto &s = fStrings.get(jbox_get_string_id(iValue));
-      return s->fValue;
+      return fmt::printf(iFormat ? iFormat : "%s", s->fValue.c_str());
     }
 
     case kJBox_Sample:

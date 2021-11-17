@@ -27,8 +27,18 @@
  * `Jukebox.h` */
 namespace re::mock {
 
+/**
+ * Returns `true` if the 2 `TJBox_Value` provided represent the same underlying values. */
 bool JBox_IsSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs);
-std::string JBox_toString(TJBox_Value const &iValue);
+
+/**
+ * Returns a string representation of the value. It can be formatted by providing an optional format.
+ * For example, if `iValue` is a number, `JBox_toString(v, "%.2f");` would return the number representation with
+ * 2 digits (`0.78`). */
+std::string JBox_toString(TJBox_Value const &iValue, char const *iFormat = nullptr);
+
+/**
+ * Returns the full path of the property ref (ex: `/custom_properties/my_prop`) */
 std::string JBox_toString(TJBox_PropertyRef const &iPropertyRef);
 
 }
