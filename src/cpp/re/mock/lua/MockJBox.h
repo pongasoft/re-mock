@@ -24,6 +24,8 @@
 #include <JukeboxTypes.h>
 #include <string>
 
+namespace re::mock { class Motherboard; }
+
 namespace re::mock::lua {
 
 class MockJBox
@@ -36,7 +38,7 @@ public:
   std::string getStackString(char const *iMessage = nullptr) { return L.getStackString(iMessage); }
 
   TJBox_Value toJBoxValue(int idx = -1);
-  void pushJBoxValue(TJBox_Value const &iJBoxValue);
+  void pushJBoxValue(Motherboard *iMotherboard, TJBox_Value const &iJBoxValue);
 
   int loadFile(std::string const &iLuaFilename);
   int loadString(std::string const &iLuaCode);

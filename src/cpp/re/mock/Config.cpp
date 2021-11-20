@@ -155,40 +155,68 @@ ConfigString Config::rt_input_setup_notify_all_notes()
 
 namespace impl {
 
-inline std::string property_tag(int iPropertyTag)
+//! Adds an argument to the vector of args of the form `iArgName = format(iArg)`
+template<typename T>
+inline void arg(char const *iArgName, char const *iFormat, T iArg, std::vector<std::string> &oArgs)
 {
-  if(iPropertyTag > 0)
-    return fmt::printf(", property_tag = %d", iPropertyTag);
-  else
-    return "";
+  oArgs.emplace_back(fmt::printf(fmt::printf("%s = %s", iArgName, iFormat), iArg));
 }
 
+//! Optionally add the property_tag argument
+inline void property_tag(int iPropertyTag, std::vector<std::string> &oArgs)
+{
+  if(iPropertyTag > 0)
+    arg("property_tag", "%d", iPropertyTag, oArgs);
+}
+
+//! Transform the vector into a string properly separated with commas (none if 1 element, etc...)
+inline std::string to_args(std::vector<std::string> const &iArgs) { return stl::join_to_string(iArgs); }
+
+//! Generates the custom property string with the proper arguments
+inline ConfigString custom_property(std::string const &iPropertyType,
+                                    std::string const &iPropertyName,
+                                    char const *iJboxType,
+                                    std::vector<std::string> const &iArgs)
+{
+  return { fmt::printf(R"(%s["%s"] = jbox.%s{ %s })", iPropertyType, iPropertyName, iJboxType, to_args(iArgs)) };
+}
+
+//! custom_property for lua::jbox_boolean_property
 inline ConfigString custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     lua::jbox_boolean_property const &iProperty)
 {
-  return { fmt::printf(R"(%s["%s"] = jbox.boolean{ default = %s%s })",
-                       iPropertyType, iPropertyName, iProperty.fDefaultValue ? "true" : "false", property_tag(iProperty.fPropertyTag)) };
+  std::vector<std::string> args{};
+  arg("default", "%s", iProperty.fDefaultValue ? "true" : "false", args);
+  property_tag(iProperty.fPropertyTag, args);
+  return custom_property(iPropertyType, iPropertyName, "boolean", args);
 }
 
+//! custom_property for lua::jbox_number_property
 inline ConfigString custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     lua::jbox_number_property const &iProperty)
 {
-  return { fmt::printf(R"(%s["%s"] = jbox.number{ default = %f%s })",
-                       iPropertyType, iPropertyName, iProperty.fDefaultValue, property_tag(iProperty.fPropertyTag)) };
+  std::vector<std::string> args{};
+  arg("default", "%f", iProperty.fDefaultValue, args);
+  property_tag(iProperty.fPropertyTag, args);
+  return custom_property(iPropertyType, iPropertyName, "number", args);
 }
 
+//! custom_property for lua::jbox_string_property
 inline ConfigString custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     lua::jbox_string_property const &iProperty)
 {
+  std::vector<std::string> args{};
   if(iProperty.fMaxSize > 0)
-    return { fmt::printf(R"(%s["%s"] = jbox.string{ max_size = %d })",
-                         iPropertyType, iPropertyName, iProperty.fMaxSize) };
+    arg("max_size", "%d", iProperty.fMaxSize, args);
   else
-    return { fmt::printf(R"(%s["%s"] = jbox.string{ default = "%s"%s })",
-                         iPropertyType, iPropertyName, iProperty.fDefaultValue, property_tag(iProperty.fPropertyTag)) };
+  {
+    arg("default", "\"%s\"", iProperty.fDefaultValue, args);
+    property_tag(iProperty.fPropertyTag, args);
+  }
+  return custom_property(iPropertyType, iPropertyName, "string", args);
 }
 
 }
@@ -299,24 +327,25 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
     std::string operator()(TJBox_Float64 v) { return std::to_string(v); }
   };
 
+  std::vector<std::string> params{};
+
   auto defaultValue = std::string{};
   if(!iProperty.fDefaultValue.operation.empty())
   {
-    auto params = std::string{};
     if(!iProperty.fDefaultValue.params.empty())
     {
       for(int i = 0; i < iProperty.fDefaultValue.params.size(); i++)
-      {
-        if(i > 0)
-          params += ", ";
-        params += std::visit(visitor{}, iProperty.fDefaultValue.params[i]);
-      }
+        params.emplace_back(std::visit(visitor{}, iProperty.fDefaultValue.params[i]));
     }
 
-    defaultValue = fmt::printf(R"(default = { "%s", { %s } })", iProperty.fDefaultValue.operation, params);
+    defaultValue = fmt::printf(R"({ "%s", { %s } })", iProperty.fDefaultValue.operation, impl::to_args(params));
   }
-  return { fmt::printf(R"(rtc_owner_properties["%s"] = jbox.native_object { %s%s })",
-                       iPropertyName, defaultValue, impl::property_tag(iProperty.fPropertyTag)) };
+
+  std::vector<std::string> args{};
+  if(!defaultValue.empty())
+    impl::arg("default", "%s", defaultValue.c_str(), args);
+  impl::property_tag(iProperty.fPropertyTag, args);
+  return impl::custom_property("rtc_owner_properties", iPropertyName, "native_object", args);
 }
 
 //------------------------------------------------------------------------

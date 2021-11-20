@@ -19,21 +19,35 @@
 #include <re/mock/Rack.h>
 #include <re/mock/MockDevices.h>
 #include <re/mock/stl.h>
+#include <re_mock_build.h>
 #include <gtest/gtest.h>
+#include <atomic>
 
 namespace re::mock::Test {
 
 using namespace mock;
 
+struct Gain {
+  Gain(TJBox_Float64 v) : fVolume{v} {
+    fCount++;
+  }
+  ~Gain() {
+    fCount--;
+  }
+
+  TJBox_Float64 fVolume{};
+
+  static std::atomic<int> fCount;
+};
+
+std::atomic<int> Gain::fCount{};
+
 // RackExtension.Motherboard
 TEST(RackExtension, Motherboard)
 {
-  Rack rack{};
+  ASSERT_EQ(0, Gain::fCount);
 
-  struct Gain
-  {
-    TJBox_Float64 fVolume{};
-  };
+  Rack rack{};
 
   struct Device : public MAUPst, public MCVPst
   {
@@ -122,6 +136,7 @@ end
       };
 
       rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
+        RE_MOCK_LOG_INFO("rt.destroy_native_object(%s)", iOperation);
         if(std::strcmp(iOperation, "Instance") == 0)
         {
           delete reinterpret_cast<Device *>(iNativeObject);
@@ -226,5 +241,109 @@ end
   re.setCVSocketValue(re.getCVOutSocket("C"), 112.0);
   ASSERT_FLOAT_EQ(112.0, re.getCVSocketValue("/cv_outputs/C"));
 }
+
+
+// RackExtension.RealtimeController
+TEST(RackExtension, RealtimeController)
+{
+  ASSERT_EQ(0, Gain::fCount);
+
+  {
+    Rack rack{};
+
+    struct Device : public MockDevice
+    {
+      Device(int iSampleRate) : MockDevice(iSampleRate)
+      {}
+
+      void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override
+      {
+        for(int i = 0; i < iDiffCount; i++)
+        {
+          auto diff = iPropertyDiffs[i];
+          switch(diff.fPropertyTag)
+          {
+            case 3000:
+            {
+              auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(diff.fCurrentValue));
+              if(gain)
+                fVolume = gain->fVolume;
+              else
+                fVolume = std::nullopt;
+              break;
+            }
+
+            default:
+              break;
+          }
+        }
+      }
+
+      std::optional<TJBox_Float64> fVolume{};
+    };
+
+    auto c = DeviceConfig<Device>::fromSkeleton()
+      .mdef(Config::document_owner_property("prop_function", lua::jbox_string_property{}.default_value("noop")))
+      .mdef(Config::rtc_owner_property("prop_gain", lua::jbox_native_object{}.property_tag(3000)))
+
+      .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
+                                "function-test-realtime_controller.lua")})
+      .rt([](Realtime &rt) {
+        rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[],
+                                     TJBox_UInt32 iCount) -> void * {
+          RE_MOCK_LOG_INFO("rt.create_native_object(%s)", iOperation);
+          if(std::strcmp(iOperation, "Instance") == 0)
+          {
+            if(iCount >= 1)
+            {
+              TJBox_Float64 sampleRate = JBox_GetNumber(iParams[0]);
+              return new Device(static_cast<int>(sampleRate));
+            }
+          }
+
+          if(std::strcmp(iOperation, "Gain") == 0)
+            return new Gain{JBox_GetNumber(iParams[0])};
+
+          return nullptr;
+        };
+
+        rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount,
+                                      void *iNativeObject) {
+          RE_MOCK_LOG_INFO("rt.destroy_native_object(%s)", iOperation);
+          if(std::strcmp(iOperation, "Instance") == 0)
+          {
+            delete reinterpret_cast<Device *>(iNativeObject);
+          }
+
+          if(std::strcmp(iOperation, "Gain") == 0)
+          {
+            delete reinterpret_cast<Gain *>(iNativeObject);
+          }
+        };
+      });
+
+    auto re = rack.newDevice(c);
+    ASSERT_EQ(0, Gain::fCount);
+    rack.nextFrame();
+
+    re.setString("/custom_properties/prop_function", "trace");
+    rack.nextFrame();
+
+    ASSERT_EQ(std::nullopt, re->fVolume);
+    re.setString("/custom_properties/prop_function", "new_gain");
+    ASSERT_EQ(1, Gain::fCount);
+    rack.nextFrame();
+    ASSERT_FLOAT_EQ(0.7, *re->fVolume);
+
+    re.setString("/custom_properties/prop_function", "nil_gain");
+    rack.nextFrame();
+    ASSERT_EQ(0, Gain::fCount);
+    ASSERT_EQ(std::nullopt, re->fVolume);
+
+  }
+
+  ASSERT_EQ(0, Gain::fCount);
+}
+
 
 }

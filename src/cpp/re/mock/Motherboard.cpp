@@ -61,6 +61,30 @@ bool compare(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r)
 namespace re::mock {
 
 //------------------------------------------------------------------------
+// getValueType (similar to JBox_GetType but without copy!)
+//------------------------------------------------------------------------
+constexpr TJBox_ValueType getValueType(TJBox_Value const &iValue)
+{
+  return static_cast<TJBox_ValueType>(iValue.fSecret[0]);
+}
+
+//------------------------------------------------------------------------
+// jbox_get_native_object_id
+//------------------------------------------------------------------------
+inline int jbox_get_native_object_id(TJBox_Value const &iJboxValue)
+{
+  return impl::jbox_get_value<int>(kJBox_NativeObject, iJboxValue);
+}
+
+//------------------------------------------------------------------------
+// jbox_get_string_id
+//------------------------------------------------------------------------
+inline int jbox_get_string_id(TJBox_Value const &iJboxValue)
+{
+  return impl::jbox_get_value<int>(kJBox_String, iJboxValue);
+}
+
+//------------------------------------------------------------------------
 // Motherboard::Motherboard
 //------------------------------------------------------------------------
 Motherboard::Motherboard(Config const &iConfig) : fConfig{iConfig}
@@ -187,10 +211,10 @@ TJBox_Value Motherboard::loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) c
 //------------------------------------------------------------------------
 void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex)
 {
-  auto diff = fJboxObjects.get(iProperty.fObject)->storeValue(iProperty.fKey, iValue);
-  if(diff)
-    diff.value().fAtFrameIndex = iAtFrameIndex;
-  handlePropertyDiff(diff);
+  auto property = fJboxObjects.get(iProperty.fObject)->getProperty(iProperty.fKey);
+  auto diff = property->storeValue(iValue);
+  diff.fAtFrameIndex = iAtFrameIndex;
+  handlePropertyDiff(diff, property->isWatched());
 }
 
 //------------------------------------------------------------------------
@@ -198,28 +222,45 @@ void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value 
 //------------------------------------------------------------------------
 void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex)
 {
-  auto diff = getObject(iObject)->storeValue(iTag, iValue);
-  if(diff)
-    diff.value().fAtFrameIndex = iAtFrameIndex;
-  handlePropertyDiff(diff);
+  auto property = getObject(iObject)->getProperty(iTag);
+  auto diff = property->storeValue(iValue);
+  diff.fAtFrameIndex = iAtFrameIndex;
+  handlePropertyDiff(diff, property->isWatched());
 }
 
 //------------------------------------------------------------------------
 // Motherboard::handlePropertyDiff
 //------------------------------------------------------------------------
-void Motherboard::handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iPropertyDiff)
+void Motherboard::handlePropertyDiff(TJBox_PropertyDiff const &iPropertyDiff, bool iWatched)
 {
-  if(iPropertyDiff)
+  if(iWatched)
   {
-    auto binding = fRTCBindings.find(iPropertyDiff->fPropertyRef);
+    auto binding = fRTCBindings.find(iPropertyDiff.fPropertyRef);
     if(binding != fRTCBindings.end())
       fRealtimeController->invokeBinding(this,
                                          binding->second,
-                                         getPropertyPath(iPropertyDiff->fPropertyRef),
-                                         iPropertyDiff->fCurrentValue);
+                                         getPropertyPath(iPropertyDiff.fPropertyRef),
+                                         iPropertyDiff.fCurrentValue);
 
-    if(fRTCNotify.find(iPropertyDiff->fPropertyRef) != fRTCNotify.end())
-      addPropertyDiff(*iPropertyDiff);
+    if(fRTCNotify.find(iPropertyDiff.fPropertyRef) != fRTCNotify.end())
+      addPropertyDiff(iPropertyDiff);
+  }
+
+  switch(getValueType(iPropertyDiff.fPreviousValue))
+  {
+    case kJBox_String:
+    case kJBox_BLOB:
+    case kJBox_NativeObject:
+    case kJBox_Sample:
+      fGCValues.emplace_back(iPropertyDiff.fPreviousValue);
+      break;
+
+    case kJBox_DSPBuffer:
+      RE_MOCK_ASSERT(false, "sanity check: DSPBuffers are not stored like other properties");
+      break;
+
+    default:
+      break;
   }
 }
 
@@ -624,38 +665,42 @@ void Motherboard::nextFrame()
   for(auto id: fInputDSPBuffers)
     fDSPBuffers.get(id).fill(0);
 
-  // garbage collect old strings
-  if(!fGCStrings.empty())
+  // garbage collect what was dereferenced during the call
+  gc();
+}
+
+//------------------------------------------------------------------------
+// Motherboard::gc
+//------------------------------------------------------------------------
+void Motherboard::gc()
+{
+  if(fGCValues.empty())
+    return;
+
+  for(auto &v: fGCValues)
   {
-    for(auto id: fGCStrings)
-      fStrings.remove(id);
-    fGCStrings.clear();
+    switch(getValueType(v))
+    {
+      case kJBox_String:
+        fStrings.remove(jbox_get_string_id(v));
+        break;
+      case kJBox_Sample:
+        RE_MOCK_ASSERT(false, "gc | kJBox_Sample not implemented yet");
+        break;
+      case kJBox_BLOB:
+        RE_MOCK_ASSERT(false, "gc | kJBox_BLOB not implemented yet");
+        break;
+      case kJBox_NativeObject:
+        fNativeObjects.remove(jbox_get_native_object_id(v));
+        break;
+
+      default:
+        RE_MOCK_ASSERT(false, "gc | should not be reached %d", getValueType(v));
+        break;
+    }
   }
-}
 
-//------------------------------------------------------------------------
-// jbox_get_native_object_id
-//------------------------------------------------------------------------
-inline int jbox_get_native_object_id(TJBox_Value const &iJboxValue)
-{
-  return impl::jbox_get_value<int>(kJBox_NativeObject, iJboxValue);
-}
-
-//------------------------------------------------------------------------
-// jbox_get_string_id
-//------------------------------------------------------------------------
-inline int jbox_get_string_id(TJBox_Value const &iJboxValue)
-{
-  return impl::jbox_get_value<int>(kJBox_String, iJboxValue);
-}
-
-//------------------------------------------------------------------------
-// Motherboard::setDSPBuffer
-//------------------------------------------------------------------------
-void Motherboard::setDSPBuffer(std::string const &iAudioSocketPath, Motherboard::DSPBuffer iBuffer)
-{
-  auto id = jbox_get_dsp_id(getValue(fmt::printf("%s/buffer", iAudioSocketPath)));
-  fDSPBuffers.replace(id, std::move(iBuffer));
+  fGCValues.clear();
 }
 
 //------------------------------------------------------------------------
@@ -674,6 +719,15 @@ Motherboard::DSPBuffer Motherboard::getDSPBuffer(TJBox_ObjectRef iAudioSocket) c
 {
   auto id = jbox_get_dsp_id(fJboxObjects.get(iAudioSocket)->loadValue("buffer"));
   return fDSPBuffers.get(id);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::setDSPBuffer
+//------------------------------------------------------------------------
+void Motherboard::setDSPBuffer(std::string const &iAudioSocketPath, Motherboard::DSPBuffer iBuffer)
+{
+  auto id = jbox_get_dsp_id(getValue(fmt::printf("%s/buffer", iAudioSocketPath)));
+  fDSPBuffers.replace(id, std::move(iBuffer));
 }
 
 //------------------------------------------------------------------------
@@ -817,7 +871,7 @@ TJBox_Value Motherboard::makeNativeObjectRW(std::string const &iOperation, std::
 //------------------------------------------------------------------------
 const void *Motherboard::getNativeObjectRO(TJBox_Value const &iValue) const
 {
-  if(JBox_GetType(iValue) == kJBox_Nil)
+  if(getValueType(iValue) == kJBox_Nil)
     return nullptr;
   else
     return fNativeObjects.get(jbox_get_native_object_id(iValue))->fNativeObject;
@@ -828,7 +882,7 @@ const void *Motherboard::getNativeObjectRO(TJBox_Value const &iValue) const
 //------------------------------------------------------------------------
 void *Motherboard::getNativeObjectRW(TJBox_Value const &iValue) const
 {
-  if(JBox_GetType(iValue) == kJBox_Nil)
+  if(getValueType(iValue) == kJBox_Nil)
     return nullptr;
   else
   {
@@ -912,10 +966,10 @@ void Motherboard::setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iVal
 //------------------------------------------------------------------------
 bool Motherboard::isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) const
 {
-  if(JBox_GetType(lhs) != JBox_GetType(rhs))
+  if(getValueType(lhs) != getValueType(rhs))
     return false;
 
-  switch(JBox_GetType(lhs))
+  switch(getValueType(lhs))
   {
     case kJBox_Nil:
     case kJBox_Incompatible:
@@ -951,7 +1005,7 @@ bool Motherboard::isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) co
 //------------------------------------------------------------------------
 std::string Motherboard::toString(TJBox_Value const &iValue, char const *iFormat) const
 {
-  switch(iValue.fSecret[0])
+  switch(getValueType(iValue))
   {
     case kJBox_Nil:
       return "Nil";
@@ -1071,10 +1125,7 @@ void Motherboard::setString(std::string const &iPropertyPath, std::string iValue
   auto &s = fStrings.get(previousId);
   RE_MOCK_ASSERT(!s->isRTString());
   if(s->fValue != iValue)
-  {
-    fGCStrings.emplace_back(previousId); // garbage collect old string
     storeProperty(property->fPropertyRef, makeString(iValue));
-  }
 }
 
 //------------------------------------------------------------------------
@@ -1243,7 +1294,7 @@ TJBox_Value impl::JboxObject::loadValue(TJBox_Tag iPropertyTag) const
 //------------------------------------------------------------------------
 // JboxObject::storeValue
 //------------------------------------------------------------------------
-std::optional<TJBox_PropertyDiff> impl::JboxObject::storeValue(std::string const &iPropertyName, TJBox_Value const &iValue)
+TJBox_PropertyDiff impl::JboxObject::storeValue(std::string const &iPropertyName, TJBox_Value const &iValue)
 {
   return getProperty(iPropertyName)->storeValue(iValue);
 }
@@ -1251,7 +1302,7 @@ std::optional<TJBox_PropertyDiff> impl::JboxObject::storeValue(std::string const
 //------------------------------------------------------------------------
 // JboxObject::storeValue
 //------------------------------------------------------------------------
-std::optional<TJBox_PropertyDiff> impl::JboxObject::storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue)
+TJBox_PropertyDiff impl::JboxObject::storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue)
 {
   return getProperty(iPropertyTag)->storeValue(iValue);
 }
@@ -1318,29 +1369,21 @@ impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef,
 //------------------------------------------------------------------------
 // JboxProperty::storeValue
 //------------------------------------------------------------------------
-std::optional<TJBox_PropertyDiff> impl::JboxProperty::storeValue(TJBox_Value const &iValue)
+TJBox_PropertyDiff impl::JboxProperty::storeValue(TJBox_Value const &iValue)
 {
-  RE_MOCK_ASSERT(iValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
-                 fInitialValue.fSecret[0] == TJBox_ValueType::kJBox_Nil ||
-                 iValue.fSecret[0] == fInitialValue.fSecret[0],
+  RE_MOCK_ASSERT(getValueType(iValue) == TJBox_ValueType::kJBox_Nil ||
+                 getValueType(fInitialValue) == TJBox_ValueType::kJBox_Nil ||
+                 getValueType(iValue) == getValueType(fInitialValue),
                  "invalid property type for [%s]", fPropertyPath.c_str());
 
-  if(fWatched)
-  {
-    auto previousValue = fValue;
-    fValue = iValue;
-    return TJBox_PropertyDiff{
-      /* .fPreviousValue = */ previousValue,
-      /* .fCurrentValue = */  fValue,
-      /* .fPropertyRef = */   fPropertyRef,
-      /* .fPropertyTag = */   fTag
-    };
-  }
-  else
-  {
-    fValue = iValue;
-    return std::nullopt;
-  }
+  auto previousValue = fValue;
+  fValue = iValue;
+  return TJBox_PropertyDiff{
+    /* .fPreviousValue = */ previousValue,
+    /* .fCurrentValue = */  fValue,
+    /* .fPropertyRef = */   fPropertyRef,
+    /* .fPropertyTag = */   fTag
+  };
 
 }
 

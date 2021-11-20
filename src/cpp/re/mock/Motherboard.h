@@ -136,6 +136,7 @@ public: // used by regular code
   std::string toString(std::string const &iPropertyPath, char const *iFormat = nullptr) const { return toString(getValue(iPropertyPath), iFormat); }
   std::string toString(TJBox_PropertyRef const &iPropertyRef) const;
   std::string getObjectPath(TJBox_ObjectRef iObjectRef) const;
+  PropertyOwner getPropertyOwner(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fOwner; }
 
 public: // used by Jukebox.cpp (need to be public)
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
@@ -187,7 +188,7 @@ protected:
   void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, lua::jbox_property const &iProperty);
   void registerRTCNotify(std::string const &iPropertyPath);
   TJBox_PropertyDiff registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingName);
-  void handlePropertyDiff(std::optional<TJBox_PropertyDiff> const &iPropertyDiff);
+  void handlePropertyDiff(TJBox_PropertyDiff const &iPropertyDiff, bool iWatched);
   TJBox_Value makeRTString(int iMaxSize);
   TJBox_Value makeString(std::string iValue);
 
@@ -218,6 +219,8 @@ protected:
 
   void loadPatch(Patch const &iPatch);
 
+  void gc();
+
 protected:
 
   static bool compare(TJBox_PropertyRef const &l, TJBox_PropertyRef const &r)
@@ -238,6 +241,7 @@ protected:
 
 protected:
   Config fConfig;
+  std::vector<TJBox_Value> fGCValues{}; // garbage collector for values
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, lua::gui_jbox_property> fGUIProperties{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
@@ -252,7 +256,6 @@ protected:
   Realtime fRealtime{};
   ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};
   ObjectManager<std::unique_ptr<impl::String>> fStrings{};
-  std::vector<int> fGCStrings{}; // garbage collector for fStrings
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
   NoteEvents fNoteOutEvents{};

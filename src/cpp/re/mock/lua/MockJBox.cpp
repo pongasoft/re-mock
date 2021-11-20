@@ -74,7 +74,7 @@ TJBox_Value MockJBox::toJBoxValue(int idx)
 //------------------------------------------------------------------------
 // MockJBox::pushJBoxValue
 //------------------------------------------------------------------------
-void MockJBox::pushJBoxValue(TJBox_Value const &iJBoxValue)
+void MockJBox::pushJBoxValue(Motherboard *iMotherboard, TJBox_Value const &iJBoxValue)
 {
   switch(JBox_GetType(iJBoxValue))
   {
@@ -89,6 +89,12 @@ void MockJBox::pushJBoxValue(TJBox_Value const &iJBoxValue)
     case kJBox_Number:
       lua_pushnumber(L, JBox_GetNumber(iJBoxValue));
       break;
+
+    case kJBox_String:
+    {
+      lua_pushstring(L, iMotherboard->toString(iJBoxValue).c_str());
+      break;
+    }
 
     default:
       auto jboxValueUserData = reinterpret_cast<TJBox_Value *>(lua_newuserdata(L, sizeof(TJBox_Value)));

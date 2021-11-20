@@ -34,9 +34,14 @@ class RealtimeController: public MockJBox
 public:
   RealtimeController();
 
+  int luaTrace();
+
   int luaLoadProperty();
   int luaStoreProperty();
+
   int luaMakeNativeObject(bool iReadOnly);
+  int luaMakeEmptyNativeObject();
+  int luaIsNativeObject();
 
   std::map<std::string, std::string> getBindings();
   std::set<std::string> getRTInputSetupNotify();

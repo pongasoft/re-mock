@@ -45,7 +45,7 @@ TJBox_Value jbox_make_value(TJBox_ValueType iValueType, T iValue)
   std::copy(std::begin(secret.fSecret), std::end(secret.fSecret), std::begin(res.fSecret) + 1);
 
   return res;
-};
+}
 
 template<typename T>
 T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
@@ -66,9 +66,10 @@ struct JboxProperty
                lua::EPersistence iPersistence);
 
   inline TJBox_Value loadValue() const { return fValue; };
-  std::optional<TJBox_PropertyDiff> storeValue(TJBox_Value const &iValue);
+  TJBox_PropertyDiff storeValue(TJBox_Value const &iValue);
 
   TJBox_PropertyDiff watchForChange();
+  bool isWatched() const { return fWatched; }
 
   const TJBox_PropertyRef fPropertyRef;
   const std::string fPropertyPath;
@@ -90,8 +91,8 @@ struct JboxObject
 
   TJBox_Value loadValue(std::string const &iPropertyName) const;
   TJBox_Value loadValue(TJBox_Tag iPropertyTag) const;
-  std::optional<TJBox_PropertyDiff> storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
-  std::optional<TJBox_PropertyDiff> storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue);
+  TJBox_PropertyDiff storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
+  TJBox_PropertyDiff storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue);
   std::vector<TJBox_PropertyDiff> watchAllPropertiesForChange();
   TJBox_PropertyDiff watchPropertyForChange(std::string const &iPropertyName);
 
