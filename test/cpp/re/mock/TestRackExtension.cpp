@@ -72,7 +72,7 @@ TEST(RackExtension, Motherboard)
       fBool = JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_bool")));
 
       std::array<char, 10> ar{};
-      JBox_GetSubstring(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_string")), 0, 3, ar.data());
+      JBox_GetSubstring(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_string")), 0, 4, ar.data());
       fString = std::string(ar.data());
 
       std::array<TJBox_UInt8 , 3> ar2{'e', 'f', 'g'};
@@ -263,6 +263,15 @@ TEST(RackExtension, RealtimeController)
           auto diff = iPropertyDiffs[i];
           switch(diff.fPropertyTag)
           {
+            case 2000:
+            {
+              auto len = JBox_GetStringLength(diff.fCurrentValue);
+              char tmp[100];
+              RE_MOCK_ASSERT(len < 100);
+              JBox_GetSubstring(diff.fCurrentValue, 0, len, tmp);
+              fPropFunction = tmp;
+              break;
+            }
             case 3000:
             {
               auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(diff.fCurrentValue));
@@ -277,14 +286,56 @@ TEST(RackExtension, RealtimeController)
               break;
           }
         }
+
+        // clear the data first
+        std::fill(std::begin(fBlobData), std::end(fBlobData), 0);
+
+        // prop_blob_default is loaded with default value
+        fDefaultBlobInfo = JBox_GetBLOBInfo(JBox_LoadMOMPropertyByTag(JBox_GetMotherboardObjectRef("/custom_properties"), 4000));
+
+        auto blobValue = JBox_LoadMOMPropertyByTag(JBox_GetMotherboardObjectRef("/custom_properties"), 5000);
+        if(JBox_GetType(blobValue) == kJBox_Nil)
+        {
+          fBlobInfo = std::nullopt;
+        }
+        else
+        {
+          fBlobInfo = JBox_GetBLOBInfo(blobValue);
+
+          if(fPropFunction == "load_blob_data")
+          {
+            JBox_GetBLOBData(blobValue, 0, std::min(fBlobInfo->fResidentSize, 10UL), fBlobData);
+          }
+
+          if(fPropFunction == "load_blob_file")
+          {
+            if(fBlobInfo->fResidentSize < 1100)
+              JBox_GetBLOBData(blobValue, 0, std::min(fBlobInfo->fResidentSize, 10UL), fBlobData);
+            else
+              JBox_GetBLOBData(blobValue, 1000, 1010, fBlobData);
+          }
+        }
       }
 
+      std::string fPropFunction{};
       std::optional<TJBox_Float64> fVolume{};
+      TJBox_BLOBInfo fDefaultBlobInfo{};
+      std::optional<TJBox_BLOBInfo> fBlobInfo{};
+      TJBox_UInt8 fBlobData[10];
     };
 
+    std::vector<char> blobData{'A', 'L', '\0', 'z'};
+
     auto c = DeviceConfig<Device>::fromSkeleton()
-      .mdef(Config::document_owner_property("prop_function", lua::jbox_string_property{}.default_value("noop")))
+      .mdef(Config::document_owner_property("prop_function", lua::jbox_string_property{}.default_value("noop").property_tag(2000)))
+      .mdef(Config::rtc_owner_property("prop_function_return", lua::jbox_string_property{}))
       .mdef(Config::rtc_owner_property("prop_gain", lua::jbox_native_object{}.property_tag(3000)))
+      .mdef(Config::rtc_owner_property("prop_blob_default", lua::jbox_blob_property{}.default_value("/Private/blob.default").property_tag(4000)))
+      .mdef(Config::rtc_owner_property("prop_blob", lua::jbox_blob_property{}.property_tag(5000)))
+
+      .blob_data("/Private/blob.default", std::vector<char>{'d', 'e', 'f', 'a', 'u', 'l', 't' })
+      .blob_data("/Private/blob.data", blobData)
+      .blob_file("/Private/blob.file", fmt::path(RE_MOCK_PROJECT_DIR, "LICENSE.txt"))
 
       .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
                                 "function-test-realtime_controller.lua")})
@@ -323,23 +374,79 @@ TEST(RackExtension, RealtimeController)
       });
 
     auto re = rack.newDevice(c);
+
+    // first frame (default to noop)
     ASSERT_EQ(0, Gain::fCount);
+    ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
     rack.nextFrame();
 
+    // trace
     re.setString("/custom_properties/prop_function", "trace");
+    ASSERT_EQ("trace -> void", re.getString("/custom_properties/prop_function_return"));
     rack.nextFrame();
 
+    // new_gain
     ASSERT_EQ(std::nullopt, re->fVolume);
     re.setString("/custom_properties/prop_function", "new_gain");
     ASSERT_EQ(1, Gain::fCount);
+    ASSERT_EQ("new_gain -> true", re.getString("/custom_properties/prop_function_return"));
     rack.nextFrame();
     ASSERT_FLOAT_EQ(0.7, *re->fVolume);
 
+    // nil_gain
     re.setString("/custom_properties/prop_function", "nil_gain");
+    ASSERT_EQ("nil_gain -> true", re.getString("/custom_properties/prop_function_return"));
     rack.nextFrame();
     ASSERT_EQ(0, Gain::fCount);
     ASSERT_EQ(std::nullopt, re->fVolume);
 
+    //------------------------------------------------------------------------
+    // blobs
+    //------------------------------------------------------------------------
+    ASSERT_EQ(0, re->fDefaultBlobInfo.fResidentSize);
+    ASSERT_EQ(7, re->fDefaultBlobInfo.fSize);
+    ASSERT_EQ(std::nullopt, re->fBlobInfo);
+
+    // loading all prop_blob_default
+    re.loadMoreBlob("/custom_properties/prop_blob_default");
+    rack.nextFrame();
+    ASSERT_EQ(7, re->fDefaultBlobInfo.fResidentSize);
+    ASSERT_EQ(7, re->fDefaultBlobInfo.fSize);
+    ASSERT_EQ(std::nullopt, re->fBlobInfo);
+
+    // load_blob_data
+    re.setString("/custom_properties/prop_function", "load_blob_data");
+    ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
+    rack.nextFrame();
+    ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
+    ASSERT_EQ(blobData.size(), re->fBlobInfo->fSize);
+
+    re.loadMoreBlob("/custom_properties/prop_blob");
+    rack.nextFrame();
+    ASSERT_EQ(blobData.size(), re->fBlobInfo->fResidentSize);
+    ASSERT_EQ(blobData.size(), re->fBlobInfo->fSize);
+    ASSERT_EQ(std::vector<TJBox_UInt8>({'A', 'L', 0, 'z', 0, 0, 0, 0, 0, 0}),
+              std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
+
+    // load_blob_file
+    re.setString("/custom_properties/prop_function", "load_blob_file");
+    ASSERT_EQ("load_blob_file -> true", re.getString("/custom_properties/prop_function_return"));
+    rack.nextFrame();
+    ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
+    ASSERT_EQ(13600, re->fBlobInfo->fSize);
+
+    re.loadMoreBlob("/custom_properties/prop_blob");
+    rack.nextFrame();
+    ASSERT_EQ(13600, re->fBlobInfo->fResidentSize);
+    ASSERT_EQ(13600, re->fBlobInfo->fSize);
+    ASSERT_EQ(std::vector<TJBox_UInt8>({' ', 's', 'h', 'a', 'r', 'e', 's', ',', ' ', 'o'}),
+              std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
+
+    // nil_blob
+    re.setString("/custom_properties/prop_function", "nil_blob");
+    ASSERT_EQ("nil_blob -> true", re.getString("/custom_properties/prop_function_return"));
+    rack.nextFrame();
+    ASSERT_EQ(std::nullopt, re->fBlobInfo);
   }
 
   ASSERT_EQ(0, Gain::fCount);

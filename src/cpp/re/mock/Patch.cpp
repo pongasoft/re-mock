@@ -127,7 +127,7 @@ Patch createPatch(XMLDocument const &iDoc)
 
     if(type == "boolean")
     {
-      RE_MOCK_ASSERT(value == "true" || value == "false", "Invalid boolean property [%s] line [%d]", value.c_str(), v->GetLineNum());
+      RE_MOCK_ASSERT(value == "true" || value == "false", "Invalid boolean property [%s] line [%d]", value, v->GetLineNum());
       patch.value(property, value == "true");
     }
     else if(type == "number")
@@ -161,7 +161,7 @@ Patch Patch::from(ConfigFile iPatchFile)
 {
   XMLDocument doc;
   auto res = doc.LoadFile(iPatchFile.fFilename.c_str());
-  RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch file %s", res, iPatchFile.fFilename.c_str());
+  RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch file %s", res, iPatchFile.fFilename);
   return impl::createPatch(doc);
 }
 
@@ -172,7 +172,7 @@ Patch Patch::from(ConfigString iPatchString)
 {
   XMLDocument doc;
   auto res = doc.Parse(iPatchString.fString.c_str());
-  RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch string %s", res, iPatchString.fString.c_str());
+  RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch string %s", res, iPatchString.fString);
   return impl::createPatch(doc);
 }
 

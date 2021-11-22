@@ -80,16 +80,24 @@ struct Info
 {
   DeviceType fDeviceType{DeviceType::kUnknown};
   bool fSupportPatches{};
-  std::optional<ConfigSource> fDefaultPatch{};
+  std::string fDefaultPatch{};
 
   Info &device_type(DeviceType t) { fDeviceType = t; return *this; }
-  Info &default_patch(ConfigSource s);
+  Info &default_patch(std::string s) { fDefaultPatch = std::move(s); fSupportPatches = !fDefaultPatch.empty(); return *this; }
 
   static Info fromSkeleton(DeviceType iDeviceType);
   static Info from(ConfigFile iFile);
   static Info from(ConfigString iString);
   static Info from_string(std::string iString) { return from(ConfigString{iString}); }
   static Info from_file(std::string iFile) { return from(ConfigFile{iFile}); }
+};
+
+
+struct Resource
+{
+  struct Patch { ConfigSource fXMLSource{}; };
+  struct Blob { std::vector<char> fData{}; };
+  struct Sample { };
 };
 
 struct Config
@@ -112,6 +120,7 @@ struct Config
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty);
+  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_blob_property const &iProperty);
   static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
   static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
@@ -134,21 +143,13 @@ struct Config
 
   Info const &info() const { return fInfo; }
 
-  Config &default_patch(ConfigSource s) { fInfo.default_patch(s); return *this; }
+  Config &default_patch(std::string const &s) { fInfo.default_patch(s); return *this; }
 
   std::optional<std::string> device_root_dir() const { return fDeviceRootDir; };
   Config &device_root_dir(std::string s) { fDeviceRootDir = s; return *this;}
 
   std::optional<std::string> device_resources_dir() const { return fDeviceResourcesDir; };
   Config &device_resources_dir(std::string s) { fDeviceResourcesDir = s; return *this; }
-
-  /**
-   * Returns the resource relative to `device_resources_dir()` (if device_resources_dir exists).
-   *
-   * @param iRelativeResourcePath must use Unix like path
-   *                              (which is what the SDK uses (for example: `/Public/Default.repatch`)) */
-  std::optional<ConfigFile> resource_file(ConfigFile iRelativeResourcePath) const;
-  inline std::optional<ConfigFile> resource_file(std::string iRelativeResourcePath) const { return resource_file(ConfigFile{iRelativeResourcePath}); }
 
   std::vector<ConfigSource> const &mdef() const { return fMotherboardDefs; }
   Config &mdef(ConfigFile iFile) { fMotherboardDefs.emplace_back(iFile); return *this; }
@@ -186,6 +187,24 @@ struct Config
   template<typename T>
   Config &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
+  Config& patch(std::string iResourcePath, ConfigSource const &iPatch) { fResources[iResourcePath] = ConfigResource::Patch{iPatch}; return *this; }
+  Config& patch_string(std::string iResourcePath, std::string const &iPatchString) { return patch(iResourcePath, ConfigString{iPatchString}); }
+  Config& patch_file(std::string iResourcePath, std::string const &iPatchFile) { return patch(iResourcePath, ConfigFile{iPatchFile}); }
+
+  Config& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fResources[iResourcePath] = ConfigResource::Blob{ConfigFile{iBlobFile}}; return *this; }
+  Config& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fResources[iResourcePath] = ConfigResource::Blob{Resource::Blob{std::move(iBlobData)}}; return *this; }
+
+  /**
+   * Returns the resource relative to `device_resources_dir()` (if device_resources_dir exists).
+   *
+   * @param iRelativeResourcePath must use Unix like path
+   *                              (which is what the SDK uses (for example: `/Public/Default.repatch`)) */
+  std::optional<ConfigFile> resource_file(ConfigFile iRelativeResourcePath) const;
+
+  std::optional<Resource::Patch> findPatchResource(std::string const &iResourcePath) const;
+  std::optional<Resource::Blob> findBlobResource(std::string const &iResourcePath) const;
+  std::optional<Resource::Sample> findSampleResource(std::string const &iResourcePath) const;
+
   static Config fromSkeleton(Info const &iInfo);
   static Config fromSkeleton(DeviceType iDeviceType = DeviceType::kHelper) { return fromSkeleton(Info::fromSkeleton(iDeviceType)); }
 
@@ -196,6 +215,15 @@ struct Config
 
 
 protected:
+  struct ConfigResource
+  {
+    using Patch = Resource::Patch;
+    struct Blob { std::variant<ConfigFile, Resource::Blob> fBlobVariant; };
+    struct Sample { std::variant<ConfigFile, Resource::Sample> fSampleVariant; };
+  };
+
+  using AnyConfigResource = std::variant<ConfigResource::Patch, ConfigResource::Blob, ConfigResource::Sample>;
+
   bool fDebug{};
   Info fInfo{};
   std::optional<std::string> fDeviceRootDir{};
@@ -203,6 +231,7 @@ protected:
   std::vector<ConfigSource> fMotherboardDefs{};
   std::vector<ConfigSource> fRealtimeControllers{};
   rt_callback_t fRealtime{};
+  std::map<std::string, AnyConfigResource> fResources{};
 };
 
 template<typename T>
@@ -221,7 +250,8 @@ struct DeviceConfig
 
   DeviceConfig &debug(bool iDebug = true) { fConfig.debug(iDebug); return *this; }
 
-  DeviceConfig &default_patch(ConfigSource s) { fConfig.default_patch(s); return *this; }
+  DeviceConfig &default_patch(std::string s) { fConfig.default_patch(s); return *this; }
+  DeviceConfig &default_patch(std::string s, ConfigSource const &iPatch) { default_patch(s); return patch(s, iPatch); }
   DeviceConfig &device_root_dir(std::string s) { fConfig.device_root_dir(s); return *this;}
   DeviceConfig &device_resources_dir(std::string s) { fConfig.device_resources_dir(s); return *this;}
 
@@ -244,6 +274,13 @@ struct DeviceConfig
   }
 
   DeviceConfig clone() const { return *this; }
+
+  DeviceConfig& patch(std::string iResourcePath, ConfigSource const &iPatch) { fConfig.patch(iResourcePath, iPatch); return *this; }
+  DeviceConfig& patch_string(std::string iResourcePath, std::string const &iPatchString) { fConfig.patch_string(iResourcePath, iPatchString); return *this; }
+  DeviceConfig& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fConfig.patch_file(iResourcePath, iPatchFile); return *this; }
+
+  DeviceConfig& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fConfig.blob_file(iResourcePath, iBlobFile); return *this; }
+  DeviceConfig& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fConfig.blob_data(iResourcePath, iBlobData); return *this; }
 
   static DeviceConfig fromJBoxExport(std::string const &iDeviceRootFolder,
                                      std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());

@@ -52,9 +52,29 @@ static int lua_is_native_object(lua_State *L)
   return RealtimeController::loadFromRegistry(L)->luaIsNativeObject();
 }
 
+static int lua_is_blob(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaIsBlob();
+}
+
 static int lua_make_empty_native_object(lua_State *L)
 {
-  return RealtimeController::loadFromRegistry(L)->luaMakeEmptyNativeObject();
+  return RealtimeController::loadFromRegistry(L)->luaMakeNil();
+}
+
+static int lua_make_empty_blob(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaMakeNil();
+}
+
+static int lua_load_blob_async(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaLoadBlobAsync();
+}
+
+static int lua_get_blob_info(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaGetBlobInfo();
 }
 
 static int lua_trace(lua_State *L)
@@ -69,14 +89,9 @@ namespace re::mock::lua {
 /*
 load_sample_async
 is_sample
-load_blob_async
-is_blob
 get_sample_info
 get_sample_meta_data
-get_blob_info
 make_empty_sample
-make_empty_blob
- *
  */
 
 //------------------------------------------------------------------------
@@ -85,8 +100,12 @@ make_empty_blob
 RealtimeController::RealtimeController()
 {
   static const struct luaL_Reg jboxLib[] = {
+    {"get_blob_info",            lua_get_blob_info},
+    {"is_blob",                  lua_is_blob},
     {"is_native_object",         lua_is_native_object},
+    {"load_blob_async",          lua_load_blob_async},
     {"load_property",            lua_load_property},
+    {"make_empty_blob",          lua_make_empty_blob},
     {"make_empty_native_object", lua_make_empty_native_object},
     {"make_native_object_rw",    lua_make_native_object_rw},
     {"make_native_object_ro",    lua_make_native_object_ro},
@@ -165,7 +184,7 @@ int RealtimeController::luaStoreProperty()
   luaL_checktype(L, 1, LUA_TSTRING);
   auto const propertyPath = lua_tostring(L, 1);
   RE_MOCK_ASSERT(getCurrentMotherboard()->getPropertyOwner(propertyPath) == PropertyOwner::kRTCOwner);
-  getCurrentMotherboard()->setValue(propertyPath, toJBoxValue(2));
+  getCurrentMotherboard()->setValue(propertyPath, toJBoxValue(getCurrentMotherboard(), 2));
   return 0;
 }
 
@@ -191,7 +210,7 @@ int RealtimeController::luaMakeNativeObject(bool iReadOnly)
     for(int i = 1; i <= numParams; i++)
     {
       lua_geti(L, paramsTableIdx, i);
-      params.emplace_back(toJBoxValue());
+      params.emplace_back(toJBoxValue(getCurrentMotherboard()));
       lua_pop(L, 1);
     }
   }
@@ -205,9 +224,9 @@ int RealtimeController::luaMakeNativeObject(bool iReadOnly)
 }
 
 //------------------------------------------------------------------------
-// RealtimeController::luaMakeEmptyNativeObject
+// RealtimeController::luaMakeNil
 //------------------------------------------------------------------------
-int RealtimeController::luaMakeEmptyNativeObject()
+int RealtimeController::luaMakeNil()
 {
   pushJBoxValue(getCurrentMotherboard(), JBox_MakeNil());
   return 1;
@@ -219,8 +238,49 @@ int RealtimeController::luaMakeEmptyNativeObject()
 int RealtimeController::luaIsNativeObject()
 {
   RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.is_native_object() expects 1 argument");
-  auto type = JBox_GetType(toJBoxValue());
+  auto type = JBox_GetType(toJBoxValue(getCurrentMotherboard()));
   lua_pushboolean(L, type == kJBox_NativeObject || type == kJBox_Nil);
+  return 1;
+}
+
+//------------------------------------------------------------------------
+// RealtimeController::luaIsBlob
+//------------------------------------------------------------------------
+int RealtimeController::luaIsBlob()
+{
+  RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.is_blob() expects 1 argument");
+  auto type = JBox_GetType(toJBoxValue(getCurrentMotherboard()));
+  lua_pushboolean(L, type == kJBox_BLOB || type == kJBox_Nil);
+  return 1;
+}
+
+//------------------------------------------------------------------------
+// RealtimeController::luaLoadBlobAsync
+//------------------------------------------------------------------------
+int RealtimeController::luaLoadBlobAsync()
+{
+  luaL_checktype(L, 1, LUA_TSTRING);
+  pushJBoxValue(getCurrentMotherboard(), getCurrentMotherboard()->loadBlobAsync(lua_tostring(L, 1)));
+  return 1;
+}
+
+//------------------------------------------------------------------------
+// RealtimeController::luaGetBlobInfo
+//------------------------------------------------------------------------
+int RealtimeController::luaGetBlobInfo()
+{
+  RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.get_blob_info() expects 1 argument");
+  auto blobValue = toJBoxValue(getCurrentMotherboard());
+  lua_newtable(L);
+  if(JBox_GetType(blobValue) == kJBox_Nil)
+    L.setTableValue("state", 0);
+  else
+  {
+    auto info = getCurrentMotherboard()->getBLOBInfo(blobValue);
+    L.setTableValue("size", info.fSize);
+    L.setTableValue("resident_size", info.fResidentSize);
+    L.setTableValue("state", info.fResidentSize == info.fSize ? 2 : 1);
+  }
   return 1;
 }
 
@@ -275,7 +335,7 @@ std::map<std::string, std::string> RealtimeController::getBindings()
       lua_geti(L, mapIndex, i);
       auto source = L.getTableValueAsString("source");
       auto dest = L.getTableValueAsString("dest");
-      RE_MOCK_ASSERT(dest.find("/global_rtc/") == 0, "invalid rtc_binding [%s]", dest.c_str());
+      RE_MOCK_ASSERT(dest.find("/global_rtc/") == 0, "invalid rtc_binding [%s]", dest);
       dest = dest.substr(12);  // skip /global_rtc/
       putBindingOnTopOfStack(dest); // this will check that the binding exists
       lua_pop(L, 1);

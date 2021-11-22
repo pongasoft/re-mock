@@ -85,6 +85,14 @@ inline int jbox_get_string_id(TJBox_Value const &iJboxValue)
 }
 
 //------------------------------------------------------------------------
+// jbox_get_blob_id
+//------------------------------------------------------------------------
+inline int jbox_get_blob_id(TJBox_Value const &iJboxValue)
+{
+  return impl::jbox_get_value<int>(kJBox_BLOB, iJboxValue);
+}
+
+//------------------------------------------------------------------------
 // Motherboard::Motherboard
 //------------------------------------------------------------------------
 Motherboard::Motherboard(Config const &iConfig) : fConfig{iConfig}
@@ -151,7 +159,7 @@ TJBox_ObjectRef Motherboard::getObjectRef(std::string const &iObjectPath) const
 {
 //  DLOG_F(INFO, "Motherboard::getObjectRef(%p, %s)", this, *iObjectPath);
   auto ref = fJboxObjectRefs.find(iObjectPath);
-  RE_MOCK_ASSERT(ref != fJboxObjectRefs.end(), "Could not find object [%s] (did you configure it?)", iObjectPath.c_str());
+  RE_MOCK_ASSERT(ref != fJboxObjectRefs.end(), "Could not find object [%s] (did you configure it?)", iObjectPath);
   return ref->second;
 }
 
@@ -185,7 +193,7 @@ std::string Motherboard::getPropertyPath(TJBox_PropertyRef const &iPropertyRef) 
 TJBox_PropertyRef Motherboard::getPropertyRef(std::string const &iPropertyPath) const
 {
   auto lastSlash = iPropertyPath.find_last_of('/');
-  RE_MOCK_ASSERT(lastSlash != std::string::npos, "Invalid property path (missing /) [%s]", iPropertyPath.c_str());
+  RE_MOCK_ASSERT(lastSlash != std::string::npos, "Invalid property path (missing /) [%s]", iPropertyPath);
   return JBox_MakePropertyRef(getObjectRef(iPropertyPath.substr(0, lastSlash)),
                               iPropertyPath.substr(lastSlash + 1).c_str());
 }
@@ -245,6 +253,9 @@ void Motherboard::handlePropertyDiff(TJBox_PropertyDiff const &iPropertyDiff, bo
     if(fRTCNotify.find(iPropertyDiff.fPropertyRef) != fRTCNotify.end())
       addPropertyDiff(iPropertyDiff);
   }
+
+  // TODO: should check on iPropertyDiff.fCurrentValue as well to remove from GC and have
+  // makeXXX() calls add to GC to fix potential case when the lua code would create an object and not use it
 
   switch(getValueType(iPropertyDiff.fPreviousValue))
   {
@@ -381,13 +392,8 @@ void Motherboard::init()
   // load the default patch if there is one
   if(fConfig.info().fSupportPatches)
   {
-    RE_MOCK_ASSERT(fConfig.info().fDefaultPatch != std::nullopt, "support_patches is set to true but no default patch provided");
-
-    auto defaultPatch = *fConfig.info().fDefaultPatch;
-    if(std::holds_alternative<ConfigString>(defaultPatch))
-      loadPatch(std::get<ConfigString>(defaultPatch));
-    else
-      loadPatch(getResourceFile(std::get<ConfigFile>(defaultPatch)));
+    RE_MOCK_ASSERT(!fConfig.info().fDefaultPatch.empty(), "support_patches is set to true but no default patch provided");
+    loadPatch(ConfigFile{fConfig.info().fDefaultPatch});
   }
 
   // rt_input_setup.notify
@@ -444,12 +450,14 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
                               PropertyOwner iOwner,
                               lua::jbox_property const &iProperty)
 {
-  RE_MOCK_ASSERT(fGUIProperties.find(iPropertyName) == fGUIProperties.end(), "duplicate property [%s] (already defined in gui_owner)", iPropertyName.c_str());
+  RE_MOCK_ASSERT(fGUIProperties.find(iPropertyName) == fGUIProperties.end(), "duplicate property [%s] (already defined in gui_owner)", iPropertyName);
 
   struct DefaultValueVisitor
   {
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return JBox_MakeBoolean(o->fDefaultValue); }
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return JBox_MakeNumber(o->fDefaultValue); }
+
+    // lua::jbox_performance_property
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_performance_property>& o) const {
       RE_MOCK_ASSERT(o->fType != lua::jbox_performance_property::Type::UNKNOWN);
       TJBox_Float64 defaultValue = 0;
@@ -457,6 +465,8 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
         defaultValue = 0.5;
       return JBox_MakeNumber(defaultValue);
     }
+
+    // lua::jbox_native_object
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_native_object>& o) const {
       if(!o->fDefaultValue.operation.empty())
       {
@@ -476,6 +486,8 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
       else
         return JBox_MakeNil();
     }
+
+    // lua::jbox_string_property
     TJBox_Value operator()(const std::shared_ptr<lua::jbox_string_property>& o) const {
       switch(fOwner)
       {
@@ -488,6 +500,15 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
           return fMotherboard->makeString(o->fDefaultValue);
       }
     }
+
+    // lua::jbox_blob_property
+    TJBox_Value operator()(const std::shared_ptr<lua::jbox_blob_property>& o) const {
+      RE_MOCK_ASSERT(fOwner == PropertyOwner::kRTCOwner, "Blob must be owned by RTC");
+      if(o->fDefaultValue)
+        return fMotherboard->loadBlobAsync(*o->fDefaultValue);
+      else
+        return JBox_MakeNil();
+    }
     Motherboard *fMotherboard;
     PropertyOwner fOwner;
   };
@@ -495,9 +516,11 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
   auto propertyTag = std::visit([](auto &p) { return p->fPropertyTag; }, iProperty);
   auto defaultValue = std::visit(DefaultValueVisitor{this, iOwner}, iProperty);
   auto persistence = std::visit([](auto &p) { return p->fPersistence; }, iProperty);
+  auto valueType = std::visit([](auto &p) { return p->value_type(); }, iProperty);
 
   fJboxObjects.get(iParentObject)->addProperty(iPropertyName,
                                                iOwner,
+                                               valueType,
                                                defaultValue,
                                                propertyTag,
                                                *persistence);
@@ -688,7 +711,7 @@ void Motherboard::gc()
         RE_MOCK_ASSERT(false, "gc | kJBox_Sample not implemented yet");
         break;
       case kJBox_BLOB:
-        RE_MOCK_ASSERT(false, "gc | kJBox_BLOB not implemented yet");
+        fBlobs.remove(jbox_get_blob_id(v));
         break;
       case kJBox_NativeObject:
         fNativeObjects.remove(jbox_get_native_object_id(v));
@@ -823,6 +846,58 @@ TJBox_Value Motherboard::makeNativeObject(std::string const &iOperation,
     }
   }
   return JBox_MakeNil();
+}
+
+//------------------------------------------------------------------------
+// Motherboard::loadBlobAsync
+//------------------------------------------------------------------------
+TJBox_Value Motherboard::loadBlobAsync(std::string const &iBlobPath)
+{
+  auto b =  std::make_unique<impl::Blob>();
+  auto blobResource = fConfig.findBlobResource(iBlobPath);
+  RE_MOCK_ASSERT(blobResource != std::nullopt, "Could not find blob at path [%s]", iBlobPath);
+  b->fResidentSize = 0;
+  b->fData = std::move(blobResource->fData);
+  return impl::jbox_make_value<int>(kJBox_BLOB, fBlobs.add(std::move(b)));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::loadMoreBlob
+//------------------------------------------------------------------------
+void Motherboard::loadMoreBlob(std::string const &iPropertyPath, long iCount)
+{
+  auto blobValue = getValue(iPropertyPath);
+  RE_MOCK_ASSERT(getValueType(blobValue) == kJBox_BLOB, "[%s] is not a blob", iPropertyPath);
+  auto &b = fBlobs.get(jbox_get_blob_id(blobValue));
+  if(iCount < 0)
+    b->fResidentSize = b->fData.size();
+  else
+    b->fResidentSize = std::min(b->fResidentSize + iCount, b->fData.size());
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getBLOBInfo
+//------------------------------------------------------------------------
+TJBox_BLOBInfo Motherboard::getBLOBInfo(TJBox_Value const &iValue) const
+{
+  auto &b = fBlobs.get(jbox_get_blob_id(iValue));
+  return {
+    /* .fSize = */         b->fData.size(),
+    /* .fResidentSize = */ b->fResidentSize
+  };
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getBLOBData
+//------------------------------------------------------------------------
+void Motherboard::getBLOBData(TJBox_Value const &iValue, TJBox_SizeT iStart, TJBox_SizeT iEnd, TJBox_UInt8 *oData) const
+{
+  RE_MOCK_ASSERT(iStart >= 0 && iEnd >= 0 && iStart <= iEnd);
+  if(iStart == iEnd)
+    return;
+  auto &b = fBlobs.get(jbox_get_blob_id(iValue));
+  RE_MOCK_ASSERT(iEnd <= b->fResidentSize, "getBLOBData not enough data iEnd=%l > fResidentSize=%l (did you call loadMoreBlob?)", iEnd, b->fResidentSize);
+  std::copy(std::begin(b->fData) + iStart, std::begin(b->fData) + iEnd, oData);
 }
 
 //------------------------------------------------------------------------
@@ -1033,7 +1108,7 @@ std::string Motherboard::toString(TJBox_Value const &iValue, char const *iFormat
     case kJBox_String:
     {
       auto &s = fStrings.get(jbox_get_string_id(iValue));
-      return fmt::printf(iFormat ? iFormat : "%s", s->fValue.c_str());
+      return fmt::printf(iFormat ? iFormat : "%s", s->fValue);
     }
 
     case kJBox_Sample:
@@ -1153,9 +1228,9 @@ void Motherboard::getSubstring(TJBox_Value iValue, TJBox_SizeT iStart, TJBox_Siz
   auto &s = fStrings.get(jbox_get_string_id(iValue));
   RE_MOCK_ASSERT(!s->isRTString());
   RE_MOCK_ASSERT(iStart >= 0 && iStart < s->fValue.size());
-  RE_MOCK_ASSERT(iEnd >= 0 && iEnd < s->fValue.size());
-  std::copy(s->fValue.begin() + iStart, s->fValue.begin() + iEnd + 1, oString);
-  oString[iEnd - iStart + 1] = '\0';
+  RE_MOCK_ASSERT(iEnd >= 0 && iEnd <= s->fValue.size());
+  std::copy(s->fValue.begin() + iStart, s->fValue.begin() + iEnd, oString);
+  oString[iEnd - iStart] = '\0';
 }
 
 //------------------------------------------------------------------------
@@ -1195,6 +1270,16 @@ void Motherboard::addPropertyDiff(TJBox_PropertyDiff const &iDiff)
   *diffPtr = iDiff; // copy the base class
   diff.fInsertIndex = fCurrentFramePropertyDiffs.size();
   fCurrentFramePropertyDiffs.emplace_back(diff);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::loadPatch
+//------------------------------------------------------------------------
+void Motherboard::loadPatch(ConfigFile const &iPatchFile)
+{
+  auto patchResource = fConfig.findPatchResource(iPatchFile.fFilename);
+  RE_MOCK_ASSERT(patchResource != std::nullopt, "loadPatch: Cannot find patch [%s]", iPatchFile.fFilename);
+  std::visit([this](auto &source) { loadPatch(Patch::from(source)); }, patchResource->fXMLSource);
 }
 
 //------------------------------------------------------------------------
@@ -1258,7 +1343,7 @@ impl::JboxObject::JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iOb
 //------------------------------------------------------------------------
 impl::JboxProperty *impl::JboxObject::getProperty(std::string const &iPropertyName) const
 {
-  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName, fObjectPath);
   return fProperties.at(iPropertyName).get();
 }
 
@@ -1270,7 +1355,7 @@ impl::JboxProperty *impl::JboxObject::getProperty(TJBox_Tag iPropertyTag) const
   auto iter = std::find_if(fProperties.begin(),
                            fProperties.end(),
                            [iPropertyTag](auto const &p) { return p.second->fTag == iPropertyTag; } );
-  RE_MOCK_ASSERT(iter != fProperties.end(), "missing property tag [%d] for object [%s]", iPropertyTag, fObjectPath.c_str());
+  RE_MOCK_ASSERT(iter != fProperties.end(), "missing property tag [%d] for object [%s]", iPropertyTag, fObjectPath);
   return iter->second.get();
 }
 
@@ -1316,10 +1401,24 @@ void impl::JboxObject::addProperty(const std::string& iPropertyName,
                                    TJBox_Tag iPropertyTag,
                                    lua::EPersistence iPersistence)
 {
-  RE_MOCK_ASSERT(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
+  addProperty(iPropertyName, iOwner, getValueType(iInitialValue), iInitialValue, iPropertyTag, iPersistence);
+}
+
+//------------------------------------------------------------------------
+// JboxObject::addProperty
+//------------------------------------------------------------------------
+void impl::JboxObject::addProperty(const std::string& iPropertyName,
+                                   PropertyOwner iOwner,
+                                   TJBox_ValueType iValueType,
+                                   TJBox_Value const &iInitialValue,
+                                   TJBox_Tag iPropertyTag,
+                                   lua::EPersistence iPersistence)
+{
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", iPropertyName, fObjectPath);
   fProperties[iPropertyName] =
     std::make_unique<JboxProperty>(JBox_MakePropertyRef(fObjectRef, iPropertyName.c_str()),
                                    fmt::printf("%s/%s", fObjectPath, iPropertyName),
+                                   iValueType,
                                    iOwner,
                                    iInitialValue,
                                    iPropertyTag,
@@ -1331,7 +1430,7 @@ void impl::JboxObject::addProperty(const std::string& iPropertyName,
 //------------------------------------------------------------------------
 TJBox_PropertyDiff impl::JboxObject::watchPropertyForChange(std::string const &iPropertyName)
 {
-  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName.c_str(), fObjectPath.c_str());
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName, fObjectPath);
   return fProperties[iPropertyName]->watchForChange();
 }
 
@@ -1353,6 +1452,7 @@ std::vector<TJBox_PropertyDiff> impl::JboxObject::watchAllPropertiesForChange()
 //------------------------------------------------------------------------
 impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef,
                                  std::string iPropertyPath,
+                                 TJBox_ValueType iValueType,
                                  PropertyOwner iOwner,
                                  TJBox_Value const &iInitialValue,
                                  TJBox_Tag iTag,
@@ -1361,20 +1461,23 @@ impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef,
   fPropertyPath{std::move(iPropertyPath)},
   fOwner{iOwner},
   fTag{iTag},
+  fValueType{iValueType},
   fInitialValue{iInitialValue},
   fValue{iInitialValue},
   fPersistence{iPersistence}
-{}
+{
+  RE_MOCK_ASSERT(getValueType(iInitialValue) == fValueType ||
+                 getValueType(iInitialValue) == TJBox_ValueType::kJBox_Nil);
+}
 
 //------------------------------------------------------------------------
 // JboxProperty::storeValue
 //------------------------------------------------------------------------
 TJBox_PropertyDiff impl::JboxProperty::storeValue(TJBox_Value const &iValue)
 {
-  RE_MOCK_ASSERT(getValueType(iValue) == TJBox_ValueType::kJBox_Nil ||
-                 getValueType(fInitialValue) == TJBox_ValueType::kJBox_Nil ||
-                 getValueType(iValue) == getValueType(fInitialValue),
-                 "invalid property type for [%s]", fPropertyPath.c_str());
+  RE_MOCK_ASSERT(getValueType(iValue) == fValueType ||
+                 getValueType(iValue) == TJBox_ValueType::kJBox_Nil,
+                 "invalid property type for [%s]", fPropertyPath);
 
   auto previousValue = fValue;
   fValue = iValue;

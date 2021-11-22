@@ -127,7 +127,7 @@ global_rtc = {
       std::array<char, 5> a{'K', 'K', 'K', 'K', 'K'};
       JBox_GetSubstring(sValue, 0, 0, a.data());
       ASSERT_EQ(0, a[0]);
-      JBox_GetSubstring(sValue, 1, 2, a.data());
+      JBox_GetSubstring(sValue, 1, 3, a.data());
       ASSERT_EQ('b', a[0]);
       ASSERT_EQ('c', a[1]);
       ASSERT_EQ('\0', a[2]);

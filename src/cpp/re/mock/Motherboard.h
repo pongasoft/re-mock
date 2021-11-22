@@ -43,9 +43,10 @@ bool operator!=(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
 std::ostream &operator<<(std::ostream &os, TJBox_NoteEvent const &event);
 bool compare(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r);
 
-namespace re::mock {
+namespace re::mock { class Rack; }
+namespace re::mock::lua { class MockJBox; }
 
-class Rack;
+namespace re::mock {
 
 class Motherboard
 {
@@ -91,10 +92,10 @@ public: // used by regular code
   void setString(std::string const &iPropertyPath, std::string iValue);
 
   inline TJBox_Float64 getCVSocketValue(std::string const &iSocketPath) const {
-    return getNum(fmt::printf("%s/value", iSocketPath.c_str()));
+    return getNum(fmt::printf("%s/value", iSocketPath));
   }
   inline void setCVSocketValue(std::string const &iSocketPath, TJBox_Float64 iValue) {
-    setNum(fmt::printf("%s/value", iSocketPath.c_str()), iValue);
+    setNum(fmt::printf("%s/value", iSocketPath), iValue);
   }
 
   TJBox_OnOffBypassStates getEffectBypassState() const { return static_cast<TJBox_OnOffBypassStates>(getNum<int>("/custom_properties/builtin_onoffbypass")); }
@@ -128,8 +129,10 @@ public: // used by regular code
     return getNativeObjectRW<T>("/custom_properties/instance");
   }
 
-  inline void loadPatch(ConfigFile const &iPatchFile) { loadPatch(Patch::from(iPatchFile)); }
+  void loadPatch(ConfigFile const &iPatchFile);
   inline void loadPatch(ConfigString const &iPatchString) { loadPatch(Patch::from(iPatchString)); }
+
+  void loadMoreBlob(std::string const &iPropertyPath, long iCount = -1);
 
   bool isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) const;
   std::string toString(TJBox_Value const &iValue, char const *iFormat = nullptr) const;
@@ -159,6 +162,9 @@ public: // used by Jukebox.cpp (need to be public)
   TJBox_NoteEvent asNoteEvent(const TJBox_PropertyDiff &iPropertyDiff);
   void outputNoteEvent(TJBox_NoteEvent const &iNoteEvent);
   NoteEvents getNoteOutEvents() const { return fNoteOutEvents; }
+  TJBox_Value loadBlobAsync(std::string const &iBlobPath);
+  TJBox_BLOBInfo getBLOBInfo(TJBox_Value const &iValue) const;
+  void getBLOBData(TJBox_Value const &iValue, TJBox_SizeT iStart, TJBox_SizeT iEnd, TJBox_UInt8 oData[]) const;
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
@@ -167,6 +173,7 @@ public: // used by Jukebox.cpp (need to be public)
   static TJBox_Value clone(TJBox_Value const &iValue);
 
   friend class Rack;
+  friend class lua::MockJBox;
 
 protected:
 
@@ -256,6 +263,7 @@ protected:
   Realtime fRealtime{};
   ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};
   ObjectManager<std::unique_ptr<impl::String>> fStrings{};
+  ObjectManager<std::unique_ptr<impl::Blob>> fBlobs{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
   NoteEvents fNoteOutEvents{};

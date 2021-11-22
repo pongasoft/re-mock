@@ -52,7 +52,7 @@ MockJBox *MockJBox::loadFromRegistry(lua_State *L)
 //------------------------------------------------------------------------
 // MockJBox::toJBoxValue
 //------------------------------------------------------------------------
-TJBox_Value MockJBox::toJBoxValue(int idx)
+TJBox_Value MockJBox::toJBoxValue(Motherboard *iMotherboard, int idx)
 {
   int t = lua_type(L, idx);
   switch(t)
@@ -62,6 +62,9 @@ TJBox_Value MockJBox::toJBoxValue(int idx)
 
     case LUA_TNUMBER:
       return JBox_MakeNumber(lua_tonumber(L, idx));
+
+    case LUA_TSTRING:
+      return iMotherboard->makeString(lua_tostring(L, idx));
 
     case LUA_TUSERDATA:
       return Motherboard::clone(*reinterpret_cast<TJBox_Value *>(lua_touserdata(L, idx)));

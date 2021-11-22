@@ -39,9 +39,14 @@ public:
   int luaLoadProperty();
   int luaStoreProperty();
 
+  int luaMakeNil();
+
   int luaMakeNativeObject(bool iReadOnly);
-  int luaMakeEmptyNativeObject();
   int luaIsNativeObject();
+
+  int luaIsBlob();
+  int luaLoadBlobAsync();
+  int luaGetBlobInfo();
 
   std::map<std::string, std::string> getBindings();
   std::set<std::string> getRTInputSetupNotify();

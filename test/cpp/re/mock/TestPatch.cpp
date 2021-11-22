@@ -61,8 +61,8 @@ TEST(Patch, String)
   ASSERT_EQ("ABC", std::get<patch_string_property>(patch.fProperties["prop_string"]).fValue);
 }
 
-// Patch.LoadDefault
-TEST(Patch, LoadDefault)
+// Patch.Load
+TEST(Patch, Load)
 {
   auto defaultPatchString = R"(
 <?xml version="1.0"?>
@@ -112,7 +112,8 @@ TEST(Patch, LoadDefault)
 
   auto c = DeviceConfig<Device>::fromSkeleton()
     .device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"))
-    .default_patch(ConfigString{defaultPatchString})
+    .default_patch("/Public/default.repatch", ConfigString{defaultPatchString})
+    .patch_file("/Public/patch1.repatch", "/re/mock/patches/Kooza_test1.repatch") // relative to device_resources_dir
     .mdef(Config::gui_owner_property("gui_prop_float", lua::jbox_number_property{}.default_value(0.9))) // ignored
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}))
@@ -165,7 +166,7 @@ TEST(Patch, LoadDefault)
     ASSERT_EQ(expected, re->fDiffs);
   }
 
-  // load a patch file (2 changes)
+  // load a patch file (via absolute path) (2 changes)
   re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
   rack.nextFrame();
   ASSERT_EQ(2, re->fDiffs.size());
@@ -182,6 +183,18 @@ TEST(Patch, LoadDefault)
   re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
   rack.nextFrame();
   ASSERT_EQ(0, re->fDiffs.size());
+
+  // load another patch (via indirect mapping)
+  re.loadPatch(ConfigFile{"/Public/patch1.repatch"});
+  rack.nextFrame();
+  ASSERT_EQ(1, re->fDiffs.size());
+
+  {
+    std::map<std::string, std::string> expected{};
+    expected["/custom_properties/prop_float"] = "1.000000->0.200000@0";
+
+    ASSERT_EQ(expected, re->fDiffs);
+  }
 
   // invalid path
   ASSERT_THROW(re.loadPatch(ConfigFile{fmt::path("invalid", "path", "to", "patch")}), Exception);

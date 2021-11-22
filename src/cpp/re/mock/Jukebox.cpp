@@ -216,7 +216,7 @@ void JBox_GetSampleData(
 
 TJBox_BLOBInfo JBox_GetBLOBInfo(TJBox_Value iValue)
 {
-  throw re::mock::Exception("JBox_GetBLOBInfo: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getBLOBInfo(iValue);
 }
 
 void JBox_GetBLOBData(
@@ -225,7 +225,7 @@ void JBox_GetBLOBData(
   TJBox_SizeT iEnd,
   TJBox_UInt8 oData[])
 {
-  throw re::mock::Exception("JBox_GetBLOBData: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getBLOBData(iValue, iStart, iEnd, oData);
 }
 
 void JBox_SetRTStringData(TJBox_PropertyRef iProperty, TJBox_SizeT iSize, const TJBox_UInt8 iData[])

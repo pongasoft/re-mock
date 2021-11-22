@@ -60,6 +60,7 @@ struct JboxProperty
 {
   JboxProperty(TJBox_PropertyRef const &iPropertyRef,
                std::string iPropertyPath,
+               TJBox_ValueType iValueType,
                PropertyOwner iOwner,
                TJBox_Value const &iInitialValue,
                TJBox_Tag iTag,
@@ -78,6 +79,7 @@ struct JboxProperty
   const lua::EPersistence fPersistence;
 
 protected:
+  const TJBox_ValueType fValueType;
   const TJBox_Value fInitialValue;
   TJBox_Value fValue;
   bool fWatched{};
@@ -104,9 +106,17 @@ struct JboxObject
 protected:
   void addProperty(const std::string& iPropertyName,
                    PropertyOwner iOwner,
+                   TJBox_ValueType iValueType,
                    TJBox_Value const &iInitialValue,
                    TJBox_Tag iPropertyTag,
                    lua::EPersistence iPersistence = lua::EPersistence::kNone);
+
+  void addProperty(const std::string& iPropertyName,
+                   PropertyOwner iOwner,
+                   TJBox_Value const &iInitialValue,
+                   TJBox_Tag iPropertyTag,
+                   lua::EPersistence iPersistence = lua::EPersistence::kNone);
+
   JboxProperty *getProperty(std::string const &iPropertyName) const;
   JboxProperty *getProperty(TJBox_Tag iPropertyTag) const;
 
@@ -135,6 +145,12 @@ struct String
   int fMaxSize{};
   std::string fValue{};
   inline bool isRTString() const { return fMaxSize > 0; }
+};
+
+struct Blob
+{
+  TJBox_SizeT fResidentSize{};
+  std::vector<char> fData{};
 };
 
 }

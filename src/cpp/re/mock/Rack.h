@@ -141,6 +141,8 @@ public:
     inline void loadPatch(ConfigFile const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
     inline void loadPatch(ConfigString const &iPatchString) { motherboard().loadPatch(iPatchString); }
 
+    void loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { motherboard().loadMoreBlob(iPropertyPath, iCount); }
+
     template<typename T>
     inline T* getInstance() const { return motherboard().getInstance<T>(); }
 

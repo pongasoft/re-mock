@@ -34,6 +34,11 @@ static int lua_native_object(lua_State *L)
   return MotherboardDef::loadFromRegistry(L)->luaNativeObject();
 }
 
+static int lua_blob(lua_State *L)
+{
+  return MotherboardDef::loadFromRegistry(L)->luaBlob();
+}
+
 static int lua_boolean(lua_State *L)
 {
   return MotherboardDef::loadFromRegistry(L)->luaBoolean();
@@ -117,7 +122,7 @@ MotherboardDef::MotherboardDef()
     {"add_stereo_instrument_routing_hint", lua_ignored},
     {"audio_input",                        lua_audio_input},
     {"audio_output",                       lua_audio_output},
-    {"blob",                               lua_ignored},
+    {"blob",                               lua_blob},
     {"boolean",                            lua_boolean},
     {"cv_input",                           lua_cv_input},
     {"cv_output",                          lua_cv_output},
@@ -264,6 +269,17 @@ int MotherboardDef::luaNativeObject()
 }
 
 //------------------------------------------------------------------------
+// MotherboardDef::luaBlob
+//------------------------------------------------------------------------
+int MotherboardDef::luaBlob()
+{
+  auto p = std::make_shared<jbox_blob_property>();
+  populatePropertyTag(p);
+  p->fDefaultValue = L.getTableValueAsOptionalString("default", 1);
+  return addObjectOnTopOfStack(std::move(p));
+}
+
+//------------------------------------------------------------------------
 // MotherboardDef::luaBoolean
 //------------------------------------------------------------------------
 int MotherboardDef::luaBoolean()
@@ -362,7 +378,7 @@ void setDefaultPersistence(T o, EPersistence p) { if(!o->fPersistence) o->fPersi
 //------------------------------------------------------------------------
 template<typename T>
 void setNoPersistence(std::string name, T o) {
-  RE_MOCK_ASSERT(o->fPersistence == std::nullopt, "[%s] property cannot be persisted", name.c_str());
+  RE_MOCK_ASSERT(o->fPersistence == std::nullopt, "[%s] property cannot be persisted", name);
   o->fPersistence = EPersistence::kNone;
 }
 
@@ -377,6 +393,7 @@ std::optional<gui_jbox_property> to_gui_jbox_property(std::string iKey, std::opt
   {
     std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_blob_property>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_performance_property>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
@@ -392,7 +409,7 @@ std::optional<gui_jbox_property> to_gui_jbox_property(std::string iKey, std::opt
   auto res = std::visit(visitor{}, iObject.value());
   if(res)
     std::visit([iKey](auto p) {
-                 RE_MOCK_ASSERT(p->fPropertyTag == 0, "[%s] gui_owner property cannot have a property_tag", iKey.c_str());
+                 RE_MOCK_ASSERT(p->fPropertyTag == 0, "[%s] gui_owner property cannot have a property_tag", iKey);
                  setDefaultPersistence(p, EPersistence::kNone);
                },
                *res);
@@ -412,6 +429,7 @@ std::optional<document_jbox_property> to_document_jbox_property(std::string iKey
 
     std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
     std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_blob_property>) { return std::nullopt; }
     std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
     std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
 
@@ -439,7 +457,7 @@ std::optional<document_jbox_property> to_document_jbox_property(std::string iKey
           // should not be reached
           RE_MOCK_ASSERT(o->fPersistence == std::nullopt,
                          "[%s] only modwhell and expression properties can be persisted",
-                         fKey.c_str());
+                         fKey);
           break;
       }
       setDefaultPersistence(o, EPersistence::kNone);
@@ -467,6 +485,7 @@ std::optional<rtc_jbox_property> to_rtc_jbox_property(std::string iKey, std::opt
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
 
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_native_object> o) { return o; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_blob_property> o) { return o; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) { return o; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_number_property> o) { return o; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_string_property> o) { return o; }
@@ -491,6 +510,7 @@ std::optional<rt_jbox_property> to_rt_jbox_property(std::string iKey, std::optio
   {
     std::optional<rt_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
     std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_blob_property>) { return std::nullopt; }
     std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_performance_property>) { return std::nullopt; }
     std::optional<rt_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
     std::optional<rt_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
@@ -546,7 +566,7 @@ std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName
     populateMapFromLuaTable(m);
     for(auto &iter : m)
     {
-      RE_MOCK_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(iter.second)->fType == iSocketType, "[%s] wrong socket type", iter.first.c_str());
+      RE_MOCK_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(iter.second)->fType == iSocketType, "[%s] wrong socket type", iter.first);
       sockets->fNames.emplace_back(iter.first);
     }
   }

@@ -44,6 +44,8 @@ struct jbox_native_object {
 
   int fPropertyTag{};
 
+  TJBox_ValueType value_type() const { return kJBox_NativeObject; }
+
   struct {
     std::string operation;
     std::vector<param_t> params;
@@ -65,6 +67,8 @@ struct jbox_boolean_property {
   bool fDefaultValue{};
   std::optional<EPersistence> fPersistence{};
 
+  TJBox_ValueType value_type() const { return kJBox_Boolean; }
+
   jbox_boolean_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
   jbox_boolean_property &default_value(bool iValue) { fDefaultValue = iValue; return *this;}
   jbox_boolean_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
@@ -74,6 +78,9 @@ struct jbox_number_property {
   int fPropertyTag{};
   TJBox_Float64 fDefaultValue{};
   std::optional<EPersistence> fPersistence{};
+
+  TJBox_ValueType value_type() const { return kJBox_Number; }
+
   jbox_number_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
   jbox_number_property &default_value(TJBox_Float64 iValue) { fDefaultValue = iValue; return *this;}
   jbox_number_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
@@ -84,10 +91,24 @@ struct jbox_string_property {
   std::string fDefaultValue{};
   int fMaxSize{};
   std::optional<EPersistence> fPersistence{};
+
+  TJBox_ValueType value_type() const { return kJBox_String; }
+
   jbox_string_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
   jbox_string_property &default_value(std::string iValue) { fDefaultValue = std::move(iValue); return *this; }
   jbox_string_property &max_size(int iMaxSize) { fMaxSize = iMaxSize; return *this; }
   jbox_string_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
+};
+
+struct jbox_blob_property {
+  int fPropertyTag{};
+  std::optional<std::string> fDefaultValue{};
+  std::optional<EPersistence> fPersistence{};
+
+  TJBox_ValueType value_type() const { return kJBox_BLOB; }
+
+  jbox_blob_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
+  jbox_blob_property &default_value(std::string iValue) { fDefaultValue = std::move(iValue); return *this; }
 };
 
 struct jbox_performance_property {
@@ -96,6 +117,8 @@ struct jbox_performance_property {
   int fPropertyTag{};
   std::optional<EPersistence> fPersistence{}; // only for MOD_WHEEL and EXPRESSION
   Type fType{Type::UNKNOWN};
+
+  TJBox_ValueType value_type() const { return kJBox_Number; }
 
   jbox_performance_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
   jbox_performance_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
@@ -131,6 +154,7 @@ struct jbox_socket {
 using jbox_object = std::variant<
   std::shared_ptr<impl::jbox_ignored>,
   std::shared_ptr<jbox_native_object>,
+  std::shared_ptr<jbox_blob_property>,
   std::shared_ptr<jbox_boolean_property>,
   std::shared_ptr<jbox_number_property>,
   std::shared_ptr<jbox_string_property>,
@@ -142,6 +166,7 @@ using jbox_object = std::variant<
 
 using jbox_property = std::variant<
   std::shared_ptr<jbox_native_object>,
+  std::shared_ptr<jbox_blob_property>,
   std::shared_ptr<jbox_boolean_property>,
   std::shared_ptr<jbox_number_property>,
   std::shared_ptr<jbox_string_property>,
@@ -161,9 +186,9 @@ using document_jbox_property = std::variant<
   std::shared_ptr<jbox_performance_property>
 >;
 
-// TODO: Blob
 using rtc_jbox_property = std::variant<
   std::shared_ptr<jbox_native_object>,
+  std::shared_ptr<jbox_blob_property>,
   std::shared_ptr<jbox_boolean_property>,
   std::shared_ptr<jbox_number_property>,
   std::shared_ptr<jbox_string_property>
@@ -189,6 +214,7 @@ public:
 
   int luaIgnored();
   int luaNativeObject();
+  int luaBlob();
   int luaBoolean();
   int luaNumber();
   int luaPerformance(jbox_performance_property::Type iType);

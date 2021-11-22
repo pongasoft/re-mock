@@ -18,6 +18,7 @@
 
 #include "Config.h"
 #include "lua/InfoLua.h"
+#include <fstream>
 
 namespace re::mock {
 
@@ -219,6 +220,18 @@ inline ConfigString custom_property(std::string const &iPropertyType,
   return custom_property(iPropertyType, iPropertyName, "string", args);
 }
 
+//! custom_property for lua::jbox_blob_property
+inline ConfigString custom_property(std::string const &iPropertyType,
+                                    std::string const &iPropertyName,
+                                    lua::jbox_blob_property const &iProperty)
+{
+  std::vector<std::string> args{};
+  if(iProperty.fDefaultValue)
+    arg("default", "\"%s\"", *iProperty.fDefaultValue, args);
+  property_tag(iProperty.fPropertyTag, args);
+  return custom_property(iPropertyType, iPropertyName, "blob", args);
+}
+
 }
 
 //------------------------------------------------------------------------
@@ -320,6 +333,14 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
+ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_blob_property const &iProperty)
+{
+  return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::rtc_owner_property
+//------------------------------------------------------------------------
 ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty)
 {
   struct visitor {
@@ -364,6 +385,142 @@ std::optional<ConfigFile> Config::resource_file(ConfigFile iRelativeResourcePath
 namespace impl {
 
 //------------------------------------------------------------------------
+// fileSize
+//------------------------------------------------------------------------
+std::ifstream::pos_type fileSize(ConfigFile const &iFile)
+{
+  std::ifstream in(iFile.fFilename, std::ifstream::ate | std::ifstream::binary);
+  return in.tellg();
+}
+
+//------------------------------------------------------------------------
+// fileExists
+//------------------------------------------------------------------------
+bool fileExists(ConfigFile const &iFile)
+{
+  return std::ifstream{iFile.fFilename}.is_open();
+}
+
+//------------------------------------------------------------------------
+// loadFile
+//------------------------------------------------------------------------
+template<typename Container, size_t BUFFER_SIZE = 1024>
+long loadFile(ConfigFile const &iFile, Container &oBuffer)
+{
+  std::ifstream ifs{iFile.fFilename, std::fstream::binary};
+  if(!ifs)
+    return -1;
+
+  char buf[BUFFER_SIZE];
+
+  bool complete = false;
+
+  size_t fileSize = 0;
+
+  while(!complete)
+  {
+    ifs.read(buf, BUFFER_SIZE);
+
+    if(ifs.bad())
+    {
+      RE_MOCK_LOG_ERROR("Error while reading file %s", iFile.fFilename);
+      return -1;
+    }
+
+    if(ifs.gcount() > 0)
+    {
+      std::copy(std::begin(buf), std::begin(buf) + ifs.gcount(), std::back_inserter(oBuffer));
+      fileSize += ifs.gcount();
+    }
+
+    complete = ifs.eof();
+  }
+
+  return fileSize;
+}
+
+//------------------------------------------------------------------------
+// loadBlob
+//------------------------------------------------------------------------
+std::optional<Resource::Blob> loadBlob(ConfigFile const &iFile)
+{
+
+  auto size = fileSize(iFile);
+  if(size > -1)
+  {
+    Resource::Blob blob{};
+    blob.fData.reserve(size);
+    auto readSize = loadFile(iFile, blob.fData);
+    RE_MOCK_ASSERT(readSize == size);
+    return blob;
+  }
+  return std::nullopt;
+}
+
+}
+
+//------------------------------------------------------------------------
+// Config::findPatchResource
+//------------------------------------------------------------------------
+std::optional<Resource::Patch> Config::findPatchResource(std::string const &iResourcePath) const
+{
+  auto resourceFile = ConfigFile{iResourcePath};
+
+  auto patchResource = fResources.find(iResourcePath);
+  if(patchResource != fResources.end())
+  {
+    auto r = std::get<ConfigResource::Patch>(patchResource->second);
+    if(std::holds_alternative<ConfigString>(r.fXMLSource))
+      return r;
+    else
+      resourceFile = std::get<ConfigFile>(r.fXMLSource);
+  }
+
+  // check the path as-is
+  if(impl::fileExists(resourceFile))
+    return Resource::Patch{resourceFile};
+
+  // resolve the path against the resource dir
+  auto resolvedResource = resource_file(resourceFile);
+  if(resolvedResource && impl::fileExists(*resolvedResource))
+    return Resource::Patch{*resolvedResource};
+
+  return std::nullopt;
+}
+
+//------------------------------------------------------------------------
+// Config::findBlobResource
+//------------------------------------------------------------------------
+std::optional<Resource::Blob> Config::findBlobResource(std::string const &iResourcePath) const
+{
+  auto resourceFile = ConfigFile{iResourcePath};
+
+  auto blobResource = fResources.find(iResourcePath);
+  if(blobResource != fResources.end())
+  {
+    auto b = std::get<ConfigResource::Blob>(blobResource->second);
+    if(std::holds_alternative<Resource::Blob>(b.fBlobVariant))
+      return std::get<Resource::Blob>(b.fBlobVariant);
+    else
+      resourceFile = std::get<ConfigFile>(b.fBlobVariant);
+  }
+
+  // check the path as-is
+  auto blob = impl::loadBlob(resourceFile);
+  if(blob)
+    return blob;
+
+  // resolve the path against the resource dir
+  auto resolvedResource = resource_file(resourceFile);
+  if(resolvedResource && impl::fileExists(*resolvedResource))
+    return impl::loadBlob(*resolvedResource);
+
+  return std::nullopt;
+}
+
+namespace impl {
+
+//------------------------------------------------------------------------
 // deviceTypeFromString
 //------------------------------------------------------------------------
 DeviceType deviceTypeFromString(std::string s)
@@ -393,12 +550,8 @@ Info fromInfoLua(lua::InfoLua &iInfo)
   Info res{};
 
   res.device_type(deviceTypeFromString(iInfo.device_type()));
-  res.default_patch(ConfigFile{iInfo.default_patch()});
+  res.default_patch(iInfo.default_patch());
   res.fSupportPatches = iInfo.supports_patches();
-
-  if(res.fSupportPatches)
-    RE_MOCK_ASSERT(!std::get<ConfigFile>(*res.fDefaultPatch).fFilename.empty(),
-                   "info.lua: support_patches is set to true but no default patch provided");
 
   return res;
 }
@@ -430,28 +583,6 @@ Info Info::fromSkeleton(DeviceType iDeviceType)
 {
   Info info{iDeviceType};
   return info;
-}
-
-//------------------------------------------------------------------------
-// Info::fromSkeleton
-//------------------------------------------------------------------------
-Info &Info::default_patch(ConfigSource s)
-{
-  fDefaultPatch = s;
-  if(!fDefaultPatch)
-    fSupportPatches = false;
-  else
-  {
-    struct visitor
-    {
-      bool operator()(ConfigFile c) { return !c.fFilename.empty(); }
-      bool operator()(ConfigString c) { return !c.fString.empty(); }
-    };
-
-    fSupportPatches = std::visit(visitor{}, *fDefaultPatch);
-  }
-
-  return *this;
 }
 
 }

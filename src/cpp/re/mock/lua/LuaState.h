@@ -61,6 +61,8 @@ public:
   std::optional<std::string> getTableValueAsOptionalString(char const *iKey, int idx = -1);
   lua_Unsigned getTableSize(int idx = -1);
 
+  void setTableValue(char const *iKey, lua_Number iValue);
+
   static std::string getStackString(lua_State *L, char const *iMessage = nullptr);
   static void dumpStack(lua_State *L, char const *iMessage = nullptr, std::ostream &oStream = std::cout);
 
