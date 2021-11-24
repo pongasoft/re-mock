@@ -27,9 +27,61 @@ namespace re::mock {
 class Motherboard;
 
 namespace impl {
+struct String;
+struct NativeObject;
+struct Blob;
+constexpr static size_t DSP_BUFFER_SIZE = 64;
+using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
+}
+
+class JboxValueImpl;
+
+using JboxValue = std::shared_ptr<JboxValueImpl>;
+
+class JboxValueImpl
+{
+public:
+
+  friend class Motherboard;
+
+  TJBox_ValueType getValueType() const { return fValueType; }
+  TJBox_UInt64 getUniqueId() const { return reinterpret_cast<TJBox_UInt64>(this); }
+
+  TJBox_Float64 getNumber() const { return std::get<TJBox_Float64>(fMotherboardValue); }
+  bool getBoolean() const { return std::get<bool>(fMotherboardValue); }
+  impl::String const &getString() const { return *std::get<std::unique_ptr<impl::String>>(fMotherboardValue); }
+  impl::NativeObject const &getNativeObject() const { return *std::get<std::unique_ptr<impl::NativeObject>>(fMotherboardValue); }
+
+private:
+  struct Nil {};
+  struct Incompatible {};
+
+  using motherboard_value_t = std::variant<
+    Nil,
+    TJBox_Float64,
+    bool,
+    Incompatible,
+    std::unique_ptr<impl::String>,
+    std::unique_ptr<impl::NativeObject>,
+    std::unique_ptr<impl::Blob>,
+    std::unique_ptr<impl::DSPBuffer>
+  >;
+
+private:
+  impl::DSPBuffer &getDSPBuffer() { return *std::get<std::unique_ptr<impl::DSPBuffer>>(fMotherboardValue); }
+  impl::Blob &getBlob() { return *std::get<std::unique_ptr<impl::Blob>>(fMotherboardValue); }
+  impl::String &getString() { return *std::get<std::unique_ptr<impl::String>>(fMotherboardValue); }
+
+private:
+  TJBox_ValueType fValueType{kJBox_Nil};
+  motherboard_value_t fMotherboardValue{Nil{}};
+};
+
+namespace impl {
 
 template<typename T>
 union JboxSecretInternal {
+  static_assert(sizeof(T) < sizeof(TJBox_UInt8) * 15);
   T fValue;
   TJBox_UInt8 fSecret[15];
 };
@@ -56,20 +108,30 @@ T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
   return secret.fValue;
 }
 
+struct JboxPropertyDiff
+{
+  JboxValue fPreviousValue;
+  JboxValue fCurrentValue;
+  TJBox_PropertyRef fPropertyRef;
+  TJBox_Tag fPropertyTag;
+  TJBox_UInt16 fAtFrameIndex;
+  int fInsertIndex{};
+};
+
 struct JboxProperty
 {
   JboxProperty(TJBox_PropertyRef const &iPropertyRef,
                std::string iPropertyPath,
                TJBox_ValueType iValueType,
                PropertyOwner iOwner,
-               TJBox_Value const &iInitialValue,
+               JboxValue const &iInitialValue,
                TJBox_Tag iTag,
                lua::EPersistence iPersistence);
 
-  inline TJBox_Value loadValue() const { return fValue; };
-  TJBox_PropertyDiff storeValue(TJBox_Value const &iValue);
+  inline JboxValue loadValue() const { return fValue; };
+  JboxPropertyDiff storeValue(JboxValue const &iValue);
 
-  TJBox_PropertyDiff watchForChange();
+  JboxPropertyDiff watchForChange();
   bool isWatched() const { return fWatched; }
 
   const TJBox_PropertyRef fPropertyRef;
@@ -80,8 +142,8 @@ struct JboxProperty
 
 protected:
   const TJBox_ValueType fValueType;
-  const TJBox_Value fInitialValue;
-  TJBox_Value fValue;
+  const JboxValue fInitialValue;
+  JboxValue fValue;
   bool fWatched{};
 };
 
@@ -91,12 +153,12 @@ struct JboxObject
 
   ~JboxObject() = default;
 
-  TJBox_Value loadValue(std::string const &iPropertyName) const;
-  TJBox_Value loadValue(TJBox_Tag iPropertyTag) const;
-  TJBox_PropertyDiff storeValue(std::string const &iPropertyName, TJBox_Value const &iValue);
-  TJBox_PropertyDiff storeValue(TJBox_Tag iPropertyTag, TJBox_Value const &iValue);
-  std::vector<TJBox_PropertyDiff> watchAllPropertiesForChange();
-  TJBox_PropertyDiff watchPropertyForChange(std::string const &iPropertyName);
+  JboxValue loadValue(std::string const &iPropertyName) const;
+  JboxValue loadValue(TJBox_Tag iPropertyTag) const;
+  impl::JboxPropertyDiff storeValue(std::string const &iPropertyName, JboxValue const &iValue);
+  impl::JboxPropertyDiff storeValue(TJBox_Tag iPropertyTag, JboxValue const &iValue);
+  std::vector<impl::JboxPropertyDiff> watchAllPropertiesForChange();
+  impl::JboxPropertyDiff watchPropertyForChange(std::string const &iPropertyName);
 
   const std::string fObjectPath;
   const TJBox_ObjectRef fObjectRef;
@@ -107,13 +169,13 @@ protected:
   void addProperty(const std::string& iPropertyName,
                    PropertyOwner iOwner,
                    TJBox_ValueType iValueType,
-                   TJBox_Value const &iInitialValue,
+                   JboxValue const &iInitialValue,
                    TJBox_Tag iPropertyTag,
                    lua::EPersistence iPersistence = lua::EPersistence::kNone);
 
   void addProperty(const std::string& iPropertyName,
                    PropertyOwner iOwner,
-                   TJBox_Value const &iInitialValue,
+                   JboxValue const &iInitialValue,
                    TJBox_Tag iPropertyTag,
                    lua::EPersistence iPersistence = lua::EPersistence::kNone);
 
@@ -130,13 +192,14 @@ struct NativeObject
 
   void *fNativeObject{};
   std::string fOperation{};
-  std::vector<TJBox_Value> fParams{};
   Realtime::destroy_native_object_t fDeleter{};
   AccessMode fAccessMode{kReadOnly};
 
   ~NativeObject() {
     if(fDeleter)
-      fDeleter(fOperation.c_str(), fParams.data(), fParams.size(), fNativeObject);
+    {
+      fDeleter(fOperation.c_str(), fNativeObject);
+    }
   }
 };
 

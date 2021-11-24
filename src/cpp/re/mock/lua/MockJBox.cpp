@@ -50,63 +50,6 @@ MockJBox *MockJBox::loadFromRegistry(lua_State *L)
 }
 
 //------------------------------------------------------------------------
-// MockJBox::toJBoxValue
-//------------------------------------------------------------------------
-TJBox_Value MockJBox::toJBoxValue(Motherboard *iMotherboard, int idx)
-{
-  int t = lua_type(L, idx);
-  switch(t)
-  {
-    case LUA_TBOOLEAN:
-      return JBox_MakeBoolean(lua_toboolean(L, idx));
-
-    case LUA_TNUMBER:
-      return JBox_MakeNumber(lua_tonumber(L, idx));
-
-    case LUA_TSTRING:
-      return iMotherboard->makeString(lua_tostring(L, idx));
-
-    case LUA_TUSERDATA:
-      return Motherboard::clone(*reinterpret_cast<TJBox_Value *>(lua_touserdata(L, idx)));
-
-    default:  /* other values */
-      return JBox_MakeNil();
-  }
-}
-
-//------------------------------------------------------------------------
-// MockJBox::pushJBoxValue
-//------------------------------------------------------------------------
-void MockJBox::pushJBoxValue(Motherboard *iMotherboard, TJBox_Value const &iJBoxValue)
-{
-  switch(JBox_GetType(iJBoxValue))
-  {
-    case kJBox_Nil:
-      lua_pushnil(L);
-      break;
-
-    case kJBox_Boolean:
-      lua_pushboolean(L, JBox_GetBoolean(iJBoxValue));
-      break;
-
-    case kJBox_Number:
-      lua_pushnumber(L, JBox_GetNumber(iJBoxValue));
-      break;
-
-    case kJBox_String:
-    {
-      lua_pushstring(L, iMotherboard->toString(iJBoxValue).c_str());
-      break;
-    }
-
-    default:
-      auto jboxValueUserData = reinterpret_cast<TJBox_Value *>(lua_newuserdata(L, sizeof(TJBox_Value)));
-      Motherboard::copy(iJBoxValue, *jboxValueUserData);
-      break;
-  }
-}
-
-//------------------------------------------------------------------------
 // MockJBox::loadFile
 //------------------------------------------------------------------------
 int MockJBox::loadFile(std::string const &iLuaFilename)

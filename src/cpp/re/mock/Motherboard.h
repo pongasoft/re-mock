@@ -44,7 +44,7 @@ std::ostream &operator<<(std::ostream &os, TJBox_NoteEvent const &event);
 bool compare(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r);
 
 namespace re::mock { class Rack; }
-namespace re::mock::lua { class MockJBox; }
+namespace re::mock::lua { class RealtimeController; }
 
 namespace re::mock {
 
@@ -66,14 +66,14 @@ public: // used by regular code
     return loadProperty(getPropertyRef(iPropertyPath));
   }
   inline void setValue(std::string const &iPropertyPath, TJBox_Value const &iValue) {
-    storeProperty(getPropertyRef(iPropertyPath), iValue);
+    storeProperty(getPropertyRef(iPropertyPath), from_TJBox_Value(iValue));
   }
 
   inline bool getBool(std::string const &iPropertyPath) const {
     return JBox_GetBoolean(getValue(iPropertyPath));
   }
   inline void setBool(std::string const &iPropertyPath, bool iValue) {
-    setValue(iPropertyPath, JBox_MakeBoolean(iValue));
+    setValue(iPropertyPath, makeBoolean(iValue));
   }
 
   template<typename T = TJBox_Float64>
@@ -82,7 +82,7 @@ public: // used by regular code
   }
   template<typename T = TJBox_Float64>
   void setNum(std::string const &iPropertyPath, T iValue) {
-    setValue(iPropertyPath, JBox_MakeNumber(iValue));
+    setValue(iPropertyPath, makeNumber(iValue));
   }
 
   std::string getRTString(std::string const &iPropertyPath) const;
@@ -135,7 +135,8 @@ public: // used by regular code
   void loadMoreBlob(std::string const &iPropertyPath, long iCount = -1);
 
   bool isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) const;
-  std::string toString(TJBox_Value const &iValue, char const *iFormat = nullptr) const;
+  inline std::string toString(TJBox_Value const &iValue, char const *iFormat = nullptr) const {
+    return toString(from_TJBox_Value(iValue), iFormat); }
   std::string toString(std::string const &iPropertyPath, char const *iFormat = nullptr) const { return toString(getValue(iPropertyPath), iFormat); }
   std::string toString(TJBox_PropertyRef const &iPropertyRef) const;
   std::string getObjectPath(TJBox_ObjectRef iObjectRef) const;
@@ -147,13 +148,19 @@ public: // used by Jukebox.cpp (need to be public)
   TJBox_PropertyRef getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
   TJBox_Value loadProperty(TJBox_PropertyRef const &iProperty) const;
   TJBox_Value loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
-  void storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
-  void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
+  void storeProperty(TJBox_PropertyRef const &iProperty, JboxValue const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
+  void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, JboxValue const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
+  inline void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex = 0) {
+    storeProperty(iObject, iTag, from_TJBox_Value(iValue), iAtFrameIndex);
+  }
+  inline void storeProperty(TJBox_PropertyRef const &iProperty, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex = 0) {
+    storeProperty(iProperty, from_TJBox_Value(iValue), iAtFrameIndex);
+  }
   void getDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, TJBox_AudioSample oAudio[]) const;
   void setDSPBufferData(TJBox_Value const &iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, const TJBox_AudioSample iAudio[]);
   TJBox_DSPBufferInfo getDSPBufferInfo(TJBox_Value const &iValue) const;
-  TJBox_Value makeNativeObjectRW(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
-  TJBox_Value makeNativeObjectRO(std::string const &iOperation, std::vector<TJBox_Value> const &iParams);
+  JboxValue makeNativeObjectRW(std::string const &iOperation, std::vector<JboxValue> const &iParams);
+  JboxValue makeNativeObjectRO(std::string const &iOperation, std::vector<JboxValue> const &iParams);
   const void *getNativeObjectRO(TJBox_Value const &iValue) const;
   void *getNativeObjectRW(TJBox_Value const &iValue) const;
   void setRTStringData(TJBox_PropertyRef const &iProperty, TJBox_SizeT iSize, const TJBox_UInt8 iData[]);
@@ -162,8 +169,9 @@ public: // used by Jukebox.cpp (need to be public)
   TJBox_NoteEvent asNoteEvent(const TJBox_PropertyDiff &iPropertyDiff);
   void outputNoteEvent(TJBox_NoteEvent const &iNoteEvent);
   NoteEvents getNoteOutEvents() const { return fNoteOutEvents; }
-  TJBox_Value loadBlobAsync(std::string const &iBlobPath);
-  TJBox_BLOBInfo getBLOBInfo(TJBox_Value const &iValue) const;
+  JboxValue loadBlobAsync(std::string const &iBlobPath);
+  TJBox_BLOBInfo getBLOBInfo(JboxValue const &iValue) const;
+  inline TJBox_BLOBInfo getBLOBInfo(TJBox_Value const &iValue) const { return getBLOBInfo(from_TJBox_Value(iValue)); }
   void getBLOBData(TJBox_Value const &iValue, TJBox_SizeT iStart, TJBox_SizeT iEnd, TJBox_UInt8 oData[]) const;
 
   Motherboard(Motherboard const &iOther) = delete;
@@ -173,7 +181,7 @@ public: // used by Jukebox.cpp (need to be public)
   static TJBox_Value clone(TJBox_Value const &iValue);
 
   friend class Rack;
-  friend class lua::MockJBox;
+  friend class lua::RealtimeController;
 
 protected:
 
@@ -182,6 +190,14 @@ protected:
   Motherboard(Config const &iConfig);
 
   void init();
+
+  JboxValue getJboxValue(std::string const &iPropertyPath) const;
+
+  inline void setValue(std::string const &iPropertyPath, JboxValue const &iValue) {
+    storeProperty(getPropertyRef(iPropertyPath), iValue);
+  }
+
+  std::string toString(JboxValue const &iValue, char const *iFormat = nullptr) const;
 
   impl::JboxObject *addObject(std::string const &iObjectPath);
   inline impl::JboxObject *getObject(std::string const &iObjectPath) const { return getObject(getObjectRef(iObjectPath)); }
@@ -194,17 +210,20 @@ protected:
   void addCVOutput(std::string const &iSocketName);
   void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, lua::jbox_property const &iProperty);
   void registerRTCNotify(std::string const &iPropertyPath);
-  TJBox_PropertyDiff registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingName);
-  void handlePropertyDiff(TJBox_PropertyDiff const &iPropertyDiff, bool iWatched);
-  TJBox_Value makeRTString(int iMaxSize);
-  TJBox_Value makeString(std::string iValue);
+  impl::JboxPropertyDiff registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingName);
+  void handlePropertyDiff(impl::JboxPropertyDiff const &iPropertyDiff, bool iWatched);
+
+  JboxValue makeDSPBuffer() const;
+  JboxValue makeRTString(int iMaxSize) const;
+  JboxValue makeString(std::string iValue) const;
+  JboxValue makeNil() const;
+  JboxValue makeIncompatible() const;
+  JboxValue makeNumber(TJBox_Float64 iValue) const;
+  JboxValue makeBoolean(bool iValue) const;
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
   std::string getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const;
 
-  TJBox_Value createDSPBuffer();
-  DSPBuffer &getDSPBuffer(TJBox_Value const &iValue);
-  DSPBuffer const &getDSPBuffer(TJBox_Value const &iValue) const;
   DSPBuffer getDSPBuffer(TJBox_ObjectRef iAudioSocket) const;
   void setDSPBuffer(TJBox_ObjectRef iAudioSocket, DSPBuffer iBuffer);
 
@@ -214,19 +233,20 @@ protected:
   TJBox_Float64 getCVSocketValue(TJBox_ObjectRef iCVSocket) const;
   void setCVSocketValue(TJBox_ObjectRef iCVSocket, TJBox_Float64 iValue);
 
-  TJBox_Value makeNativeObject(std::string const &iOperation,
-                               std::vector<TJBox_Value> const &iParams,
-                               impl::NativeObject::AccessMode iAccessMode);
+  JboxValue makeNativeObject(std::string const &iOperation,
+                             std::vector<JboxValue> const &iParams,
+                             impl::NativeObject::AccessMode iAccessMode);
 
   void nextFrame();
 
-  void addPropertyDiff(TJBox_PropertyDiff const &iDiff);
+  void addPropertyDiff(impl::JboxPropertyDiff const &iDiff);
 
   ConfigFile getResourceFile(ConfigFile const &iUnixPath) const;
 
   void loadPatch(Patch const &iPatch);
 
-  void gc();
+  TJBox_Value to_TJBox_Value(JboxValue const &iValue) const;
+  JboxValue from_TJBox_Value(TJBox_Value const &iValue) const;
 
 protected:
 
@@ -240,30 +260,20 @@ protected:
 
   using ComparePropertyRef = decltype(&compare);
 
-  struct PropertyDiff : public TJBox_PropertyDiff
-  {
-    int fInsertIndex{};
-    TJBox_PropertyDiff toJBoxPropertyDiff() const;
-  };
-
 protected:
   Config fConfig;
-  std::vector<TJBox_Value> fGCValues{}; // garbage collector for values
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, lua::gui_jbox_property> fGUIProperties{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   TJBox_ObjectRef fEnvironmentRef{};
   TJBox_ObjectRef fNoteStatesRef{};
-  std::vector<PropertyDiff> fCurrentFramePropertyDiffs{};
-  ObjectManager<DSPBuffer> fDSPBuffers{};
-  std::set<int> fInputDSPBuffers{};
-  std::set<int> fOutputDSPBuffers{};
+  std::vector<impl::JboxPropertyDiff> fCurrentFramePropertyDiffs{};
+  mutable std::map<TJBox_UInt64, JboxValue> fCurrentValues{};
+  std::vector<JboxValue> fInputDSPBuffers{};
+  std::vector<JboxValue> fOutputDSPBuffers{};
   std::unique_ptr<lua::RealtimeController> fRealtimeController{};
   Realtime fRealtime{};
-  ObjectManager<std::unique_ptr<impl::NativeObject>> fNativeObjects{};
-  ObjectManager<std::unique_ptr<impl::String>> fStrings{};
-  ObjectManager<std::unique_ptr<impl::Blob>> fBlobs{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
   NoteEvents fNoteOutEvents{};

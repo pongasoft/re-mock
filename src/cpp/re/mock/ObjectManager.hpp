@@ -40,6 +40,8 @@ public:
   O const &get(K id) const;
   O &get(K id);
   void remove(K id);
+  void clear();
+  void reset();
   typename std::map<K, O>::iterator begin() noexcept { return fObjects.begin(); }
   typename std::map<K, O>::iterator end() noexcept { return fObjects.end(); }
   typename std::map<K, O>::const_iterator cbegin() const noexcept { return fObjects.cbegin(); }
@@ -114,6 +116,25 @@ void ObjectManager<O, K>::replace(K id, O &&iObject)
 {
   RE_MOCK_ASSERT(fObjects.find(id) != fObjects.end(), "Missing object for key [%d]", id);
   fObjects[id] = std::move(iObject);
+}
+
+//------------------------------------------------------------------------
+// ObjectManager::clear
+//------------------------------------------------------------------------
+template<typename O, typename K>
+void ObjectManager<O, K>::clear()
+{
+  fObjects.clear();
+}
+
+//------------------------------------------------------------------------
+// ObjectManager::reset
+//------------------------------------------------------------------------
+template<typename O, typename K>
+void ObjectManager<O, K>::reset()
+{
+  clear();
+  fCounter = 1;
 }
 
 

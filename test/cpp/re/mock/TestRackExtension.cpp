@@ -135,7 +135,7 @@ end
         return nullptr;
       };
 
-      rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
+      rt.destroy_native_object = [](const char iOperation[], void *iNativeObject) {
         RE_MOCK_LOG_INFO("rt.destroy_native_object(%s)", iOperation);
         if(std::strcmp(iOperation, "Instance") == 0)
         {
@@ -358,8 +358,7 @@ TEST(RackExtension, RealtimeController)
           return nullptr;
         };
 
-        rt.destroy_native_object = [](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount,
-                                      void *iNativeObject) {
+        rt.destroy_native_object = [](const char iOperation[], void *iNativeObject) {
           RE_MOCK_LOG_INFO("rt.destroy_native_object(%s)", iOperation);
           if(std::strcmp(iOperation, "Instance") == 0)
           {

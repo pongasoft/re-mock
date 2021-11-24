@@ -168,15 +168,15 @@ global_rtc = {
                                    JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))));
       ASSERT_FALSE(JBox_IsSameValue(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro")),
                                    JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))));
-      ASSERT_EQ("RONativeObject[2]", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))));
-      ASSERT_EQ("O/2", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro")), "%s/%d"));
+      ASSERT_EQ("RONativeObject", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro"))).substr(0, 14));
+      ASSERT_EQ("O", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_ro")), "%s"));
     }
 
     {
       auto gain = reinterpret_cast<Gain const *>(JBox_GetNativeObjectRO(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))));
       ASSERT_FLOAT_EQ(0.9, gain->fVolume);
-      ASSERT_EQ("RWNativeObject[3]", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))));
-      ASSERT_EQ("W/3", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw")), "%s/%d"));
+      ASSERT_EQ("RWNativeObject", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw"))).substr(0, 14));
+      ASSERT_EQ("W", JBox_toString(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_gain_rw")), "%s"));
     }
 
     {

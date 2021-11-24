@@ -51,7 +51,7 @@ enum class DeviceType
 struct Realtime
 {
   using create_native_object_t = std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)>;
-  using destroy_native_object_t = std::function<void (const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iPrivateState)>;
+  using destroy_native_object_t = std::function<void (const char iOperation[], void *iPrivateState)>;
   using render_realtime_t = std::function<void (void *iPrivateState, const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount)>;
 
   create_native_object_t create_native_object{};
@@ -318,7 +318,7 @@ Realtime Realtime::byDefault()
 template<typename T>
 Realtime::destroy_native_object_t Realtime::destroyer(std::string iOperation)
 {
-  return [operation=iOperation](const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount, void *iNativeObject) {
+  return [operation=iOperation](const char iOperation[], void *iNativeObject) {
     if(std::strcmp(iOperation, operation.c_str()) == 0)
     {
       auto device = reinterpret_cast<T *>(iNativeObject);

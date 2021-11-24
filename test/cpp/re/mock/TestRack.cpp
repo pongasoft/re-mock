@@ -19,6 +19,7 @@
 #include <re/mock/Rack.h>
 #include <re/mock/MockDevices.h>
 #include <gtest/gtest.h>
+#include <re/mock/MockJukebox.h>
 
 namespace re::mock::Test {
 
@@ -408,10 +409,10 @@ end
   ASSERT_STREQ("false", re.toString(JBox_MakeBoolean(false)).c_str());
   ASSERT_STREQ("false", re.toString("/audio_outputs/output_1/connected").c_str());
   ASSERT_STREQ("0.800000", re.toString("/custom_properties/prop_volume_ro").c_str());
-  ASSERT_STREQ("DSPBuffer[1]", re.toString("/audio_outputs/output_1/buffer").c_str());
+  ASSERT_STREQ("DSPBuffer[", re.toString("/audio_outputs/output_1/buffer").substr(0, 10).c_str());
   ASSERT_STREQ("abc", re.toString("/custom_properties/prop_string").c_str());
-  ASSERT_STREQ("RONativeObject[1]", re.toString("/custom_properties/prop_gain_ro").c_str());
-  ASSERT_STREQ("RWNativeObject[2]", re.toString("/custom_properties/prop_gain_rw").c_str());
+  ASSERT_STREQ("RONativeObject[", re.toString("/custom_properties/prop_gain_ro").substr(0, 15).c_str());
+  ASSERT_STREQ("RWNativeObject[", re.toString("/custom_properties/prop_gain_rw").substr(0, 15).c_str());
 
   re.use([&re]{
     auto o1 = JBox_GetMotherboardObjectRef("/audio_outputs/output_1");
@@ -443,12 +444,19 @@ TEST(Rack, Diff)
     void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
     {
       fDiffs.clear();
+      fDiffMap.clear();
 
       for(int i = 0; i < iDiffCount; i++)
-        fDiffs.emplace_back(iPropertyDiffs[i]);
+      {
+        auto diff = iPropertyDiffs[i];
+        fDiffs.emplace_back(diff);
+        fDiffMap[JBox_toString(diff.fPropertyRef)] =
+          JBox_toString(diff.fPreviousValue) + "->" + JBox_toString(diff.fCurrentValue) + "@" + std::to_string(diff.fAtFrameIndex);
+      }
     }
 
     std::vector<TJBox_PropertyDiff> fDiffs{};
+    std::map<std::string, std::string> fDiffMap{};
   };
 
   auto c = DeviceConfig<Device>::fromSkeleton()
@@ -479,22 +487,16 @@ TEST(Rack, Diff)
   ASSERT_EQ(9, re->fDiffs.size());
 
   {
-    std::map<std::string, std::string> diffMap{};
-
-    for(auto &diff: re->fDiffs)
-      diffMap[re.toString(diff.fPropertyRef)] =
-        re.toString(diff.fCurrentValue) + "|" + std::to_string(diff.fAtFrameIndex);
-
     std::map<std::string, std::string> expected{};
-    expected["/audio_inputs/input/connected"] = "true|0";
-    expected["/custom_properties/prop_bool"] = "false|0";
-    expected["/custom_properties/prop_float"] = "0.800000|0";
-    expected["/custom_properties/prop_string"] = "abcd|0";
-    expected["/cv_inputs/cv/connected"] = "false|0";
-    expected["/cv_inputs/cv/value"] = "0.000000|0";
-    expected["/note_states/69"] = "100.000000|25";
+    expected["/audio_inputs/input/connected"] = "false->true@0";
+    expected["/custom_properties/prop_bool"] = "false->false@0";
+    expected["/custom_properties/prop_float"] = "0.800000->0.800000@0";
+    expected["/custom_properties/prop_string"] = "abcd->abcd@0";
+    expected["/cv_inputs/cv/connected"] = "false->false@0";
+    expected["/cv_inputs/cv/value"] = "0.000000->0.000000@0";
+    expected["/note_states/69"] = "0.000000->100.000000@25";
 
-    ASSERT_EQ(expected, diffMap);
+    ASSERT_EQ(expected, re->fDiffMap);
   }
 
   auto noteStateDiff = re->fDiffs[re->fDiffs.size() - 1];
@@ -534,17 +536,12 @@ TEST(Rack, Diff)
   ASSERT_EQ(3, re->fDiffs.size());
 
   {
-    std::map<std::string, std::string> diffMap{};
-
-    for(auto &diff: re->fDiffs)
-      diffMap[re.toString(diff.fPropertyRef)] = re.toString(diff.fCurrentValue) + "|" + std::to_string(diff.fAtFrameIndex);
-
     std::map<std::string, std::string> expected{};
-    expected["/custom_properties/prop_bool"] = "true|0";
-    expected["/custom_properties/prop_float"] = "0.900000|0";
-    expected["/custom_properties/prop_string"] = "efg|0";
+    expected["/custom_properties/prop_bool"] = "false->true@0";
+    expected["/custom_properties/prop_float"] = "0.800000->0.900000@0";
+    expected["/custom_properties/prop_string"] = "abcd->efg@0";
 
-    ASSERT_EQ(expected, diffMap);
+    ASSERT_EQ(expected, re->fDiffMap);
   }
 
   auto patchString = R"(
@@ -577,17 +574,12 @@ TEST(Rack, Diff)
   ASSERT_EQ(3, re->fDiffs.size());
 
   {
-    std::map<std::string, std::string> diffMap{};
-
-    for(auto &diff: re->fDiffs)
-      diffMap[re.toString(diff.fPropertyRef)] = re.toString(diff.fCurrentValue) + "|" + std::to_string(diff.fAtFrameIndex);
-
     std::map<std::string, std::string> expected{};
-    expected["/custom_properties/prop_bool"] = "false|0";
-    expected["/custom_properties/prop_float"] = "0.500000|0";
-    expected["/custom_properties/prop_string"] = "ABC|0";
+    expected["/custom_properties/prop_bool"] = "true->false@0";
+    expected["/custom_properties/prop_float"] = "0.900000->0.500000@0";
+    expected["/custom_properties/prop_string"] = "efg->ABC@0";
 
-    ASSERT_EQ(expected, diffMap);
+    ASSERT_EQ(expected, re->fDiffMap);
   }
 }
 
