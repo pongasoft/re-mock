@@ -42,6 +42,7 @@ public:
   void remove(K id);
   void clear();
   void reset();
+  size_t size() const;
   typename std::map<K, O>::iterator begin() noexcept { return fObjects.begin(); }
   typename std::map<K, O>::iterator end() noexcept { return fObjects.end(); }
   typename std::map<K, O>::const_iterator cbegin() const noexcept { return fObjects.cbegin(); }
@@ -137,6 +138,14 @@ void ObjectManager<O, K>::reset()
   fCounter = 1;
 }
 
+//------------------------------------------------------------------------
+// ObjectManager::size
+//------------------------------------------------------------------------
+template<typename O, typename K>
+size_t ObjectManager<O, K>::size() const
+{
+  return fObjects.size();
+}
 
 }
 

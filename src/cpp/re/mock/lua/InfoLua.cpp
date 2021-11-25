@@ -97,4 +97,12 @@ std::string InfoLua::device_type()
   return L.getGlobalAsString("device_type");
 }
 
+//------------------------------------------------------------------------
+// InfoLua::accepts_notes
+//------------------------------------------------------------------------
+bool InfoLua::accepts_notes()
+{
+  return L.getGlobalAsBoolean("accepts_notes");
+}
+
 }

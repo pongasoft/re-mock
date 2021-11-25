@@ -552,6 +552,7 @@ Info fromInfoLua(lua::InfoLua &iInfo)
   res.device_type(deviceTypeFromString(iInfo.device_type()));
   res.default_patch(iInfo.default_patch());
   res.fSupportPatches = iInfo.supports_patches();
+  res.fAcceptNotes = iInfo.accepts_notes();
 
   return res;
 }

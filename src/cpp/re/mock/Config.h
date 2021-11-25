@@ -81,9 +81,11 @@ struct Info
   DeviceType fDeviceType{DeviceType::kUnknown};
   bool fSupportPatches{};
   std::string fDefaultPatch{};
+  bool fAcceptNotes{};
 
   Info &device_type(DeviceType t) { fDeviceType = t; return *this; }
   Info &default_patch(std::string s) { fDefaultPatch = std::move(s); fSupportPatches = !fDefaultPatch.empty(); return *this; }
+  Info &accept_notes(bool b) { fAcceptNotes = b; return *this; }
 
   static Info fromSkeleton(DeviceType iDeviceType);
   static Info from(ConfigFile iFile);
@@ -144,6 +146,7 @@ struct Config
   Info const &info() const { return fInfo; }
 
   Config &default_patch(std::string const &s) { fInfo.default_patch(s); return *this; }
+  Config &accept_notes(bool b) { fInfo.accept_notes(b); return *this; }
 
   std::optional<std::string> device_root_dir() const { return fDeviceRootDir; };
   Config &device_root_dir(std::string s) { fDeviceRootDir = s; return *this;}
@@ -250,10 +253,12 @@ struct DeviceConfig
 
   DeviceConfig &debug(bool iDebug = true) { fConfig.debug(iDebug); return *this; }
 
-  DeviceConfig &default_patch(std::string s) { fConfig.default_patch(s); return *this; }
-  DeviceConfig &default_patch(std::string s, ConfigSource const &iPatch) { default_patch(s); return patch(s, iPatch); }
   DeviceConfig &device_root_dir(std::string s) { fConfig.device_root_dir(s); return *this;}
   DeviceConfig &device_resources_dir(std::string s) { fConfig.device_resources_dir(s); return *this;}
+
+  DeviceConfig &default_patch(std::string s) { fConfig.default_patch(s); return *this; }
+  DeviceConfig &default_patch(std::string s, ConfigSource const &iPatch) { default_patch(s); return patch(s, iPatch); }
+  DeviceConfig &accept_notes(bool b) { fConfig.accept_notes(b); return *this; }
 
   DeviceConfig &mdef(ConfigFile iFile) { fConfig.mdef(iFile); return *this; }
   DeviceConfig &mdef(ConfigString iString) { fConfig.mdef(iString); return *this; }

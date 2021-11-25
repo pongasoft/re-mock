@@ -449,8 +449,7 @@ void MCVPst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 // MockNotePlayer::MockNotePlayer
 //------------------------------------------------------------------------
 MockNotePlayer::MockNotePlayer(int iSampleRate) : MockDevice{iSampleRate},
-                                                  fEnvironmentRef{JBox_GetMotherboardObjectRef("/environment")},
-                                                  fNoteStatesRef{JBox_GetMotherboardObjectRef("/note_states")}
+                                                  fEnvironmentRef{JBox_GetMotherboardObjectRef("/environment")}
 {}
 
 //------------------------------------------------------------------------
@@ -508,12 +507,14 @@ void MNPSrc::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 
 // MNPDst::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MNPDst> MNPDst::CONFIG = DeviceConfig<MNPDst>::fromSkeleton(DeviceType::kNotePlayer)
+  .accept_notes(true)
   .rtc(Config::rt_input_setup_notify_all_notes());
 
 //------------------------------------------------------------------------
 // MNPDst::MNPDst
 //------------------------------------------------------------------------
-MNPDst::MNPDst(int iSampleRate) : MockNotePlayer{iSampleRate}
+MNPDst::MNPDst(int iSampleRate) : MockNotePlayer{iSampleRate},
+                                  fNoteStatesRef{JBox_GetMotherboardObjectRef("/note_states")}
 {}
 
 //------------------------------------------------------------------------
@@ -535,12 +536,14 @@ void MNPDst::renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 
 // MNPPst::CONFIG
 //------------------------------------------------------------------------
 const DeviceConfig<MNPPst> MNPPst::CONFIG = DeviceConfig<MNPPst>::fromSkeleton(DeviceType::kNotePlayer)
+  .accept_notes(true)
   .rtc(Config::rt_input_setup_notify_all_notes());
 
 //------------------------------------------------------------------------
 // MNPPst::MNPPst
 //------------------------------------------------------------------------
-MNPPst::MNPPst(int iSampleRate) : MockNotePlayer{iSampleRate}
+MNPPst::MNPPst(int iSampleRate) : MockNotePlayer{iSampleRate},
+                                  fNoteStatesRef{JBox_GetMotherboardObjectRef("/note_states")}
 {}
 
 //------------------------------------------------------------------------

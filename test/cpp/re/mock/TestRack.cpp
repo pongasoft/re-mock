@@ -460,6 +460,7 @@ TEST(Rack, Diff)
   };
 
   auto c = DeviceConfig<Device>::fromSkeleton()
+    .accept_notes(true)
     .mdef(Config::audio_in("input"))
     .mdef(Config::cv_in("cv"))
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))

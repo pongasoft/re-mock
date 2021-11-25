@@ -91,15 +91,18 @@ Motherboard::Motherboard(Config const &iConfig) : fConfig{iConfig}
   // global_rtc
   addObject("/global_rtc");
 
-  // note_states
-  auto noteStates = addObject("/note_states");
-  fNoteStatesRef = noteStates->fObjectRef;
-  for(int i = FIRST_MIDI_NOTE; i <= LAST_MIDI_NOTE; i++)
+  if(iConfig.info().fAcceptNotes)
   {
-    noteStates->addProperty(std::to_string(i),
-                            PropertyOwner::kHostOwner,
-                            makeNumber(0),
-                            static_cast<TJBox_Tag>(i));
+    // note_states
+    auto noteStates = addObject("/note_states");
+    fNoteStatesRef = noteStates->fObjectRef;
+    for(int i = FIRST_MIDI_NOTE; i <= LAST_MIDI_NOTE; i++)
+    {
+      noteStates->addProperty(std::to_string(i),
+                              PropertyOwner::kHostOwner,
+                              makeNumber(0),
+                              static_cast<TJBox_Tag>(i));
+    }
   }
 
   // transport
@@ -1081,7 +1084,7 @@ std::string Motherboard::toString(JboxValue const &iValue, char const *iFormat) 
     case kJBox_BLOB:
     {
       auto const &blob = iValue.getBlob();
-      return fmt::printf(iFormat ? iFormat : "Blob(%l, %l)[%ld]", blob.fResidentSize, blob.fData.size(), iValue.getUniqueId());
+      return fmt::printf(iFormat ? iFormat : "Blob(%ld, %ld)[%ld]", blob.fResidentSize, blob.fData.size(), iValue.getUniqueId());
     }
 
     case kJBox_Sample:

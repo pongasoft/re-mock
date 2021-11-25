@@ -55,6 +55,8 @@ global_rtc = {
 )";
 
   auto c = Config::fromSkeleton()
+    .accept_notes(true)
+
     .mdef(Config::document_owner_property("prop_number_default", lua::jbox_number_property{}))
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.property_tag(100).default_value(0.7)))
     .mdef(Config::document_owner_property("prop_bool_default", lua::jbox_boolean_property{}))

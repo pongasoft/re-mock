@@ -125,9 +125,7 @@ public: // used by regular code
   }
 
   template<typename T>
-  inline T* getInstance() const {
-    return getNativeObjectRW<T>("/custom_properties/instance");
-  }
+  T* getInstance() const;
 
   void loadPatch(ConfigFile const &iPatchFile);
   inline void loadPatch(ConfigString const &iPatchString) { loadPatch(Patch::from(iPatchString)); }
@@ -279,6 +277,15 @@ protected:
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
   NoteEvents fNoteOutEvents{};
 };
+
+//------------------------------------------------------------------------
+// Motherboard::getInstance
+//------------------------------------------------------------------------
+template<typename T>
+T *Motherboard::getInstance() const
+{
+  return reinterpret_cast<T *>(getJboxValue("/custom_properties/instance")->getNativeObject().fNativeObject);
+}
 
 }
 

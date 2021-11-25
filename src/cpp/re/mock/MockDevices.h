@@ -264,7 +264,6 @@ public:
 
 protected:
   TJBox_ObjectRef fEnvironmentRef;
-  TJBox_ObjectRef fNoteStatesRef;
 };
 
 /**
@@ -287,6 +286,9 @@ public:
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const DeviceConfig<MNPDst> CONFIG;
+
+protected:
+  TJBox_ObjectRef fNoteStatesRef;
 };
 
 /**
@@ -298,6 +300,9 @@ public:
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const DeviceConfig<MNPPst> CONFIG;
+
+protected:
+  TJBox_ObjectRef fNoteStatesRef;
 };
 
 //------------------------------------------------------------------------
