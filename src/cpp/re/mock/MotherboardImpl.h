@@ -34,11 +34,7 @@ constexpr static size_t DSP_BUFFER_SIZE = 64;
 using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
 }
 
-class JboxValueImpl;
-
-using JboxValue = std::shared_ptr<JboxValueImpl>;
-
-class JboxValueImpl
+class JboxValue
 {
 public:
 
@@ -51,6 +47,8 @@ public:
   bool getBoolean() const { return std::get<bool>(fMotherboardValue); }
   impl::String const &getString() const { return *std::get<std::unique_ptr<impl::String>>(fMotherboardValue); }
   impl::NativeObject const &getNativeObject() const { return *std::get<std::unique_ptr<impl::NativeObject>>(fMotherboardValue); }
+  impl::Blob const &getBlob() const { return *std::get<std::unique_ptr<impl::Blob>>(fMotherboardValue); }
+  impl::DSPBuffer const &getDSPBuffer() const { return *std::get<std::unique_ptr<impl::DSPBuffer>>(fMotherboardValue); }
 
 private:
   struct Nil {};
@@ -110,8 +108,8 @@ T jbox_get_value(TJBox_ValueType iValueType, TJBox_Value const &iJboxValue)
 
 struct JboxPropertyDiff
 {
-  JboxValue fPreviousValue;
-  JboxValue fCurrentValue;
+  std::shared_ptr<JboxValue> fPreviousValue;
+  std::shared_ptr<JboxValue> fCurrentValue;
   TJBox_PropertyRef fPropertyRef;
   TJBox_Tag fPropertyTag;
   TJBox_UInt16 fAtFrameIndex;
@@ -124,12 +122,13 @@ struct JboxProperty
                std::string iPropertyPath,
                TJBox_ValueType iValueType,
                PropertyOwner iOwner,
-               JboxValue const &iInitialValue,
+               std::shared_ptr<JboxValue> iInitialValue,
                TJBox_Tag iTag,
                lua::EPersistence iPersistence);
 
-  inline JboxValue loadValue() const { return fValue; };
-  JboxPropertyDiff storeValue(JboxValue const &iValue);
+  inline std::shared_ptr<const JboxValue> loadValue() const { return fValue; };
+  inline std::shared_ptr<JboxValue> loadValue() { return fValue; };
+  JboxPropertyDiff storeValue(std::shared_ptr<JboxValue> iValue);
 
   JboxPropertyDiff watchForChange();
   bool isWatched() const { return fWatched; }
@@ -142,8 +141,8 @@ struct JboxProperty
 
 protected:
   const TJBox_ValueType fValueType;
-  const JboxValue fInitialValue;
-  JboxValue fValue;
+  std::shared_ptr<JboxValue> fInitialValue;
+  std::shared_ptr<JboxValue> fValue;
   bool fWatched{};
 };
 
@@ -153,10 +152,12 @@ struct JboxObject
 
   ~JboxObject() = default;
 
-  JboxValue loadValue(std::string const &iPropertyName) const;
-  JboxValue loadValue(TJBox_Tag iPropertyTag) const;
-  impl::JboxPropertyDiff storeValue(std::string const &iPropertyName, JboxValue const &iValue);
-  impl::JboxPropertyDiff storeValue(TJBox_Tag iPropertyTag, JboxValue const &iValue);
+  std::shared_ptr<const JboxValue> loadValue(std::string const &iPropertyName) const;
+  std::shared_ptr<const JboxValue> loadValue(TJBox_Tag iPropertyTag) const;
+  std::shared_ptr<JboxValue> loadValue(std::string const &iPropertyName);
+  std::shared_ptr<JboxValue> loadValue(TJBox_Tag iPropertyTag);
+  impl::JboxPropertyDiff storeValue(std::string const &iPropertyName, std::shared_ptr<JboxValue> iValue);
+  impl::JboxPropertyDiff storeValue(TJBox_Tag iPropertyTag, std::shared_ptr<JboxValue> iValue);
   std::vector<impl::JboxPropertyDiff> watchAllPropertiesForChange();
   impl::JboxPropertyDiff watchPropertyForChange(std::string const &iPropertyName);
 
@@ -169,13 +170,13 @@ protected:
   void addProperty(const std::string& iPropertyName,
                    PropertyOwner iOwner,
                    TJBox_ValueType iValueType,
-                   JboxValue const &iInitialValue,
+                   std::shared_ptr<JboxValue> iInitialValue,
                    TJBox_Tag iPropertyTag,
                    lua::EPersistence iPersistence = lua::EPersistence::kNone);
 
   void addProperty(const std::string& iPropertyName,
                    PropertyOwner iOwner,
-                   JboxValue const &iInitialValue,
+                   std::shared_ptr<JboxValue> iInitialValue,
                    TJBox_Tag iPropertyTag,
                    lua::EPersistence iPersistence = lua::EPersistence::kNone);
 

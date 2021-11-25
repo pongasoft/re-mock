@@ -177,7 +177,16 @@ TJBox_PropertyRef Motherboard::getPropertyRef(std::string const &iPropertyPath) 
 //------------------------------------------------------------------------
 // Motherboard::getJboxValue
 //------------------------------------------------------------------------
-JboxValue Motherboard::getJboxValue(std::string const &iPropertyPath) const
+std::shared_ptr<const JboxValue> Motherboard::getJboxValue(std::string const &iPropertyPath) const
+{
+  auto ref = getPropertyRef(iPropertyPath);
+  return fJboxObjects.get(ref.fObject)->loadValue(ref.fKey);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getJboxValue
+//------------------------------------------------------------------------
+std::shared_ptr<JboxValue> Motherboard::getJboxValue(std::string const &iPropertyPath)
 {
   auto ref = getPropertyRef(iPropertyPath);
   return fJboxObjects.get(ref.fObject)->loadValue(ref.fKey);
@@ -186,7 +195,7 @@ JboxValue Motherboard::getJboxValue(std::string const &iPropertyPath) const
 //------------------------------------------------------------------------
 // Motherboard::to_TJBox_Value
 //------------------------------------------------------------------------
-TJBox_Value Motherboard::to_TJBox_Value(JboxValue const &iValue) const
+TJBox_Value Motherboard::to_TJBox_Value(std::shared_ptr<const JboxValue> const &iValue) const
 {
   switch(iValue->getValueType())
   {
@@ -198,7 +207,6 @@ TJBox_Value Motherboard::to_TJBox_Value(JboxValue const &iValue) const
 
     case kJBox_Boolean:
       return JBox_MakeBoolean(iValue->getBoolean());
-      break;
 
     case kJBox_Incompatible:
       return impl::jbox_make_value(kJBox_Incompatible, 0);
@@ -214,7 +222,7 @@ TJBox_Value Motherboard::to_TJBox_Value(JboxValue const &iValue) const
 //------------------------------------------------------------------------
 // Motherboard::to_TJBox_Value
 //------------------------------------------------------------------------
-JboxValue Motherboard::from_TJBox_Value(TJBox_Value const &iValue) const
+std::shared_ptr<const JboxValue> Motherboard::from_TJBox_Value(TJBox_Value const &iValue) const
 {
   switch(getValueType(iValue))
   {
@@ -260,10 +268,10 @@ TJBox_Value Motherboard::loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) c
 //------------------------------------------------------------------------
 // Motherboard::storeProperty
 //------------------------------------------------------------------------
-void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, JboxValue const &iValue, TJBox_UInt16 iAtFrameIndex)
+void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, std::shared_ptr<const JboxValue> const &iValue, TJBox_UInt16 iAtFrameIndex)
 {
   auto property = fJboxObjects.get(iProperty.fObject)->getProperty(iProperty.fKey);
-  auto diff = property->storeValue(iValue);
+  auto diff = property->storeValue(std::const_pointer_cast<JboxValue>(iValue));
   diff.fAtFrameIndex = iAtFrameIndex;
   handlePropertyDiff(diff, property->isWatched());
 }
@@ -271,10 +279,10 @@ void Motherboard::storeProperty(TJBox_PropertyRef const &iProperty, JboxValue co
 //------------------------------------------------------------------------
 // Motherboard::storeProperty
 //------------------------------------------------------------------------
-void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, JboxValue const &iValue, TJBox_UInt16 iAtFrameIndex)
+void Motherboard::storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, std::shared_ptr<const JboxValue> const &iValue, TJBox_UInt16 iAtFrameIndex)
 {
   auto property = getObject(iObject)->getProperty(iTag);
-  auto diff = property->storeValue(iValue);
+  auto diff = property->storeValue(std::const_pointer_cast<JboxValue>(iValue));
   diff.fAtFrameIndex = iAtFrameIndex;
   handlePropertyDiff(diff, property->isWatched());
 }
@@ -477,11 +485,11 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 
   struct DefaultValueVisitor
   {
-    JboxValue operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return fMotherboard->makeBoolean(o->fDefaultValue); }
-    JboxValue operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return fMotherboard->makeNumber(o->fDefaultValue); }
+    std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return fMotherboard->makeBoolean(o->fDefaultValue); }
+    std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return fMotherboard->makeNumber(o->fDefaultValue); }
 
     // lua::jbox_performance_property
-    JboxValue operator()(const std::shared_ptr<lua::jbox_performance_property>& o) const {
+    std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_performance_property>& o) const {
       RE_MOCK_ASSERT(o->fType != lua::jbox_performance_property::Type::UNKNOWN);
       TJBox_Float64 defaultValue = 0;
       if(o->fType == lua::jbox_performance_property::Type::PITCH_BEND)
@@ -490,16 +498,16 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
     }
 
     // lua::jbox_native_object
-    JboxValue operator()(const std::shared_ptr<lua::jbox_native_object>& o) const {
+    std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_native_object>& o) const {
       if(!o->fDefaultValue.operation.empty())
       {
         struct JboxValueVisitor {
-          JboxValue operator()(bool v) const { return fMotherboard->makeBoolean(v); }
-          JboxValue operator()(TJBox_Float64 v) const { return fMotherboard->makeNumber(v); }
+          std::shared_ptr<const JboxValue> operator()(bool v) const { return fMotherboard->makeBoolean(v); }
+          std::shared_ptr<const JboxValue> operator()(TJBox_Float64 v) const { return fMotherboard->makeNumber(v); }
           Motherboard *fMotherboard;
         };
 
-        std::vector<JboxValue> params{};
+        std::vector<std::shared_ptr<const JboxValue>> params{};
         std::transform(o->fDefaultValue.params.begin(),
                        o->fDefaultValue.params.end(),
                        std::back_inserter(params),
@@ -512,7 +520,7 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
     }
 
     // lua::jbox_string_property
-    JboxValue operator()(const std::shared_ptr<lua::jbox_string_property>& o) const {
+    std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_string_property>& o) const {
       switch(fOwner)
       {
         case PropertyOwner::kRTOwner:
@@ -526,7 +534,7 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
     }
 
     // lua::jbox_blob_property
-    JboxValue operator()(const std::shared_ptr<lua::jbox_blob_property>& o) const {
+    std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_blob_property>& o) const {
       RE_MOCK_ASSERT(fOwner == PropertyOwner::kRTCOwner, "Blob must be owned by RTC");
       if(o->fDefaultValue)
         return fMotherboard->loadBlobAsync(*o->fDefaultValue);
@@ -545,7 +553,7 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
   fJboxObjects.get(iParentObject)->addProperty(iPropertyName,
                                                iOwner,
                                                valueType,
-                                               defaultValue,
+                                               std::move(defaultValue),
                                                propertyTag,
                                                *persistence);
 }
@@ -593,7 +601,7 @@ void Motherboard::addAudioInput(std::string const &iSocketName)
 {
   auto o = addObject(fmt::printf("/audio_inputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_AudioInputConnected);
-  auto buffer = makeDSPBuffer();
+  std::shared_ptr<JboxValue> buffer = makeDSPBuffer();
   o->addProperty("buffer", PropertyOwner::kHostOwner, buffer, kJBox_AudioInputBuffer);
   fInputDSPBuffers.emplace_back(buffer);
 }
@@ -606,7 +614,7 @@ void Motherboard::addAudioOutput(std::string const &iSocketName)
   auto o = addObject(fmt::printf("/audio_outputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_AudioOutputConnected);
   o->addProperty("dsp_latency", PropertyOwner::kRTCOwner, makeNumber(0), kJBox_AudioOutputDSPLatency);
-  auto buffer = makeDSPBuffer();
+  std::shared_ptr<JboxValue> buffer = makeDSPBuffer();
   o->addProperty("buffer", PropertyOwner::kHostOwner, buffer, kJBox_AudioOutputBuffer);
   fOutputDSPBuffers.emplace_back(buffer);
 }
@@ -771,7 +779,7 @@ void Motherboard::setDSPBufferData(TJBox_Value const &iValue,
                                    TJBox_AudioSample const *iAudio)
 {
   RE_MOCK_ASSERT(iStartFrame >= 0 && iEndFrame >= 0 && iEndFrame <= DSP_BUFFER_SIZE && iStartFrame <= iEndFrame);
-  auto &buffer = from_TJBox_Value(iValue)->getDSPBuffer();
+  auto &buffer = std::const_pointer_cast<JboxValue>(from_TJBox_Value(iValue))->getDSPBuffer();
   std::copy(iAudio, iAudio + iEndFrame - iStartFrame, std::begin(buffer) + iStartFrame);
 }
 
@@ -787,9 +795,9 @@ TJBox_DSPBufferInfo Motherboard::getDSPBufferInfo(TJBox_Value const &iValue) con
 //------------------------------------------------------------------------
 // Motherboard::makeNativeObject
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeNativeObject(std::string const &iOperation,
-                                        std::vector<JboxValue> const &iParams,
-                                        impl::NativeObject::AccessMode iAccessMode)
+std::unique_ptr<JboxValue> Motherboard::makeNativeObject(std::string const &iOperation,
+                                                         std::vector<std::shared_ptr<const JboxValue>> const &iParams,
+                                                         impl::NativeObject::AccessMode iAccessMode)
 {
   if(fRealtime.create_native_object)
   {
@@ -799,7 +807,7 @@ JboxValue Motherboard::makeNativeObject(std::string const &iOperation,
     auto nativeObject = fRealtime.create_native_object(iOperation.c_str(), params.data(), params.size());
     if(nativeObject)
     {
-      auto res = JboxValue(new JboxValueImpl());
+      auto res = std::make_unique<JboxValue>();
       res->fValueType = kJBox_NativeObject;
       res->fMotherboardValue = std::unique_ptr<impl::NativeObject>(new impl::NativeObject{
         /* .fNativeObject = */ nativeObject,
@@ -816,14 +824,14 @@ JboxValue Motherboard::makeNativeObject(std::string const &iOperation,
 //------------------------------------------------------------------------
 // Motherboard::loadBlobAsync
 //------------------------------------------------------------------------
-JboxValue Motherboard::loadBlobAsync(std::string const &iBlobPath)
+std::unique_ptr<JboxValue> Motherboard::loadBlobAsync(std::string const &iBlobPath)
 {
   auto b =  std::make_unique<impl::Blob>();
   auto blobResource = fConfig.findBlobResource(iBlobPath);
   RE_MOCK_ASSERT(blobResource != std::nullopt, "Could not find blob at path [%s]", iBlobPath);
   b->fResidentSize = 0;
   b->fData = std::move(blobResource->fData);
-  auto res = JboxValue(new JboxValueImpl());
+  auto res = std::make_unique<JboxValue>();
   res->fValueType = kJBox_BLOB;
   res->fMotherboardValue = std::move(b);
   return res;
@@ -848,7 +856,7 @@ void Motherboard::loadMoreBlob(std::string const &iPropertyPath, long iCount)
 //------------------------------------------------------------------------
 TJBox_BLOBInfo Motherboard::getBLOBInfo(JboxValue const &iValue) const
 {
-  auto const &b = iValue->getBlob();
+  auto const &b = iValue.getBlob();
 
   return {
     /* .fSize = */         b.fData.size(),
@@ -873,9 +881,9 @@ void Motherboard::getBLOBData(TJBox_Value const &iValue, TJBox_SizeT iStart, TJB
 //------------------------------------------------------------------------
 // Motherboard::makeString
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeString(std::string iValue) const
+std::unique_ptr<JboxValue> Motherboard::makeString(std::string iValue) const
 {
-  auto res = JboxValue(new JboxValueImpl());
+  auto res = std::make_unique<JboxValue>();
   res->fValueType = kJBox_String;
   res->fMotherboardValue = std::unique_ptr<impl::String>(new impl::String{
     /* .fMaxSize */ 0,
@@ -887,10 +895,10 @@ JboxValue Motherboard::makeString(std::string iValue) const
 //------------------------------------------------------------------------
 // Motherboard::makeRTString
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeRTString(int iMaxSize) const
+std::unique_ptr<JboxValue> Motherboard::makeRTString(int iMaxSize) const
 {
   RE_MOCK_ASSERT(iMaxSize > 0 && iMaxSize <= 2048, "RTString invalid max_size [%d]", iMaxSize);
-  auto res = JboxValue(new JboxValueImpl());
+  auto res = std::make_unique<JboxValue>();
   res->fValueType = kJBox_String;
   res->fMotherboardValue = std::unique_ptr<impl::String>(new impl::String{
     /* .fMaxSize */ iMaxSize,
@@ -902,7 +910,8 @@ JboxValue Motherboard::makeRTString(int iMaxSize) const
 //------------------------------------------------------------------------
 // Motherboard::makeNativeObjectRO
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeNativeObjectRO(std::string const &iOperation, std::vector<JboxValue> const &iParams)
+std::unique_ptr<JboxValue> Motherboard::makeNativeObjectRO(std::string const &iOperation,
+                                                           std::vector<std::shared_ptr<const JboxValue>> const &iParams)
 {
   return makeNativeObject(iOperation, iParams, impl::NativeObject::kReadOnly);
 }
@@ -910,7 +919,8 @@ JboxValue Motherboard::makeNativeObjectRO(std::string const &iOperation, std::ve
 //------------------------------------------------------------------------
 // Motherboard::makeNativeObjectRW
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeNativeObjectRW(std::string const &iOperation, std::vector<JboxValue> const &iParams)
+std::unique_ptr<JboxValue> Motherboard::makeNativeObjectRW(std::string const &iOperation,
+                                                           std::vector<std::shared_ptr<const JboxValue>> const &iParams)
 {
   return makeNativeObject(iOperation, iParams, impl::NativeObject::kReadWrite);
 }
@@ -953,8 +963,9 @@ void Motherboard::setRTStringData(TJBox_PropertyRef const &iProperty,
   auto &rtString = property->loadValue()->getString();
   RE_MOCK_ASSERT(rtString.isRTString());
   RE_MOCK_ASSERT(iSize >= 0 && iSize <= rtString.fMaxSize);
-  rtString.fValue.clear();
-  std::copy(iData, iData + iSize, std::back_inserter(rtString.fValue));
+  auto newRTString = makeRTString(rtString.fMaxSize);
+  std::copy(iData, iData + iSize, std::back_inserter(newRTString->getString().fValue));
+  property->storeValue(std::move(newRTString));
 }
 
 //------------------------------------------------------------------------
@@ -1043,34 +1054,34 @@ bool Motherboard::isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) co
 //------------------------------------------------------------------------
 std::string Motherboard::toString(JboxValue const &iValue, char const *iFormat) const
 {
-  switch(iValue->getValueType())
+  switch(iValue.getValueType())
   {
     case kJBox_Nil:
       return "Nil";
 
     case kJBox_Number:
-      return fmt::printf(iFormat ? iFormat : "%f", iValue->getNumber());
+      return fmt::printf(iFormat ? iFormat : "%f", iValue.getNumber());
 
     case kJBox_Boolean:
-      return fmt::printf(iFormat ? iFormat : "%s", iValue->getBoolean() ? "true" : "false");
+      return fmt::printf(iFormat ? iFormat : "%s", iValue.getBoolean() ? "true" : "false");
 
     case kJBox_DSPBuffer:
-      return fmt::printf(iFormat ? iFormat : "DSPBuffer[%ld]", iValue->getUniqueId());
+      return fmt::printf(iFormat ? iFormat : "DSPBuffer[%ld]", iValue.getUniqueId());
 
     case kJBox_NativeObject:
       return fmt::printf(iFormat ? iFormat : "R%sNativeObject[%ld]",
-                         iValue->getNativeObject().fAccessMode == impl::NativeObject::kReadWrite ? "W" : "O", iValue->getUniqueId());
+                         iValue.getNativeObject().fAccessMode == impl::NativeObject::kReadWrite ? "W" : "O", iValue.getUniqueId());
 
     case kJBox_Incompatible:
       return "<incompatible>";
 
     case kJBox_String:
-      return fmt::printf(iFormat ? iFormat : "%s", iValue->getString().fValue);
+      return fmt::printf(iFormat ? iFormat : "%s", iValue.getString().fValue);
 
     case kJBox_BLOB:
     {
-      auto const &blob = iValue->getBlob();
-      return fmt::printf(iFormat ? iFormat : "Blob(%l, %l)[%ld]", blob.fResidentSize, blob.fData.size(), iValue->getUniqueId());
+      auto const &blob = iValue.getBlob();
+      return fmt::printf(iFormat ? iFormat : "Blob(%l, %l)[%ld]", blob.fResidentSize, blob.fData.size(), iValue.getUniqueId());
     }
 
     case kJBox_Sample:
@@ -1293,28 +1304,28 @@ ConfigFile Motherboard::getResourceFile(ConfigFile const &iUnixPath) const
 //------------------------------------------------------------------------
 // Motherboard::makeNil
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeNil() const
+std::unique_ptr<JboxValue> Motherboard::makeNil() const
 {
-  return JboxValue(new JboxValueImpl());
+  return std::make_unique<JboxValue>();
 }
 
 //------------------------------------------------------------------------
 // Motherboard::makeIncompatible
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeIncompatible() const
+std::unique_ptr<JboxValue> Motherboard::makeIncompatible() const
 {
-  auto res = JboxValue(new JboxValueImpl());
+  auto res = std::make_unique<JboxValue>();
   res->fValueType = kJBox_Incompatible;
-  res->fMotherboardValue = JboxValueImpl::Incompatible{};
+  res->fMotherboardValue = JboxValue::Incompatible{};
   return res;
 }
 
 //------------------------------------------------------------------------
 // Motherboard::makeNumber
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeNumber(TJBox_Float64 iValue) const
+std::unique_ptr<JboxValue> Motherboard::makeNumber(TJBox_Float64 iValue) const
 {
-  auto res = JboxValue(new JboxValueImpl());
+  auto res = std::make_unique<JboxValue>();
   res->fValueType = kJBox_Number;
   res->fMotherboardValue = iValue;
   return res;
@@ -1323,9 +1334,9 @@ JboxValue Motherboard::makeNumber(TJBox_Float64 iValue) const
 //------------------------------------------------------------------------
 // Motherboard::makeBoolean
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeBoolean(bool iValue) const
+std::unique_ptr<JboxValue> Motherboard::makeBoolean(bool iValue) const
 {
-  auto res = JboxValue(new JboxValueImpl());
+  auto res = std::make_unique<JboxValue>();
   res->fValueType = kJBox_Boolean;
   res->fMotherboardValue = iValue;
   return res;
@@ -1334,9 +1345,9 @@ JboxValue Motherboard::makeBoolean(bool iValue) const
 //------------------------------------------------------------------------
 // Motherboard::makeDSPBuffer
 //------------------------------------------------------------------------
-JboxValue Motherboard::makeDSPBuffer() const
+std::unique_ptr<JboxValue> Motherboard::makeDSPBuffer() const
 {
-  auto res = JboxValue(new JboxValueImpl());
+  auto res = std::make_unique<JboxValue>();
   res->fValueType = kJBox_DSPBuffer;
   res->fMotherboardValue = std::make_unique<DSPBuffer>();
   return res;
@@ -1372,7 +1383,7 @@ impl::JboxProperty *impl::JboxObject::getProperty(TJBox_Tag iPropertyTag) const
 //------------------------------------------------------------------------
 // JboxObject::loadValue
 //------------------------------------------------------------------------
-JboxValue impl::JboxObject::loadValue(std::string const &iPropertyName) const
+std::shared_ptr<const JboxValue> impl::JboxObject::loadValue(std::string const &iPropertyName) const
 {
   return getProperty(iPropertyName)->loadValue();
 }
@@ -1380,26 +1391,41 @@ JboxValue impl::JboxObject::loadValue(std::string const &iPropertyName) const
 //------------------------------------------------------------------------
 // JboxObject::loadValue
 //------------------------------------------------------------------------
-JboxValue impl::JboxObject::loadValue(TJBox_Tag iPropertyTag) const
+std::shared_ptr<const JboxValue> impl::JboxObject::loadValue(TJBox_Tag iPropertyTag) const
 {
   return getProperty(iPropertyTag)->loadValue();
 }
 
+//------------------------------------------------------------------------
+// JboxObject::loadValue
+//------------------------------------------------------------------------
+std::shared_ptr<JboxValue> impl::JboxObject::loadValue(std::string const &iPropertyName)
+{
+  return getProperty(iPropertyName)->loadValue();
+}
 
 //------------------------------------------------------------------------
-// JboxObject::storeValue
+// JboxObject::loadValue
 //------------------------------------------------------------------------
-impl::JboxPropertyDiff impl::JboxObject::storeValue(std::string const &iPropertyName, JboxValue const &iValue)
+std::shared_ptr<JboxValue> impl::JboxObject::loadValue(TJBox_Tag iPropertyTag)
 {
-  return getProperty(iPropertyName)->storeValue(iValue);
+  return getProperty(iPropertyTag)->loadValue();
 }
 
 //------------------------------------------------------------------------
 // JboxObject::storeValue
 //------------------------------------------------------------------------
-impl::JboxPropertyDiff impl::JboxObject::storeValue(TJBox_Tag iPropertyTag, JboxValue const &iValue)
+impl::JboxPropertyDiff impl::JboxObject::storeValue(std::string const &iPropertyName, std::shared_ptr<JboxValue> iValue)
 {
-  return getProperty(iPropertyTag)->storeValue(iValue);
+  return getProperty(iPropertyName)->storeValue(std::move(iValue));
+}
+
+//------------------------------------------------------------------------
+// JboxObject::storeValue
+//------------------------------------------------------------------------
+impl::JboxPropertyDiff impl::JboxObject::storeValue(TJBox_Tag iPropertyTag, std::shared_ptr<JboxValue> iValue)
+{
+  return getProperty(iPropertyTag)->storeValue(std::move(iValue));
 }
 
 //------------------------------------------------------------------------
@@ -1407,11 +1433,11 @@ impl::JboxPropertyDiff impl::JboxObject::storeValue(TJBox_Tag iPropertyTag, Jbox
 //------------------------------------------------------------------------
 void impl::JboxObject::addProperty(const std::string& iPropertyName,
                                    PropertyOwner iOwner,
-                                   JboxValue const &iInitialValue,
+                                   std::shared_ptr<JboxValue> iInitialValue,
                                    TJBox_Tag iPropertyTag,
                                    lua::EPersistence iPersistence)
 {
-  addProperty(iPropertyName, iOwner, iInitialValue->getValueType(), iInitialValue, iPropertyTag, iPersistence);
+  addProperty(iPropertyName, iOwner, iInitialValue->getValueType(), std::move(iInitialValue), iPropertyTag, iPersistence);
 }
 
 //------------------------------------------------------------------------
@@ -1420,7 +1446,7 @@ void impl::JboxObject::addProperty(const std::string& iPropertyName,
 void impl::JboxObject::addProperty(const std::string& iPropertyName,
                                    PropertyOwner iOwner,
                                    TJBox_ValueType iValueType,
-                                   JboxValue const &iInitialValue,
+                                   std::shared_ptr<JboxValue> iInitialValue,
                                    TJBox_Tag iPropertyTag,
                                    lua::EPersistence iPersistence)
 {
@@ -1464,7 +1490,7 @@ impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef,
                                  std::string iPropertyPath,
                                  TJBox_ValueType iValueType,
                                  PropertyOwner iOwner,
-                                 JboxValue const &iInitialValue,
+                                 std::shared_ptr<JboxValue> iInitialValue,
                                  TJBox_Tag iTag,
                                  lua::EPersistence iPersistence) :
   fPropertyRef{iPropertyRef},
@@ -1483,14 +1509,14 @@ impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef,
 //------------------------------------------------------------------------
 // JboxProperty::storeValue
 //------------------------------------------------------------------------
-impl::JboxPropertyDiff impl::JboxProperty::storeValue(JboxValue const &iValue)
+impl::JboxPropertyDiff impl::JboxProperty::storeValue(std::shared_ptr<JboxValue> iValue)
 {
   RE_MOCK_ASSERT(iValue->getValueType() == fValueType ||
                  iValue->getValueType() == TJBox_ValueType::kJBox_Nil,
                  "invalid property type for [%s]", fPropertyPath);
 
   auto previousValue = fValue;
-  fValue = iValue;
+  fValue = std::move(iValue);
   return JboxPropertyDiff{
     /* .fPreviousValue = */ previousValue,
     /* .fCurrentValue = */  fValue,
@@ -1506,8 +1532,10 @@ impl::JboxPropertyDiff impl::JboxProperty::storeValue(JboxValue const &iValue)
 impl::JboxPropertyDiff impl::JboxProperty::watchForChange()
 {
   fWatched = true;
+  auto initialValue = fInitialValue;
+  fInitialValue = nullptr; // getting rid of initial value
   return impl::JboxPropertyDiff{
-    /* .fPreviousValue = */ fInitialValue,
+    /* .fPreviousValue = */ initialValue,
     /* .fCurrentValue = */  fValue,
     /* .fPropertyRef = */   fPropertyRef,
     /* .fPropertyTag = */   fTag

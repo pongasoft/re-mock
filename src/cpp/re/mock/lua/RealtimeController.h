@@ -26,8 +26,7 @@
 
 namespace re::mock {
 class Motherboard;
-class JboxValueImpl;
-using JboxValue = std::shared_ptr<re::mock::JboxValueImpl>;
+class JboxValue;
 }
 
 namespace re::mock::lua {
@@ -57,7 +56,7 @@ public:
   void invokeBinding(Motherboard *iMotherboard,
                      std::string const &iBindingName,
                      std::string const &iSourcePropertyPath,
-                     JboxValue const &iNewValue);
+                     std::shared_ptr<const JboxValue> const &iNewValue);
 
   static RealtimeController *loadFromRegistry(lua_State *L);
   static std::unique_ptr<RealtimeController> fromFile(std::string const &iLuaFilename);
@@ -65,14 +64,14 @@ public:
 
 protected:
   Motherboard *getCurrentMotherboard() const;
-  JboxValue toJBoxValue(Motherboard *iMotherboard, int idx = -1);
-  void pushJBoxValue(Motherboard *iMotherboard, JboxValue iJBoxValue);
+  std::shared_ptr<const JboxValue> toJBoxValue(int idx = -1);
+  void pushJBoxValue(std::shared_ptr<const JboxValue> iJBoxValue);
 
   void putBindingOnTopOfStack(std::string const &iBindingName);
 
 private:
   Motherboard *fMotherboard{};
-  ObjectManager<JboxValue> fJboxValues{};
+  ObjectManager<std::shared_ptr<const JboxValue>> fJboxValues{};
 };
 
 }

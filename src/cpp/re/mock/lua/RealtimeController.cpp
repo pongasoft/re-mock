@@ -172,7 +172,7 @@ int RealtimeController::luaLoadProperty()
 {
   luaL_checktype(L, 1, LUA_TSTRING);
   auto value = getCurrentMotherboard()->getJboxValue(lua_tostring(L, 1));
-  pushJBoxValue(getCurrentMotherboard(), value);
+  pushJBoxValue(value);
   return 1;
 }
 
@@ -184,7 +184,7 @@ int RealtimeController::luaStoreProperty()
   luaL_checktype(L, 1, LUA_TSTRING);
   auto const propertyPath = lua_tostring(L, 1);
   RE_MOCK_ASSERT(getCurrentMotherboard()->getPropertyOwner(propertyPath) == PropertyOwner::kRTCOwner);
-  getCurrentMotherboard()->setValue(propertyPath, toJBoxValue(getCurrentMotherboard(), 2));
+  getCurrentMotherboard()->setValue(propertyPath, toJBoxValue(2));
   return 0;
 }
 
@@ -199,7 +199,7 @@ int RealtimeController::luaMakeNativeObject(bool iReadOnly)
   luaL_checktype(L, 1, LUA_TSTRING);
   auto operation = lua_tostring(L, 1);
 
-  std::vector<JboxValue> params{};
+  std::vector<std::shared_ptr<const JboxValue>> params{};
 
   // params
   if(numArguments > 1)
@@ -210,13 +210,12 @@ int RealtimeController::luaMakeNativeObject(bool iReadOnly)
     for(int i = 1; i <= numParams; i++)
     {
       lua_geti(L, paramsTableIdx, i);
-      params.emplace_back(toJBoxValue(getCurrentMotherboard()));
+      params.emplace_back(toJBoxValue());
       lua_pop(L, 1);
     }
   }
 
-  pushJBoxValue(getCurrentMotherboard(),
-                iReadOnly ?
+  pushJBoxValue(iReadOnly ?
                 getCurrentMotherboard()->makeNativeObjectRO(operation, params) :
                 getCurrentMotherboard()->makeNativeObjectRW(operation, params));
 
@@ -228,7 +227,7 @@ int RealtimeController::luaMakeNativeObject(bool iReadOnly)
 //------------------------------------------------------------------------
 int RealtimeController::luaMakeNil()
 {
-  pushJBoxValue(getCurrentMotherboard(), getCurrentMotherboard()->makeNil());
+  pushJBoxValue(getCurrentMotherboard()->makeNil());
   return 1;
 }
 
@@ -238,7 +237,7 @@ int RealtimeController::luaMakeNil()
 int RealtimeController::luaIsNativeObject()
 {
   RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.is_native_object() expects 1 argument");
-  auto type = toJBoxValue(getCurrentMotherboard())->getValueType();
+  auto type = toJBoxValue()->getValueType();
   lua_pushboolean(L, type == kJBox_NativeObject || type == kJBox_Nil);
   return 1;
 }
@@ -249,7 +248,7 @@ int RealtimeController::luaIsNativeObject()
 int RealtimeController::luaIsBlob()
 {
   RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.is_blob() expects 1 argument");
-  auto type = toJBoxValue(getCurrentMotherboard())->getValueType();
+  auto type = toJBoxValue()->getValueType();
   lua_pushboolean(L, type == kJBox_BLOB || type == kJBox_Nil);
   return 1;
 }
@@ -260,7 +259,7 @@ int RealtimeController::luaIsBlob()
 int RealtimeController::luaLoadBlobAsync()
 {
   luaL_checktype(L, 1, LUA_TSTRING);
-  pushJBoxValue(getCurrentMotherboard(), getCurrentMotherboard()->loadBlobAsync(lua_tostring(L, 1)));
+  pushJBoxValue(getCurrentMotherboard()->loadBlobAsync(lua_tostring(L, 1)));
   return 1;
 }
 
@@ -270,13 +269,13 @@ int RealtimeController::luaLoadBlobAsync()
 int RealtimeController::luaGetBlobInfo()
 {
   RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.get_blob_info() expects 1 argument");
-  auto blobValue = toJBoxValue(getCurrentMotherboard());
+  auto blobValue = toJBoxValue();
   lua_newtable(L);
   if(blobValue->getValueType() == kJBox_Nil)
     L.setTableValue("state", 0);
   else
   {
-    auto info = getCurrentMotherboard()->getBLOBInfo(blobValue);
+    auto info = getCurrentMotherboard()->getBLOBInfo(*blobValue);
     L.setTableValue("size", info.fSize);
     L.setTableValue("resident_size", info.fResidentSize);
     L.setTableValue("state", info.fResidentSize == info.fSize ? 2 : 1);
@@ -299,12 +298,12 @@ Motherboard *RealtimeController::getCurrentMotherboard() const
 void RealtimeController::invokeBinding(Motherboard *iMotherboard,
                                        std::string const &iBindingName,
                                        std::string const &iSourcePropertyPath,
-                                       JboxValue const &iNewValue)
+                                       std::shared_ptr<const JboxValue> const &iNewValue)
 {
   fMotherboard = iMotherboard;
   putBindingOnTopOfStack(iBindingName);
   lua_pushstring(L, iSourcePropertyPath.c_str());
-  pushJBoxValue(fMotherboard, iNewValue);
+  pushJBoxValue(iNewValue);
   auto const res = lua_pcall(L, 2, 0, 0);
   if(res != LUA_OK)
   {
@@ -313,7 +312,7 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
     RE_MOCK_ASSERT(res == LUA_OK, "Error executing binding %s(%s, %s) | %s",
                    iBindingName.c_str(),
                    iSourcePropertyPath.c_str(),
-                   fMotherboard->toString(iNewValue).c_str(),
+                   fMotherboard->toString(*iNewValue).c_str(),
                    errorMsg.c_str());
   }
   fMotherboard = nullptr;
@@ -391,32 +390,32 @@ void RealtimeController::putBindingOnTopOfStack(std::string const &iBindingName)
 //------------------------------------------------------------------------
 // RealtimeController::toJBoxValue
 //------------------------------------------------------------------------
-JboxValue RealtimeController::toJBoxValue(Motherboard *iMotherboard, int idx)
+std::shared_ptr<const JboxValue> RealtimeController::toJBoxValue(int idx)
 {
   int t = lua_type(L, idx);
   switch(t)
   {
     case LUA_TBOOLEAN:
-      return iMotherboard->makeBoolean(lua_toboolean(L, idx));
+      return getCurrentMotherboard()->makeBoolean(lua_toboolean(L, idx));
 
     case LUA_TNUMBER:
-      return iMotherboard->makeNumber(lua_tonumber(L, idx));
+      return getCurrentMotherboard()->makeNumber(lua_tonumber(L, idx));
 
     case LUA_TSTRING:
-      return iMotherboard->makeString(lua_tostring(L, idx));
+      return getCurrentMotherboard()->makeString(lua_tostring(L, idx));
 
     case LUA_TUSERDATA:
       return fJboxValues.get(*reinterpret_cast<int *>(lua_touserdata(L, idx)));
 
     default:  /* other values */
-      return iMotherboard->makeNil();
+      return getCurrentMotherboard()->makeNil();
   }
 }
 
 //------------------------------------------------------------------------
 // RealtimeController::pushJBoxValue
 //------------------------------------------------------------------------
-void RealtimeController::pushJBoxValue(Motherboard *iMotherboard, JboxValue iJBoxValue)
+void RealtimeController::pushJBoxValue(std::shared_ptr<const JboxValue> iJBoxValue)
 {
   switch(iJBoxValue->getValueType())
   {
@@ -434,8 +433,7 @@ void RealtimeController::pushJBoxValue(Motherboard *iMotherboard, JboxValue iJBo
 
     case kJBox_String:
     {
-      auto const *v = iJBoxValue.get(); // for some reason the compiler is not with iJBoxValue->getString()
-      lua_pushstring(L, v->getString().fValue.c_str());
+      lua_pushstring(L, iJBoxValue->getString().fValue.c_str());
       break;
     }
 
