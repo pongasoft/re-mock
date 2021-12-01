@@ -63,3 +63,16 @@ custom_properties = jbox.property_set {
     properties = rtOwnerProperties
   }
 }
+
+user_samples = {
+  -- Each sample are available from the lua code as /user_samples/0, /user_samples/1 etc
+  jbox.user_sample{
+    ui_name = jbox.ui_text("user_samples_sample_0"),
+    sample_parameters = { "root_key", "tune_cents", "play_range_start", "play_range_end", "loop_range_start", "loop_range_end", "loop_mode", "preview_volume_level" }
+  },
+
+  jbox.user_sample{
+    ui_name = jbox.ui_text("user_samples_sample_1"),
+    sample_parameters = { "preview_volume_level" }
+  }
+}

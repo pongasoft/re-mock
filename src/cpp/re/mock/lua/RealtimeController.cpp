@@ -64,7 +64,7 @@ static int lua_make_empty_native_object(lua_State *L)
 
 static int lua_make_empty_blob(lua_State *L)
 {
-  return RealtimeController::loadFromRegistry(L)->luaMakeNil();
+  return RealtimeController::loadFromRegistry(L)->luaMakeEmptyBlob();
 }
 
 static int lua_load_blob_async(lua_State *L)
@@ -77,6 +77,31 @@ static int lua_get_blob_info(lua_State *L)
   return RealtimeController::loadFromRegistry(L)->luaGetBlobInfo();
 }
 
+static int lua_is_sample(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaIsSample();
+}
+
+static int lua_make_empty_sample(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaMakeEmptySample();
+}
+
+static int lua_get_sample_meta_data(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaGetSampleMetaData();
+}
+
+static int lua_get_sample_info(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaGetSampleInfo();
+}
+
+static int lua_load_sample_async(lua_State *L)
+{
+  return RealtimeController::loadFromRegistry(L)->luaLoadSampleAsync();
+}
+
 static int lua_trace(lua_State *L)
 {
   return RealtimeController::loadFromRegistry(L)->luaTrace();
@@ -86,14 +111,6 @@ static int lua_trace(lua_State *L)
 
 namespace re::mock::lua {
 
-/*
-load_sample_async
-is_sample
-get_sample_info
-get_sample_meta_data
-make_empty_sample
- */
-
 //------------------------------------------------------------------------
 // RealtimeController::RealtimeController
 //------------------------------------------------------------------------
@@ -101,12 +118,17 @@ RealtimeController::RealtimeController()
 {
   static const struct luaL_Reg jboxLib[] = {
     {"get_blob_info",            lua_get_blob_info},
+    {"get_sample_info",          lua_get_sample_info},
+    {"get_sample_meta_data",     lua_get_sample_meta_data},
     {"is_blob",                  lua_is_blob},
     {"is_native_object",         lua_is_native_object},
+    {"is_sample",                lua_is_sample},
     {"load_blob_async",          lua_load_blob_async},
     {"load_property",            lua_load_property},
+    {"load_sample_async",        lua_load_sample_async},
     {"make_empty_blob",          lua_make_empty_blob},
     {"make_empty_native_object", lua_make_empty_native_object},
+    {"make_empty_sample",        lua_make_empty_sample},
     {"make_native_object_rw",    lua_make_native_object_rw},
     {"make_native_object_ro",    lua_make_native_object_ro},
     {"store_property",           lua_store_property},
@@ -171,7 +193,10 @@ int RealtimeController::luaTrace()
 int RealtimeController::luaLoadProperty()
 {
   luaL_checktype(L, 1, LUA_TSTRING);
-  auto value = getCurrentMotherboard()->getJboxValue(lua_tostring(L, 1));
+  auto const propertyPath = lua_tostring(L, 1);
+  RE_MOCK_ASSERT(fBindingSourcePropertyPath == std::string(propertyPath),
+                 "Load property '%s' failed. Can only read this property in rtc_bindings function with this property as source.", propertyPath);
+  auto value = getCurrentMotherboard()->getJboxValue(propertyPath);
   pushJBoxValue(value);
   return 1;
 }
@@ -243,13 +268,22 @@ int RealtimeController::luaIsNativeObject()
 }
 
 //------------------------------------------------------------------------
+// RealtimeController::luaMakeEmptyBlob
+//------------------------------------------------------------------------
+int RealtimeController::luaMakeEmptyBlob()
+{
+  pushJBoxValue(getCurrentMotherboard()->makeEmptyBlob());
+  return 1;
+}
+
+//------------------------------------------------------------------------
 // RealtimeController::luaIsBlob
 //------------------------------------------------------------------------
 int RealtimeController::luaIsBlob()
 {
   RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.is_blob() expects 1 argument");
   auto type = toJBoxValue()->getValueType();
-  lua_pushboolean(L, type == kJBox_BLOB || type == kJBox_Nil);
+  lua_pushboolean(L, type == kJBox_BLOB);
   return 1;
 }
 
@@ -276,9 +310,95 @@ int RealtimeController::luaGetBlobInfo()
   else
   {
     auto info = getCurrentMotherboard()->getBLOBInfo(*blobValue);
-    L.setTableValue("size", info.fSize);
-    L.setTableValue("resident_size", info.fResidentSize);
-    L.setTableValue("state", info.fResidentSize == info.fSize ? 2 : 1);
+    L.setTableValue("size", info.getSize());
+    L.setTableValue("resident_size", info.getResidentSize());
+    L.setTableValue("state", info.fLoadingContext.getStatusAsInt());
+  }
+  return 1;
+}
+
+//------------------------------------------------------------------------
+// RealtimeController::luaIsSample
+//------------------------------------------------------------------------
+int RealtimeController::luaIsSample()
+{
+  RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.is_sample() expects 1 argument");
+  auto type = toJBoxValue()->getValueType();
+  lua_pushboolean(L, type == kJBox_Sample);
+  return 1;
+}
+
+//------------------------------------------------------------------------
+// RealtimeController::luaMakeEmptySample
+//------------------------------------------------------------------------
+int RealtimeController::luaMakeEmptySample()
+{
+  pushJBoxValue(getCurrentMotherboard()->makeEmptySample());
+  return 1;
+}
+
+//------------------------------------------------------------------------
+// RealtimeController::luaLoadSampleAsync
+//------------------------------------------------------------------------
+int RealtimeController::luaLoadSampleAsync()
+{
+  luaL_checktype(L, 1, LUA_TSTRING);
+  pushJBoxValue(getCurrentMotherboard()->loadSampleAsync(lua_tostring(L, 1)));
+  return 1;
+}
+
+//------------------------------------------------------------------------
+// RealtimeController::luaGetSampleMetaData
+//------------------------------------------------------------------------
+int RealtimeController::luaGetSampleInfo()
+{
+  RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.get_sample_info() expects 1 argument");
+  auto sampleValue = toJBoxValue();
+  lua_newtable(L);
+  if(sampleValue->getValueType() == kJBox_Nil)
+    L.setTableValue("state", 0);
+  else
+  {
+    auto metadata = getCurrentMotherboard()->getSampleMetadata(*sampleValue);
+    auto &md = metadata.fMain;
+    L.setTableValue("state", metadata.fLoadingContext.getStatusAsInt());
+    L.setTableValue("frame_count", md.fSpec.fFrameCount);
+    L.setTableValue("resident_count", md.fResidentFrameCount);
+    L.setTableValue("channels", md.fSpec.fChannels);
+    L.setTableValue("sample_rate", md.fSpec.fSampleRate);
+  }
+  return 1;
+}
+
+//------------------------------------------------------------------------
+// RealtimeController::luaGetSampleMetaData
+//------------------------------------------------------------------------
+int RealtimeController::luaGetSampleMetaData()
+{
+  RE_MOCK_ASSERT(lua_gettop(L) == 1, "jbox.get_sample_metadata() expects 1 argument");
+  auto sampleValue = toJBoxValue();
+  lua_newtable(L);
+  if(sampleValue->getValueType() == kJBox_Nil)
+    L.setTableValue("load_status", "nil");
+  else
+  {
+    auto metadata = getCurrentMotherboard()->getSampleMetadata(*sampleValue);
+    auto &md = metadata.fMain;
+    L.setTableValue("load_status", metadata.fLoadingContext.getStatusAsString());
+    L.setTableValue("frame_count", md.fSpec.fFrameCount);
+    L.setTableValue("resident_frame_count", md.fResidentFrameCount);
+    L.setTableValue("channels", md.fSpec.fChannels);
+    L.setTableValue("sample_rate", md.fSpec.fSampleRate);
+
+    auto &params = metadata.fMain.fParameters;
+    L.setTableValue("root_key", params.fRootNote);
+    L.setTableValue("tune_cents", params.fTuneCents);
+    L.setTableValue("play_range_start", params.fPlayRangeStart);
+    L.setTableValue("play_range_end", params.fPlayRangeEnd);
+    L.setTableValue("loop_range_start", params.fLoopRangeStart);
+    L.setTableValue("loop_range_end", params.fLoopRangeEnd);
+    L.setTableValue("preview_volume_level", params.fVolumeLevel);
+    L.setTableValue("loop_mode", metadata.getLoopModeAsString());
   }
   return 1;
 }
@@ -300,7 +420,9 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
                                        std::string const &iSourcePropertyPath,
                                        std::shared_ptr<const JboxValue> const &iNewValue)
 {
+  RE_MOCK_ASSERT(fMotherboard == nullptr, "calling binding from a binding");
   fMotherboard = iMotherboard;
+  fBindingSourcePropertyPath = iSourcePropertyPath;
   putBindingOnTopOfStack(iBindingName);
   lua_pushstring(L, iSourcePropertyPath.c_str());
   pushJBoxValue(iNewValue);
@@ -316,6 +438,7 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
                    errorMsg.c_str());
   }
   fMotherboard = nullptr;
+  fBindingSourcePropertyPath = "";
   fJboxValues.reset();
 }
 

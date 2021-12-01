@@ -132,6 +132,13 @@ inline std::string join_to_string(Container const &iContainer, std::string iSepa
   return os.str();
 }
 
+inline bool starts_with(std::string const &s, std::string const &iPrefix)
+{
+  if(s.size() < iPrefix.size())
+    return false;
+  return s.substr(0, iPrefix.size()) == iPrefix;
+}
+
 namespace impl {
 template <class... Args>
 struct variant_cast_proxy

@@ -42,6 +42,7 @@ custom_properties = jbox.property_set {
   rtc_owner = { properties = rtc_owner_properties },
   rt_owner = { properties = rt_owner_properties }
 }
+user_samples = {}
 )"};
 }
 
@@ -170,6 +171,13 @@ inline void property_tag(int iPropertyTag, std::vector<std::string> &oArgs)
     arg("property_tag", "%d", iPropertyTag, oArgs);
 }
 
+//! Optionally add the persistence argument
+inline void persistence(std::optional<lua::EPersistence> iPersistence, std::vector<std::string> &oArgs)
+{
+  if(iPersistence && *iPersistence != lua::EPersistence::kNone)
+    arg("persistence", "\"%s\"", *iPersistence == lua::EPersistence::kPatch ? "patch" : "song", oArgs);
+}
+
 //! Transform the vector into a string properly separated with commas (none if 1 element, etc...)
 inline std::string to_args(std::vector<std::string> const &iArgs) { return stl::join_to_string(iArgs); }
 
@@ -180,6 +188,15 @@ inline ConfigString custom_property(std::string const &iPropertyType,
                                     std::vector<std::string> const &iArgs)
 {
   return { fmt::printf(R"(%s["%s"] = jbox.%s{ %s })", iPropertyType, iPropertyName, iJboxType, to_args(iArgs)) };
+}
+
+//! Generates the custom property string with the proper arguments
+inline ConfigString custom_property(std::string const &iPropertyType,
+                                    int iPropertyIndex,
+                                    char const *iJboxType,
+                                    std::vector<std::string> const &iArgs)
+{
+  return { fmt::printf(R"(%s[%d] = jbox.%s{ %s })", iPropertyType, iPropertyIndex, iJboxType, to_args(iArgs)) };
 }
 
 //! custom_property for lua::jbox_boolean_property
@@ -230,6 +247,18 @@ inline ConfigString custom_property(std::string const &iPropertyType,
     arg("default", "\"%s\"", *iProperty.fDefaultValue, args);
   property_tag(iProperty.fPropertyTag, args);
   return custom_property(iPropertyType, iPropertyName, "blob", args);
+}
+
+//! custom_property for lua::jbox_sample_property
+inline ConfigString custom_property(std::string const &iPropertyType,
+                                    std::string const &iPropertyName,
+                                    lua::jbox_sample_property const &iProperty)
+{
+  std::vector<std::string> args{};
+  if(iProperty.fDefaultValue)
+    arg("default", "\"%s\"", *iProperty.fDefaultValue, args);
+  property_tag(iProperty.fPropertyTag, args);
+  return custom_property(iPropertyType, iPropertyName, "sample", args);
 }
 
 }
@@ -283,6 +312,44 @@ ConfigString Config::document_owner_property(std::string const &iPropertyName, l
 }
 
 //------------------------------------------------------------------------
+// Config::user_sample
+//------------------------------------------------------------------------
+ConfigString Config::user_sample(std::string const &iSampleName, lua::jbox_user_sample_property const &iProperty)
+{
+  RE_MOCK_ASSERT(iProperty.fName == std::nullopt || *iProperty.fName == iSampleName,
+                 "name mismatch");
+  std::vector<std::string> args{};
+  if(!iProperty.fSampleParameters.empty())
+  {
+    std::vector<std::string> params{};
+    for(auto &p: iProperty.fSampleParameters)
+      params.emplace_back(fmt::printf("\"%s\"", p));
+    impl::arg("sample_parameters", "{%s}", stl::join_to_string(params), args);
+  }
+  impl::persistence(iProperty.fPersistence, args);
+  return impl::custom_property("user_samples", iSampleName, "user_sample", args);
+}
+
+//------------------------------------------------------------------------
+// Config::user_sample
+//------------------------------------------------------------------------
+ConfigString Config::user_sample(int iSampleIndex, lua::jbox_user_sample_property const &iProperty)
+{
+  RE_MOCK_ASSERT(iProperty.fName == std::nullopt, "no name should be defined when using this api");
+  std::vector<std::string> args{};
+  if(!iProperty.fSampleParameters.empty())
+  {
+    std::vector<std::string> params{};
+    for(auto &p: iProperty.fSampleParameters)
+      params.emplace_back(fmt::printf("\"%s\"", p));
+    impl::arg("sample_parameters", "{%s}", stl::join_to_string(params), args);
+  }
+  impl::persistence(iProperty.fPersistence, args);
+  return impl::custom_property("user_samples", iSampleIndex + 1, "user_sample", args);
+}
+
+
+//------------------------------------------------------------------------
 // Config::rt_owner_property
 //------------------------------------------------------------------------
 ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
@@ -334,6 +401,14 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
 ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_blob_property const &iProperty)
+{
+  return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
+}
+
+//------------------------------------------------------------------------
+// Config::rtc_owner_property
+//------------------------------------------------------------------------
+ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_sample_property const &iProperty)
 {
   return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
 }
@@ -518,6 +593,29 @@ std::optional<Resource::Blob> Config::findBlobResource(std::string const &iResou
   return std::nullopt;
 }
 
+//------------------------------------------------------------------------
+// Config::findSampleResource
+//------------------------------------------------------------------------
+std::optional<Resource::Sample> Config::findSampleResource(std::string const &iResourcePath) const
+{
+  auto resourceFile = ConfigFile{iResourcePath};
+
+  auto sampleResource = fResources.find(iResourcePath);
+  if(sampleResource != fResources.end())
+  {
+    auto s = std::get<ConfigResource::Sample>(sampleResource->second);
+
+    if(std::holds_alternative<Resource::Sample>(s.fSampleVariant))
+      return std::get<Resource::Sample>(s.fSampleVariant);
+    else
+      resourceFile = std::get<ConfigFile>(s.fSampleVariant);
+  }
+
+  RE_MOCK_ASSERT(false, "Loading file sample not implemented yet (requires libsndfile integration)");
+
+  return std::nullopt;
+}
+
 namespace impl {
 
 //------------------------------------------------------------------------
@@ -585,5 +683,60 @@ Info Info::fromSkeleton(DeviceType iDeviceType)
   Info info{iDeviceType};
   return info;
 }
+
+//------------------------------------------------------------------------
+// Resource::LoadingContext::getStatusAsString
+//------------------------------------------------------------------------
+std::string Resource::LoadingContext::getStatusAsString() const
+{
+  std::string res;
+
+  switch(fStatus)
+  {
+    case LoadStatus::kNil:
+      res = "nil";
+      break;
+    case LoadStatus::kPartiallyResident:
+      res = "partially_resident";
+      break;
+    case LoadStatus::kResident:
+      res = "resident";
+      break;
+    case LoadStatus::kHasErrors:
+      res = "has_errors";
+      break;
+    case LoadStatus::kMissing:
+      res = "missing";
+      break;
+  }
+
+  return res;
+}
+
+//------------------------------------------------------------------------
+// Sample::Metadata::getStateAsInt
+//------------------------------------------------------------------------
+int Resource::LoadingContext::getStatusAsInt() const
+{
+  int res;
+
+  switch(fStatus)
+  {
+    case LoadStatus::kNil:
+    case LoadStatus::kHasErrors:
+    case LoadStatus::kMissing:
+      res = 0;
+      break;
+    case LoadStatus::kPartiallyResident:
+      res = 1;
+      break;
+    case LoadStatus::kResident:
+      res = 2;
+      break;
+  }
+
+  return res;
+}
+
 
 }

@@ -141,7 +141,35 @@ public:
     inline void loadPatch(ConfigFile const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
     inline void loadPatch(ConfigString const &iPatchString) { motherboard().loadPatch(iPatchString); }
 
-    void loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { motherboard().loadMoreBlob(iPropertyPath, iCount); }
+    bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { return motherboard().loadMoreBlob(iPropertyPath, iCount); }
+
+    void loadUserSampleAsync(std::string const &iPropertyPath,
+                             std::string const &iResourcePath,
+                             std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
+      motherboard().loadUserSampleAsync(iPropertyPath, iResourcePath, iCtx);
+    }
+
+    inline void loadUserSampleAsync(int iUserSampleIndex,
+                                    std::string const &iResourcePath,
+                                    std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
+      motherboard().loadUserSampleAsync(iUserSampleIndex, iResourcePath, iCtx);
+    }
+
+    inline void loadCurrentUserSampleAsync(std::string const &iResourcePath,
+                                           std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
+      motherboard().loadCurrentUserSampleAsync(iResourcePath, iCtx);
+    }
+
+    void deleteUserSample(std::string const &iPropertyPath) { motherboard().deleteUserSample(iPropertyPath); }
+
+    inline void deleteUserSample(int iUserSampleIndex) { motherboard().deleteUserSample(iUserSampleIndex); }
+
+    inline void deleteCurrentUserSample() { motherboard().deleteCurrentUserSample(); }
+
+    bool loadMoreSample(std::string const &iPropertyPath, long iFrameCount = -1) { return motherboard().loadMoreSample(iPropertyPath, iFrameCount); }
+
+    void setResourceLoadingContext(std::string const &iResourcePath, Resource::LoadingContext const &iCtx) { motherboard().setResourceLoadingContext(iResourcePath, iCtx); }
+    void clearResourceLoadingContext(std::string const &iResourcePath) { motherboard().clearResourceLoadingContext(iResourcePath); }
 
     template<typename T>
     inline T* getInstance() const { return motherboard().getInstance<T>(); }

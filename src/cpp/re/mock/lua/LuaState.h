@@ -62,6 +62,7 @@ public:
   lua_Unsigned getTableSize(int idx = -1);
 
   void setTableValue(char const *iKey, lua_Number iValue);
+  void setTableValue(char const *iKey, std::string const &iValue);
 
   static std::string getStackString(lua_State *L, char const *iMessage = nullptr);
   static void dumpStack(lua_State *L, char const *iMessage = nullptr, std::ostream &oStream = std::cout);

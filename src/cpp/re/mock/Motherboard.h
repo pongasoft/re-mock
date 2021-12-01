@@ -130,7 +130,35 @@ public: // used by regular code
   void loadPatch(ConfigFile const &iPatchFile);
   inline void loadPatch(ConfigString const &iPatchString) { loadPatch(Patch::from(iPatchString)); }
 
-  void loadMoreBlob(std::string const &iPropertyPath, long iCount = -1);
+  void loadUserSampleAsync(std::string const &iPropertyPath,
+                           std::string const &iResourcePath,
+                           std::optional<Resource::LoadingContext> iCtx = std::nullopt);
+
+  inline void loadUserSampleAsync(int iUserSampleIndex,
+                                  std::string const &iResourcePath,
+                                  std::optional<Resource::LoadingContext> iCtx = std::nullopt)
+  {
+    loadUserSampleAsync(fmt::printf("/user_samples/%d/item", iUserSampleIndex), iResourcePath, iCtx);
+  }
+
+  inline void loadCurrentUserSampleAsync(std::string const &iResourcePath,
+                                         std::optional<Resource::LoadingContext> iCtx = std::nullopt)
+  {
+    loadUserSampleAsync(fUserSamplePropertyPaths[getNum<int>("/device_host/sample_context")], iResourcePath, iCtx);
+  }
+
+  void deleteUserSample(std::string const &iPropertyPath);
+
+  inline void deleteUserSample(int iUserSampleIndex) { deleteUserSample(fmt::printf("/user_samples/%d/item", iUserSampleIndex)); }
+
+  inline void deleteCurrentUserSample() { deleteUserSample(fUserSamplePropertyPaths[getNum<int>("/device_host/sample_context")]); }
+
+  bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1);
+
+  bool loadMoreSample(std::string const &iPropertyPath, long iFrameCount = -1);
+
+  void setResourceLoadingContext(std::string const &iResourcePath, Resource::LoadingContext const &iCtx) { fResourceLoadingContexts[iResourcePath] = iCtx; }
+  void clearResourceLoadingContext(std::string const &iResourcePath) { fResourceLoadingContexts.erase(iResourcePath); }
 
   bool isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) const;
   inline std::string toString(TJBox_Value const &iValue, char const *iFormat = nullptr) const {
@@ -168,9 +196,16 @@ public: // used by Jukebox.cpp (need to be public)
   void outputNoteEvent(TJBox_NoteEvent const &iNoteEvent);
   NoteEvents getNoteOutEvents() const { return fNoteOutEvents; }
   std::unique_ptr<JboxValue> loadBlobAsync(std::string const &iBlobPath);
-  TJBox_BLOBInfo getBLOBInfo(JboxValue const &iValue) const;
-  inline TJBox_BLOBInfo getBLOBInfo(TJBox_Value const &iValue) const { return getBLOBInfo(*from_TJBox_Value(iValue)); }
+  impl::Blob::Info getBLOBInfo(JboxValue const &iValue) const;
+  inline impl::Blob::Info getBLOBInfo(TJBox_Value const &iValue) const { return getBLOBInfo(*from_TJBox_Value(iValue)); }
   void getBLOBData(TJBox_Value const &iValue, TJBox_SizeT iStart, TJBox_SizeT iEnd, TJBox_UInt8 oData[]) const;
+  TJBox_SampleInfo getSampleInfo(JboxValue const &iValue) const;
+  inline TJBox_SampleInfo getSampleInfo(TJBox_Value const &iValue) const { return getSampleInfo(*from_TJBox_Value(iValue)); }
+  impl::Sample::Metadata getSampleMetadata(JboxValue const &iValue) const;
+  inline impl::Sample::Metadata getSampleMetadata(TJBox_Value const &iValue) const { return getSampleMetadata(*from_TJBox_Value(iValue)); }
+  void getSampleData(TJBox_Value iValue, TJBox_AudioFramePos iStartFrame, TJBox_AudioFramePos iEndFrame, TJBox_AudioSample oAudio[]) const;
+
+  std::unique_ptr<JboxValue> loadSampleAsync(std::string const &iSamplePath);
 
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
@@ -188,6 +223,7 @@ protected:
   Motherboard(Config const &iConfig);
 
   void init();
+  void addDeviceHostProperties();
 
   std::shared_ptr<const JboxValue> getJboxValue(std::string const &iPropertyPath) const;
   std::shared_ptr<JboxValue> getJboxValue(std::string const &iPropertyPath);
@@ -208,6 +244,7 @@ protected:
   void addCVInput(std::string const &iSocketName);
   void addCVOutput(std::string const &iSocketName);
   void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, lua::jbox_property const &iProperty);
+  void addUserSample(int iSampleIndex, std::shared_ptr<lua::jbox_user_sample_property> const &iProperty);
   void registerRTCNotify(std::string const &iPropertyPath);
   impl::JboxPropertyDiff registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingName);
   void handlePropertyDiff(impl::JboxPropertyDiff const &iPropertyDiff, bool iWatched);
@@ -219,6 +256,8 @@ protected:
   std::unique_ptr<JboxValue> makeIncompatible() const;
   std::unique_ptr<JboxValue> makeNumber(TJBox_Float64 iValue) const;
   std::unique_ptr<JboxValue> makeBoolean(bool iValue) const;
+  std::unique_ptr<JboxValue> makeEmptySample(TJBox_ObjectRef iSampleItem = 0) const;
+  std::unique_ptr<JboxValue> makeEmptyBlob() const;
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
   std::string getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const;
@@ -238,7 +277,7 @@ protected:
 
   void nextFrame();
 
-  void addPropertyDiff(impl::JboxPropertyDiff const &iDiff);
+  void addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff);
 
   ConfigFile getResourceFile(ConfigFile const &iUnixPath) const;
 
@@ -261,21 +300,25 @@ protected:
 
 protected:
   Config fConfig;
+  std::map<std::string, Resource::LoadingContext> fResourceLoadingContexts{};
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, lua::gui_jbox_property> fGUIProperties{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   TJBox_ObjectRef fEnvironmentRef{};
   TJBox_ObjectRef fNoteStatesRef{};
-  std::vector<impl::JboxPropertyDiff> fCurrentFramePropertyDiffs{};
   mutable std::map<TJBox_UInt64, std::shared_ptr<const JboxValue>> fCurrentValues{};
   std::vector<std::shared_ptr<JboxValue>> fInputDSPBuffers{};
   std::vector<std::shared_ptr<JboxValue>> fOutputDSPBuffers{};
   std::unique_ptr<lua::RealtimeController> fRealtimeController{};
   Realtime fRealtime{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
+  std::vector<impl::JboxPropertyDiff> fRTCNotifyDiffs{};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
+  std::vector<impl::JboxPropertyDiff> fRTCBindingsDiffs{};
+  std::vector<std::string> fUserSamplePropertyPaths{};
   NoteEvents fNoteOutEvents{};
+
 };
 
 //------------------------------------------------------------------------

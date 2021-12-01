@@ -218,6 +218,16 @@ void LuaState::setTableValue(char const *iKey, lua_Number iValue)
 }
 
 //------------------------------------------------------------------------
+// LuaState::setTableValue
+//------------------------------------------------------------------------
+void LuaState::setTableValue(char const *iKey, std::string const &iValue)
+{
+  luaL_checktype(L, -1, LUA_TTABLE);
+  lua_pushstring(L, iValue.c_str());
+  lua_setfield(L, -2, iKey);
+}
+
+//------------------------------------------------------------------------
 // LuaState::runLuaFile
 //------------------------------------------------------------------------
 int LuaState::runLuaFile(std::string const &iFilename)
@@ -245,7 +255,7 @@ int LuaState::runLuaCode(std::string const &iSource)
   {
     std::string errorMsg{lua_tostring(L, -1)};
     lua_pop(L, 1);
-    RE_MOCK_ASSERT(res == LUA_OK, "%s", errorMsg);
+    RE_MOCK_ASSERT(res == LUA_OK, "%s | %s", iSource, errorMsg);
   }
 
   return res;

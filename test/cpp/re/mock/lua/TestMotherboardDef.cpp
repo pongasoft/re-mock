@@ -21,6 +21,7 @@
 #include <gmock/gmock-matchers.h>
 #include <re_mock_build.h>
 #include <Jukebox.h>
+#include <string>
 
 namespace re::mock::lua::Test {
 
@@ -189,6 +190,23 @@ TEST(MotherboardDef, All)
     ASSERT_EQ(ptr->fPropertyTag, 0);
     ASSERT_EQ(ptr->fMaxSize, 100);
     ASSERT_EQ(ptr->fDefaultValue, "");
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+  }
+
+  // user_samples
+  ASSERT_EQ(2, customProperties->user_samples.size());
+  {
+    auto ptr = customProperties->user_samples[0];
+    ASSERT_EQ(ptr->fName, std::nullopt);
+    ASSERT_EQ(ptr->fSampleParameters, std::set<std::string>(
+      {"root_key", "tune_cents", "play_range_start", "play_range_end", "loop_range_start", "loop_range_end",
+       "loop_mode", "preview_volume_level"}));
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+  }
+  {
+    auto ptr = customProperties->user_samples[1];
+    ASSERT_EQ(ptr->fName, std::nullopt);
+    ASSERT_EQ(ptr->fSampleParameters, std::set<std::string>({"preview_volume_level"}));
     ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
   }
 

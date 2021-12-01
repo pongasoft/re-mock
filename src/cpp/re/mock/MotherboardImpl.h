@@ -30,6 +30,7 @@ namespace impl {
 struct String;
 struct NativeObject;
 struct Blob;
+struct Sample;
 constexpr static size_t DSP_BUFFER_SIZE = 64;
 using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
 }
@@ -48,6 +49,7 @@ public:
   impl::String const &getString() const { return *std::get<std::unique_ptr<impl::String>>(fMotherboardValue); }
   impl::NativeObject const &getNativeObject() const { return *std::get<std::unique_ptr<impl::NativeObject>>(fMotherboardValue); }
   impl::Blob const &getBlob() const { return *std::get<std::unique_ptr<impl::Blob>>(fMotherboardValue); }
+  impl::Sample const &getSample() const { return *std::get<std::unique_ptr<impl::Sample>>(fMotherboardValue); }
   impl::DSPBuffer const &getDSPBuffer() const { return *std::get<std::unique_ptr<impl::DSPBuffer>>(fMotherboardValue); }
 
 private:
@@ -62,12 +64,14 @@ private:
     std::unique_ptr<impl::String>,
     std::unique_ptr<impl::NativeObject>,
     std::unique_ptr<impl::Blob>,
+    std::unique_ptr<impl::Sample>,
     std::unique_ptr<impl::DSPBuffer>
   >;
 
 private:
   impl::DSPBuffer &getDSPBuffer() { return *std::get<std::unique_ptr<impl::DSPBuffer>>(fMotherboardValue); }
   impl::Blob &getBlob() { return *std::get<std::unique_ptr<impl::Blob>>(fMotherboardValue); }
+  impl::Sample &getSample() { return *std::get<std::unique_ptr<impl::Sample>>(fMotherboardValue); }
   impl::String &getString() { return *std::get<std::unique_ptr<impl::String>>(fMotherboardValue); }
 
 private:
@@ -160,6 +164,7 @@ struct JboxObject
   impl::JboxPropertyDiff storeValue(TJBox_Tag iPropertyTag, std::shared_ptr<JboxValue> iValue);
   std::vector<impl::JboxPropertyDiff> watchAllPropertiesForChange();
   impl::JboxPropertyDiff watchPropertyForChange(std::string const &iPropertyName);
+  bool hasProperty(TJBox_Tag iPropertyTag) const;
 
   const std::string fObjectPath;
   const TJBox_ObjectRef fObjectRef;
@@ -211,10 +216,47 @@ struct String
   inline bool isRTString() const { return fMaxSize > 0; }
 };
 
+
 struct Blob
 {
-  TJBox_SizeT fResidentSize{};
+  struct Info
+  {
+    TJBox_SizeT fSize{};
+    Resource::LoadingContext fLoadingContext{};
+
+    TJBox_SizeT getSize() const { return fLoadingContext.isLoadOk() ? fSize : 0; }
+    TJBox_SizeT getResidentSize() const { return fLoadingContext.fResidentSize; }
+
+    TJBox_BLOBInfo to_TJBox_BLOBInfo() const;
+  };
+
+  TJBox_SizeT getSize() const { return fLoadingContext.isLoadOk() ? fData.size() : 0; }
+  TJBox_SizeT getResidentSize() const { return fLoadingContext.fResidentSize; }
+
   std::vector<char> fData{};
+  Resource::LoadingContext fLoadingContext{};
+};
+
+struct Sample
+{
+  struct Metadata
+  {
+    TJBox_SampleMetaData fMain;
+    Resource::LoadingContext fLoadingContext{};
+
+    std::string getLoopModeAsString() const;
+  };
+
+  TJBox_SampleInfo getSampleInfo() const;
+
+  TJBox_AudioFramePos getFrameCount() const { return fLoadingContext.isLoadOk() ? fData.size() / fChannels : 0; }
+  TJBox_AudioFramePos getResidentFrameCount() const { return fLoadingContext.fResidentSize; }
+
+  TJBox_UInt32 fChannels{1};
+  TJBox_UInt32 fSampleRate{1};
+  std::vector<TJBox_AudioSample> fData{};
+  Resource::LoadingContext fLoadingContext{};
+  TJBox_ObjectRef fSampleItem{};
 };
 
 }

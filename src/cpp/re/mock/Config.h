@@ -94,12 +94,38 @@ struct Info
   static Info from_file(std::string iFile) { return from(ConfigFile{iFile}); }
 };
 
+enum class LoadStatus { kNil, kPartiallyResident, kResident, kHasErrors, kMissing };
+
+inline bool isLoadStatusOk(LoadStatus s) { return s == LoadStatus::kResident || s == LoadStatus::kPartiallyResident; }
 
 struct Resource
 {
+  struct LoadingContext
+  {
+    LoadStatus fStatus{LoadStatus::kNil};
+    size_t fResidentSize{};
+
+    bool isLoadOk() const { return isLoadStatusOk(fStatus); }
+    std::string getStatusAsString() const;
+    int getStatusAsInt() const;
+
+    LoadingContext &resident_size(size_t s) { fResidentSize = s; return *this; }
+    LoadingContext &status(LoadStatus l) { fStatus = l; return *this; }
+  };
+
   struct Patch { ConfigSource fXMLSource{}; };
   struct Blob { std::vector<char> fData{}; };
-  struct Sample { };
+
+  struct Sample
+  {
+    TJBox_UInt32 fChannels{1};
+    TJBox_UInt32 fSampleRate{1};
+    std::vector<TJBox_AudioSample> fData{};
+
+    Sample &channels(TJBox_UInt32 c) { fChannels = c; return *this; }
+    Sample &sample_rate(TJBox_UInt32 s) { fSampleRate = s; return *this; }
+    Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
+  };
 };
 
 struct Config
@@ -117,12 +143,17 @@ struct Config
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
   static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
+
+  static ConfigString user_sample(std::string const &iSampleName, lua::jbox_user_sample_property const &iProperty);
+  static ConfigString user_sample(int iSampleIndex, lua::jbox_user_sample_property const &iProperty);
+
   // TODO add performance properties
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_blob_property const &iProperty);
+  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_sample_property const &iProperty);
   static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
   static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
@@ -197,6 +228,11 @@ struct Config
   Config& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fResources[iResourcePath] = ConfigResource::Blob{ConfigFile{iBlobFile}}; return *this; }
   Config& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fResources[iResourcePath] = ConfigResource::Blob{Resource::Blob{std::move(iBlobData)}}; return *this; }
 
+  Config& sample_file(std::string iResourcePath, std::string const &iSampleFile) { fResources[iResourcePath] = ConfigResource::Sample{ConfigFile{iSampleFile}}; return *this; }
+  Config& sample_data(std::string iResourcePath, Resource::Sample iSample) { fResources[iResourcePath] = ConfigResource::Sample{std::move(iSample)}; return *this; }
+
+  Config& resource_loading_context(std::string iResourcePath, Resource::LoadingContext iCtx) { fResourceLoadingContexts[iResourcePath] = std::move(iCtx); return *this; }
+
   /**
    * Returns the resource relative to `device_resources_dir()` (if device_resources_dir exists).
    *
@@ -216,7 +252,6 @@ struct Config
   static ConfigString skeletonMotherboardDef();
   static ConfigString skeletonRealtimeController();
 
-
 protected:
   struct ConfigResource
   {
@@ -235,6 +270,7 @@ protected:
   std::vector<ConfigSource> fRealtimeControllers{};
   rt_callback_t fRealtime{};
   std::map<std::string, AnyConfigResource> fResources{};
+  std::map<std::string, Resource::LoadingContext> fResourceLoadingContexts{};
 };
 
 template<typename T>
@@ -286,6 +322,11 @@ struct DeviceConfig
 
   DeviceConfig& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fConfig.blob_file(iResourcePath, iBlobFile); return *this; }
   DeviceConfig& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fConfig.blob_data(iResourcePath, iBlobData); return *this; }
+
+  DeviceConfig& sample_file(std::string iResourcePath, std::string const &iSampleFile) { fConfig.sample_file(iResourcePath, iSampleFile); return *this; }
+  DeviceConfig& sample_data(std::string iResourcePath, Resource::Sample iSample) { fConfig.sample_data(iResourcePath, std::move(iSample)); return *this; }
+
+  DeviceConfig& resource_loading_context(std::string iResourcePath, Resource::LoadingContext iCtx) { fConfig.resource_loading_context(iResourcePath, iCtx); return *this; }
 
   static DeviceConfig fromJBoxExport(std::string const &iDeviceRootFolder,
                                      std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());

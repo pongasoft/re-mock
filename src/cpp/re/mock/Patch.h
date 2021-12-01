@@ -27,6 +27,7 @@ namespace re::mock {
 struct patch_boolean_property { bool fValue{}; };
 struct patch_number_property { TJBox_Float64 fValue{}; };
 struct patch_string_property { std::string fValue{}; };
+struct patch_sample_property { int fValue{}; };
 
 class Patch
 {
@@ -34,15 +35,17 @@ public:
   using patch_property_type = std::variant<
     patch_boolean_property,
     patch_number_property,
-    patch_string_property
+    patch_string_property,
+    patch_sample_property
   >;
 
   static Patch from(ConfigFile iPatchFile);
   static Patch from(ConfigString iPatchString);
 
-  Patch &value(std::string iName, bool iValue) { fProperties[iName] = patch_boolean_property { iValue }; return *this; };
-  Patch &value(std::string iName, TJBox_Float64 iValue) { fProperties[iName] = patch_number_property { iValue }; return *this; };
-  Patch &value(std::string iName, std::string const &iValue) { fProperties[iName] = patch_string_property { iValue }; return *this; };
+  Patch &boolean(std::string iName, bool iValue) { fProperties[iName] = patch_boolean_property { iValue }; return *this; };
+  Patch &number(std::string iName, TJBox_Float64 iValue) { fProperties[iName] = patch_number_property { iValue }; return *this; };
+  Patch &string(std::string iName, std::string const &iValue) { fProperties[iName] = patch_string_property { iValue }; return *this; };
+  Patch &sample(std::string iName, int iValue) { fProperties[iName] = patch_sample_property { iValue }; return *this; };
 
 public:
   std::map<std::string, patch_property_type> fProperties{};

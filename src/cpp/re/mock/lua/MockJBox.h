@@ -23,11 +23,15 @@
 #include "LuaState.h"
 #include <JukeboxTypes.h>
 #include <string>
+#include <functional>
+#include <variant>
 
 namespace re::mock::lua {
 
 class MockJBox
 {
+public:
+  using lua_table_key_t = std::variant<std::string, int>;
 public:
   MockJBox();
 
@@ -37,6 +41,15 @@ public:
 
   int loadFile(std::string const &iLuaFilename);
   int loadString(std::string const &iLuaCode);
+
+  /**
+   * Iterate over every entry in the map on top of the stack. For each entry, the entry handler is called
+   * with the key (which may be a `std::string` or `int`) and it should handle the value which is on top of the
+   * stack and MUST pop it
+   *
+   * @note it is safe to call this method with NIL on top of the stack
+   * @note this method pops the table itself (or NIL if NIL was on top of the stack) from the stack */
+  void iterateLuaTable(std::function<void(lua_table_key_t)> iEntryHandler);
 
 protected:
   static MockJBox *loadFromRegistry(lua_State *L);

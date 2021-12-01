@@ -197,12 +197,12 @@ void *JBox_GetNativeObjectRW(TJBox_Value iValue)
 
 TJBox_SampleInfo JBox_GetSampleInfo(TJBox_Value iValue)
 {
-  throw re::mock::Exception("JBox_GetSampleInfo: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getSampleInfo(iValue);
 }
 
 TJBox_SampleMetaData JBox_GetSampleMetaData(TJBox_Value iValue)
 {
-  throw re::mock::Exception("JBox_GetSampleMetaData: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getSampleMetadata(iValue).fMain;
 }
 
 void JBox_GetSampleData(
@@ -211,12 +211,12 @@ void JBox_GetSampleData(
   TJBox_AudioFramePos iEndFrame,
   TJBox_AudioSample oAudio[])
 {
-  throw re::mock::Exception("JBox_GetSampleData: Not implemented yet");
+  return re::mock::Rack::currentMotherboard().getSampleData(iValue, iStartFrame, iEndFrame, oAudio);
 }
 
 TJBox_BLOBInfo JBox_GetBLOBInfo(TJBox_Value iValue)
 {
-  return re::mock::Rack::currentMotherboard().getBLOBInfo(iValue);
+  return re::mock::Rack::currentMotherboard().getBLOBInfo(iValue).to_TJBox_BLOBInfo();
 }
 
 void JBox_GetBLOBData(

@@ -18,6 +18,7 @@
 
 #include <re/mock/Rack.h>
 #include <re/mock/MockDevices.h>
+#include <re/mock/MockJukebox.h>
 #include <re/mock/stl.h>
 #include <re_mock_build.h>
 #include <gtest/gtest.h>
@@ -242,9 +243,22 @@ end
   ASSERT_FLOAT_EQ(112.0, re.getCVSocketValue("/cv_outputs/C"));
 }
 
+std::vector<char> to_chars(std::string s)
+{
+  std::vector<char> res{};
+  std::copy(s.begin(), s.end(), std::back_inserter(res));
+  return res;
+}
 
-// RackExtension.RealtimeController
-TEST(RackExtension, RealtimeController)
+std::vector<TJBox_UInt8> to_TJBox_UInt8_vector(std::string s)
+{
+  std::vector<TJBox_UInt8> res{};
+  std::copy(s.begin(), s.end(), std::back_inserter(res));
+  return res;
+}
+
+// RackExtension.RealtimeController_NativeObject
+TEST(RackExtension, RealtimeController_NativeObject)
 {
   ASSERT_EQ(0, Gain::fCount);
 
@@ -286,59 +300,19 @@ TEST(RackExtension, RealtimeController)
               break;
           }
         }
-
-        // clear the data first
-        std::fill(std::begin(fBlobData), std::end(fBlobData), 0);
-
-        // prop_blob_default is loaded with default value
-        fDefaultBlobInfo = JBox_GetBLOBInfo(JBox_LoadMOMPropertyByTag(JBox_GetMotherboardObjectRef("/custom_properties"), 4000));
-
-        auto blobValue = JBox_LoadMOMPropertyByTag(JBox_GetMotherboardObjectRef("/custom_properties"), 5000);
-        if(JBox_GetType(blobValue) == kJBox_Nil)
-        {
-          fBlobInfo = std::nullopt;
-        }
-        else
-        {
-          fBlobInfo = JBox_GetBLOBInfo(blobValue);
-
-          if(fPropFunction == "load_blob_data")
-          {
-            JBox_GetBLOBData(blobValue, 0, std::min(fBlobInfo->fResidentSize, 10UL), fBlobData);
-          }
-
-          if(fPropFunction == "load_blob_file")
-          {
-            if(fBlobInfo->fResidentSize < 1100)
-              JBox_GetBLOBData(blobValue, 0, std::min(fBlobInfo->fResidentSize, 10UL), fBlobData);
-            else
-              JBox_GetBLOBData(blobValue, 1000, 1010, fBlobData);
-          }
-        }
       }
 
       std::string fPropFunction{};
       std::optional<TJBox_Float64> fVolume{};
-      TJBox_BLOBInfo fDefaultBlobInfo{};
-      std::optional<TJBox_BLOBInfo> fBlobInfo{};
-      TJBox_UInt8 fBlobData[10];
     };
-
-    std::vector<char> blobData{'A', 'L', '\0', 'z'};
 
     auto c = DeviceConfig<Device>::fromSkeleton()
       .mdef(Config::document_owner_property("prop_function", lua::jbox_string_property{}.default_value("noop").property_tag(2000)))
       .mdef(Config::rtc_owner_property("prop_function_return", lua::jbox_string_property{}))
       .mdef(Config::rtc_owner_property("prop_gain", lua::jbox_native_object{}.property_tag(3000)))
-      .mdef(Config::rtc_owner_property("prop_blob_default", lua::jbox_blob_property{}.default_value("/Private/blob.default").property_tag(4000)))
-      .mdef(Config::rtc_owner_property("prop_blob", lua::jbox_blob_property{}.property_tag(5000)))
-
-      .blob_data("/Private/blob.default", std::vector<char>{'d', 'e', 'f', 'a', 'u', 'l', 't' })
-      .blob_data("/Private/blob.data", blobData)
-      .blob_file("/Private/blob.file", fmt::path(RE_MOCK_PROJECT_DIR, "LICENSE.txt"))
 
       .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
-                                "function-test-realtime_controller.lua")})
+                                "RackExtension_RealtimeController_NativeObject.lua")})
       .rt([](Realtime &rt) {
         rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[],
                                      TJBox_UInt32 iCount) -> void * {
@@ -381,74 +355,698 @@ TEST(RackExtension, RealtimeController)
 
     // trace
     re.setString("/custom_properties/prop_function", "trace");
-    ASSERT_EQ("trace -> void", re.getString("/custom_properties/prop_function_return"));
     rack.nextFrame();
+    ASSERT_EQ("trace -> void", re.getString("/custom_properties/prop_function_return"));
 
     // new_gain
     ASSERT_EQ(std::nullopt, re->fVolume);
     re.setString("/custom_properties/prop_function", "new_gain");
+    rack.nextFrame();
     ASSERT_EQ(1, Gain::fCount);
     ASSERT_EQ("new_gain -> true", re.getString("/custom_properties/prop_function_return"));
-    rack.nextFrame();
     ASSERT_FLOAT_EQ(0.7, *re->fVolume);
 
     // nil_gain
     re.setString("/custom_properties/prop_function", "nil_gain");
-    ASSERT_EQ("nil_gain -> true", re.getString("/custom_properties/prop_function_return"));
     rack.nextFrame();
+    ASSERT_EQ("nil_gain -> true", re.getString("/custom_properties/prop_function_return"));
     ASSERT_EQ(0, Gain::fCount);
     ASSERT_EQ(std::nullopt, re->fVolume);
-
-    //------------------------------------------------------------------------
-    // blobs
-    //------------------------------------------------------------------------
-    ASSERT_EQ(0, re->fDefaultBlobInfo.fResidentSize);
-    ASSERT_EQ(7, re->fDefaultBlobInfo.fSize);
-    ASSERT_EQ(std::nullopt, re->fBlobInfo);
-
-    // loading all prop_blob_default
-    re.loadMoreBlob("/custom_properties/prop_blob_default");
-    rack.nextFrame();
-    ASSERT_EQ(7, re->fDefaultBlobInfo.fResidentSize);
-    ASSERT_EQ(7, re->fDefaultBlobInfo.fSize);
-    ASSERT_EQ(std::nullopt, re->fBlobInfo);
-
-    // load_blob_data
-    re.setString("/custom_properties/prop_function", "load_blob_data");
-    ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
-    rack.nextFrame();
-    ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
-    ASSERT_EQ(blobData.size(), re->fBlobInfo->fSize);
-
-    re.loadMoreBlob("/custom_properties/prop_blob");
-    rack.nextFrame();
-    ASSERT_EQ(blobData.size(), re->fBlobInfo->fResidentSize);
-    ASSERT_EQ(blobData.size(), re->fBlobInfo->fSize);
-    ASSERT_EQ(std::vector<TJBox_UInt8>({'A', 'L', 0, 'z', 0, 0, 0, 0, 0, 0}),
-              std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
-
-    // load_blob_file
-    re.setString("/custom_properties/prop_function", "load_blob_file");
-    ASSERT_EQ("load_blob_file -> true", re.getString("/custom_properties/prop_function_return"));
-    rack.nextFrame();
-    ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
-    ASSERT_EQ(13600, re->fBlobInfo->fSize);
-
-    re.loadMoreBlob("/custom_properties/prop_blob");
-    rack.nextFrame();
-    ASSERT_EQ(13600, re->fBlobInfo->fResidentSize);
-    ASSERT_EQ(13600, re->fBlobInfo->fSize);
-    ASSERT_EQ(std::vector<TJBox_UInt8>({' ', 's', 'h', 'a', 'r', 'e', 's', ',', ' ', 'o'}),
-              std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
-
-    // nil_blob
-    re.setString("/custom_properties/prop_function", "nil_blob");
-    ASSERT_EQ("nil_blob -> true", re.getString("/custom_properties/prop_function_return"));
-    rack.nextFrame();
-    ASSERT_EQ(std::nullopt, re->fBlobInfo);
   }
 
   ASSERT_EQ(0, Gain::fCount);
+}
+
+// RackExtension.RealtimeController_Blob
+TEST(RackExtension, RealtimeController_Blob)
+{
+  Rack rack{};
+
+  struct Device : public MockDevice
+  {
+    Device(int iSampleRate) : MockDevice(iSampleRate)
+    {}
+
+    void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override
+    {
+      // clear the data first
+      std::fill(std::begin(fBlobData), std::end(fBlobData), 0);
+      fBlobInfo = std::nullopt;
+
+      for(int i = 0; i < iDiffCount; i++)
+      {
+        auto diff = iPropertyDiffs[i];
+        switch(diff.fPropertyTag)
+        {
+          case 2000:
+          {
+            auto len = JBox_GetStringLength(diff.fCurrentValue);
+            char tmp[100];
+            RE_MOCK_ASSERT(len < 100);
+            JBox_GetSubstring(diff.fCurrentValue, 0, len, tmp);
+            fPropFunction = tmp;
+            break;
+          }
+          case 5000:
+          {
+            fBlobInfo = JBox_GetBLOBInfo(diff.fCurrentValue);
+            if(fBlobInfo->fResidentSize > 0)
+              JBox_GetBLOBData(diff.fCurrentValue, fBlobRange.first,
+                               std::min(fBlobInfo->fResidentSize, fBlobRange.second), fBlobData);
+          }
+
+          default:
+            break;
+        }
+      }
+
+      // prop_blob_default is loaded with default value
+      fDefaultBlobInfo = JBox_GetBLOBInfo(
+        JBox_LoadMOMPropertyByTag(JBox_GetMotherboardObjectRef("/custom_properties"), 4000));
+    }
+
+    std::string fPropFunction{};
+    TJBox_BLOBInfo fDefaultBlobInfo{};
+    std::optional<TJBox_BLOBInfo> fBlobInfo{};
+    std::pair<TJBox_SizeT, TJBox_SizeT> fBlobRange{0, 10};
+    TJBox_UInt8 fBlobData[10];
+  };
+
+  std::vector<char> blobData{'A', 'L', '\0', 'z'};
+
+  auto c = DeviceConfig<Device>::fromSkeleton()
+    .mdef(Config::document_owner_property("prop_function",
+                                          lua::jbox_string_property{}.default_value("noop").property_tag(2000)))
+    .mdef(Config::rtc_owner_property("prop_function_return", lua::jbox_string_property{}))
+    .mdef(Config::rtc_owner_property("on_prop_blob_return", lua::jbox_string_property{}))
+    .mdef(Config::rtc_owner_property("prop_blob_default",
+                                     lua::jbox_blob_property{}.default_value("/Private/blob.default").property_tag(
+                                       4000)))
+    .mdef(Config::rtc_owner_property("prop_blob", lua::jbox_blob_property{}.property_tag(5000)))
+
+    .blob_data("/Private/blob.default", to_chars("default"))
+    .blob_data("/Private/blob.data", blobData)
+    .blob_file("/Private/blob.file", fmt::path(RE_MOCK_PROJECT_DIR, "LICENSE.txt"))
+
+    .resource_loading_context("/Private/blob.file", Resource::LoadingContext{}.status(LoadStatus::kPartiallyResident).resident_size(100))
+
+    .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
+                              "RackExtension_RealtimeController_Blob.lua")});
+
+  auto re = rack.newDevice(c);
+
+  // first frame (default to noop)
+  ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
+  rack.nextFrame();
+
+  ASSERT_EQ(7, re->fDefaultBlobInfo.fResidentSize);
+  ASSERT_EQ(7, re->fDefaultBlobInfo.fSize);
+
+  ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(0, re->fBlobInfo->fSize);
+  ASSERT_EQ("is_blob=true;size=0.0;resident_size=0.0;state=0.0", re.getString("/custom_properties/on_prop_blob_return"));
+
+  // loading all prop_blob_default (should do nothing...)
+  re.loadMoreBlob("/custom_properties/prop_blob_default");
+  rack.nextFrame();
+  ASSERT_EQ(7, re->fDefaultBlobInfo.fResidentSize);
+  ASSERT_EQ(7, re->fDefaultBlobInfo.fSize);
+  ASSERT_EQ(std::nullopt, re->fBlobInfo);
+
+  // load_blob_data
+  re.setString("/custom_properties/prop_function", "load_blob_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(blobData.size(), re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(blobData.size(), re->fBlobInfo->fSize);
+  ASSERT_EQ(std::vector<TJBox_UInt8>({'A', 'L', 0, 'z', 0, 0, 0, 0, 0, 0}),
+            std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
+  rack.nextFrame();
+  ASSERT_EQ("is_blob=true;size=4.0;resident_size=4.0;state=2.0", re.getString("/custom_properties/on_prop_blob_return"));
+
+  // load_blob_file (100 bytes first)
+  re.setString("/custom_properties/prop_function", "load_blob_file");
+  rack.nextFrame();
+  ASSERT_EQ("load_blob_file -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(100, re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(13600, re->fBlobInfo->fSize);
+  ASSERT_EQ(to_TJBox_UInt8_vector("re-mock li"),
+            std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
+  rack.nextFrame();
+  ASSERT_EQ("is_blob=true;size=13600.0;resident_size=100.0;state=1.0", re.getString("/custom_properties/on_prop_blob_return"));
+
+  // load the rest
+  re.loadMoreBlob("/custom_properties/prop_blob");
+  re->fBlobRange = std::make_pair(1000, 1010);
+  rack.nextFrame();
+  ASSERT_EQ(13600, re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(13600, re->fBlobInfo->fSize);
+  ASSERT_EQ(to_TJBox_UInt8_vector(" shares, o"),
+            std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
+
+  re->fBlobRange = std::make_pair(0, 10);
+
+  // nil_blob
+  re.setString("/custom_properties/prop_function", "nil_blob");
+  rack.nextFrame();
+  ASSERT_EQ("nil_blob -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(0, re->fBlobInfo->fSize);
+  rack.nextFrame();
+  ASSERT_EQ("is_blob=true;size=0.0;resident_size=0.0;state=0.0", re.getString("/custom_properties/on_prop_blob_return"));
+
+  // make /Private/blob.data missing
+  re.setResourceLoadingContext("/Private/blob.data", Resource::LoadingContext{}.status(LoadStatus::kMissing));
+
+  // load_blob_data (missing)
+  re.setString("/custom_properties/prop_function", "load_blob_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(0, re->fBlobInfo->fSize);
+  rack.nextFrame();
+  ASSERT_EQ("is_blob=true;size=0.0;resident_size=0.0;state=0.0", re.getString("/custom_properties/on_prop_blob_return"));
+
+  // in error...
+  ASSERT_THROW(re.loadMoreBlob("/custom_properties/prop_blob"), Exception);
+
+  // make /Private/blob.data kHasErrors
+  re.setResourceLoadingContext("/Private/blob.data", Resource::LoadingContext{}.status(LoadStatus::kHasErrors));
+
+  // load_blob_data (missing)
+  re.setString("/custom_properties/prop_function", "noop");
+  re.setString("/custom_properties/prop_function", "load_blob_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(0, re->fBlobInfo->fSize);
+  rack.nextFrame();
+  ASSERT_EQ("is_blob=true;size=0.0;resident_size=0.0;state=0.0", re.getString("/custom_properties/on_prop_blob_return"));
+
+  // in error...
+  ASSERT_THROW(re.loadMoreBlob("/custom_properties/prop_blob"), Exception);
+
+  // clear error
+  re.clearResourceLoadingContext("/Private/blob.data");
+
+  re.setString("/custom_properties/prop_function", "noop");
+  re.setString("/custom_properties/prop_function", "load_blob_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(blobData.size(), re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(blobData.size(), re->fBlobInfo->fSize);
+  rack.nextFrame();
+  ASSERT_EQ("is_blob=true;size=4.0;resident_size=4.0;state=2.0", re.getString("/custom_properties/on_prop_blob_return"));
+
+}
+
+// RackExtension.RealtimeController_Sample
+TEST(RackExtension, RealtimeController_Sample)
+{
+  Rack rack{};
+
+  struct Device : public MockDevice
+  {
+    Device(int iSampleRate) : MockDevice(iSampleRate)
+    {}
+
+    void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override
+    {
+      // clear the data first
+      std::fill(std::begin(fSampleData), std::end(fSampleData), 0);
+      fSampleInfo = std::nullopt;
+
+      for(int i = 0; i < iDiffCount; i++)
+      {
+        auto diff = iPropertyDiffs[i];
+        switch(diff.fPropertyTag)
+        {
+          case 2000:
+          {
+            auto len = JBox_GetStringLength(diff.fCurrentValue);
+            char tmp[100];
+            RE_MOCK_ASSERT(len < 100);
+            JBox_GetSubstring(diff.fCurrentValue, 0, len, tmp);
+            fPropFunction = tmp;
+            break;
+          }
+          case 5000:
+          {
+            fSampleInfo = JBox_GetSampleInfo(diff.fCurrentValue);
+            if(fSampleInfo->fResidentFrameCount > 0)
+              JBox_GetSampleData(diff.fCurrentValue, fSampleRange.first,
+                                 std::min(static_cast<TJBox_AudioFramePos>(fSampleInfo->fResidentFrameCount), fSampleRange.second), fSampleData);
+          }
+
+          default:
+            break;
+        }
+      }
+
+      // prop_sample_default is loaded with default value
+      fDefaultSampleInfo = JBox_GetSampleInfo(
+        JBox_LoadMOMPropertyByTag(JBox_GetMotherboardObjectRef("/custom_properties"), 4000));
+    }
+
+    std::string fPropFunction{};
+    TJBox_SampleInfo fDefaultSampleInfo{};
+    std::optional<TJBox_SampleInfo> fSampleInfo{};
+    std::pair<TJBox_AudioFramePos, TJBox_AudioFramePos> fSampleRange{0, 10};
+    TJBox_AudioSample fSampleData[10];
+  };
+
+  std::vector<TJBox_AudioSample> sampleMonoData{0,1,2,3,4,5};
+  std::vector<TJBox_AudioSample> sampleStereoData{1,10,2,20,3,30,4,40,5,50};
+
+  auto c = DeviceConfig<Device>::fromSkeleton()
+    .mdef(Config::document_owner_property("prop_function",
+                                          lua::jbox_string_property{}.default_value("noop").property_tag(2000)))
+    .mdef(Config::rtc_owner_property("prop_function_return", lua::jbox_string_property{}))
+    .mdef(Config::rtc_owner_property("on_prop_sample_return", lua::jbox_string_property{}))
+    .mdef(Config::rtc_owner_property("prop_sample_default",
+                                     lua::jbox_sample_property{}.default_value("/Private/sample.default").property_tag(
+                                       4000)))
+    .mdef(Config::rtc_owner_property("prop_sample", lua::jbox_sample_property{}.property_tag(5000)))
+
+    .sample_data("/Private/sample.default", Resource::Sample{}.sample_rate(44100).channels(1).data({0,1,2,3}))
+    .sample_data("/Private/mono_sample.data", Resource::Sample{}.sample_rate(44100).channels(1).data(sampleMonoData))
+    .sample_data("/Private/stereo_sample.data", Resource::Sample{}.sample_rate(44100).channels(2).data(sampleStereoData))
+
+    .resource_loading_context("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kPartiallyResident).resident_size(2))
+
+    .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
+                              "RackExtension_RealtimeController_Sample.lua")});
+
+  auto re = rack.newDevice(c);
+
+  // first frame (default to noop)
+  ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
+  rack.nextFrame();
+
+  ASSERT_EQ(1, re->fDefaultSampleInfo.fChannels);
+  ASSERT_EQ(44100, re->fDefaultSampleInfo.fSampleRate);
+  ASSERT_EQ(4, re->fDefaultSampleInfo.fResidentFrameCount);
+  ASSERT_EQ(4, re->fDefaultSampleInfo.fFrameCount);
+
+  ASSERT_EQ(1, re->fSampleInfo->fChannels);
+  ASSERT_EQ(1, re->fSampleInfo->fSampleRate);
+  ASSERT_EQ(0, re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(0, re->fSampleInfo->fFrameCount);
+
+  ASSERT_EQ("is_sample=true;frame_count=0.0;resident_count=0.0;channels=1.0;sample_rate=1.0;state=0.0",
+            re.getString("/custom_properties/on_prop_sample_return"));
+
+  // loading all prop_sample_default (should do nothing...)
+  re.loadMoreSample("/custom_properties/prop_sample_default");
+  rack.nextFrame();
+  ASSERT_EQ(1, re->fDefaultSampleInfo.fChannels);
+  ASSERT_EQ(44100, re->fDefaultSampleInfo.fSampleRate);
+  ASSERT_EQ(4, re->fDefaultSampleInfo.fResidentFrameCount);
+  ASSERT_EQ(4, re->fDefaultSampleInfo.fFrameCount);
+
+  ASSERT_EQ(std::nullopt, re->fSampleInfo);
+
+  // load_mono_sample_data
+  re.setString("/custom_properties/prop_function", "load_mono_sample_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_mono_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(1, re->fSampleInfo->fChannels);
+  ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
+  ASSERT_EQ(sampleMonoData.size(), re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(sampleMonoData.size(), re->fSampleInfo->fFrameCount);
+  ASSERT_EQ(std::vector<TJBox_AudioSample>({0,1,2,3,4,5,0,0,0,0}),
+            std::vector<TJBox_AudioSample>(std::begin(re->fSampleData), std::end(re->fSampleData)));
+  rack.nextFrame();
+  ASSERT_EQ("is_sample=true;frame_count=6.0;resident_count=6.0;channels=1.0;sample_rate=44100.0;state=2.0",
+            re.getString("/custom_properties/on_prop_sample_return"));
+
+  // load_stereo_sample_data (2 frames)
+  re.setString("/custom_properties/prop_function", "load_stereo_sample_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_stereo_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(2, re->fSampleInfo->fChannels);
+  ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
+  ASSERT_EQ(2, re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(sampleStereoData.size() / 2, re->fSampleInfo->fFrameCount);
+  ASSERT_EQ(std::vector<TJBox_AudioSample>({1,10,2,20,0,0,0,0,0,0}),
+            std::vector<TJBox_AudioSample>(std::begin(re->fSampleData), std::end(re->fSampleData)));
+  rack.nextFrame();
+  ASSERT_EQ("is_sample=true;frame_count=5.0;resident_count=2.0;channels=2.0;sample_rate=44100.0;state=1.0",
+            re.getString("/custom_properties/on_prop_sample_return"));
+
+  // load the rest
+  re.loadMoreSample("/custom_properties/prop_sample");
+  re->fSampleRange = std::make_pair(2, 3);
+  rack.nextFrame();
+  ASSERT_EQ(2, re->fSampleInfo->fChannels);
+  ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
+  ASSERT_EQ(sampleStereoData.size() / 2, re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(sampleStereoData.size() / 2, re->fSampleInfo->fFrameCount);
+  ASSERT_EQ(std::vector<TJBox_AudioSample>({3,30,0,0,0,0,0,0,0,0}),
+            std::vector<TJBox_AudioSample>(std::begin(re->fSampleData), std::end(re->fSampleData)));
+  ASSERT_EQ("is_sample=true;frame_count=5.0;resident_count=5.0;channels=2.0;sample_rate=44100.0;state=2.0",
+            re.getString("/custom_properties/on_prop_sample_return"));
+
+  re->fSampleRange = std::make_pair(0, 10);
+
+  // nil_sample
+  re.setString("/custom_properties/prop_function", "nil_sample");
+  rack.nextFrame();
+  ASSERT_EQ("nil_sample -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(1, re->fSampleInfo->fChannels);
+  ASSERT_EQ(1, re->fSampleInfo->fSampleRate);
+  ASSERT_EQ(0, re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(0, re->fSampleInfo->fFrameCount);
+  rack.nextFrame();
+  ASSERT_EQ("is_sample=true;frame_count=0.0;resident_count=0.0;channels=1.0;sample_rate=1.0;state=0.0",
+            re.getString("/custom_properties/on_prop_sample_return"));
+
+  // make /Private/sample.data missing
+  re.setResourceLoadingContext("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kMissing));
+
+  // load_sample_data (missing)
+  re.setString("/custom_properties/prop_function", "noop"); // to force a change
+  re.setString("/custom_properties/prop_function", "load_stereo_sample_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_stereo_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(1, re->fSampleInfo->fChannels);
+  ASSERT_EQ(1, re->fSampleInfo->fSampleRate);
+  ASSERT_EQ(0, re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(0, re->fSampleInfo->fFrameCount);
+  rack.nextFrame();
+  ASSERT_EQ("is_sample=true;frame_count=0.0;resident_count=0.0;channels=1.0;sample_rate=1.0;state=0.0",
+            re.getString("/custom_properties/on_prop_sample_return"));
+
+  // in error...
+  ASSERT_THROW(re.loadMoreSample("/custom_properties/prop_sample"), Exception);
+
+  // make /Private/sample.data kHasErrors
+  re.setResourceLoadingContext("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kHasErrors));
+
+  // load_sample_data (missing)
+  re.setString("/custom_properties/prop_function", "noop"); // to force a change
+  re.setString("/custom_properties/prop_function", "load_stereo_sample_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_stereo_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(1, re->fSampleInfo->fChannels);
+  ASSERT_EQ(1, re->fSampleInfo->fSampleRate);
+  ASSERT_EQ(0, re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(0, re->fSampleInfo->fFrameCount);
+  rack.nextFrame();
+  ASSERT_EQ("is_sample=true;frame_count=0.0;resident_count=0.0;channels=1.0;sample_rate=1.0;state=0.0",
+            re.getString("/custom_properties/on_prop_sample_return"));
+
+  // in error...
+  ASSERT_THROW(re.loadMoreSample("/custom_properties/prop_sample"), Exception);
+
+
+  // clear error
+  re.clearResourceLoadingContext("/Private/stereo_sample.data");
+
+  re.setString("/custom_properties/prop_function", "noop"); // to force a change
+  re.setString("/custom_properties/prop_function", "load_stereo_sample_data");
+  rack.nextFrame();
+  ASSERT_EQ("load_stereo_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ(2, re->fSampleInfo->fChannels);
+  ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
+  ASSERT_EQ(sampleStereoData.size() / 2, re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(sampleStereoData.size() / 2, re->fSampleInfo->fFrameCount);
+  ASSERT_EQ(sampleStereoData,
+            std::vector<TJBox_AudioSample>(std::begin(re->fSampleData), std::end(re->fSampleData)));
+  rack.nextFrame();
+  ASSERT_EQ("is_sample=true;frame_count=5.0;resident_count=5.0;channels=2.0;sample_rate=44100.0;state=2.0",
+            re.getString("/custom_properties/on_prop_sample_return"));
+}
+
+// RackExtension.RealtimeController_UserSample
+TEST(RackExtension, RealtimeController_UserSample)
+{
+  Rack rack{};
+
+  struct Device : public MockDevice
+  {
+    struct Sample
+    {
+      std::optional<TJBox_SampleMetaData> fMetadata{};
+
+      std::optional<TJBox_Float64> root_key{};
+      std::optional<TJBox_Float64> tune_cents{};
+      std::optional<TJBox_Float64> play_range_start{};
+      std::optional<TJBox_Float64> play_range_end{};
+      std::optional<TJBox_Float64> loop_range_start{};
+      std::optional<TJBox_Float64> loop_range_end{};
+      std::optional<TJBox_Float64> loop_mode{};
+      std::optional<TJBox_Float64> preview_volume_level{};
+
+      TJBox_AudioSample fData[10]{};
+
+      std::string toString(std::optional<TJBox_Float64> v)
+      {
+        return v ? fmt::printf("%d", static_cast<int>(*v)) : "?";
+      }
+
+      std::string toString()
+      {
+        auto metadata = fMetadata ?
+                        fmt::printf("m.fc=%d;m.rfc=%d;m.ch=%d;m.sr=%d;m.st=%d;m.rk=%d;m.tc=%d;m.prs=%d;m.pre=%d;m.lrs=%d;m.lre=%d;m.lm=%d;m.pvl=%d",
+                                    fMetadata->fSpec.fFrameCount,
+                                    fMetadata->fResidentFrameCount,
+                                    fMetadata->fSpec.fChannels,
+                                    fMetadata->fSpec.fSampleRate,
+                                    fMetadata->fStatus,
+                                    fMetadata->fParameters.fRootNote,
+                                    fMetadata->fParameters.fTuneCents,
+                                    fMetadata->fParameters.fPlayRangeStart,
+                                    fMetadata->fParameters.fPlayRangeEnd,
+                                    fMetadata->fParameters.fLoopRangeStart,
+                                    fMetadata->fParameters.fLoopRangeEnd,
+                                    fMetadata->fParameters.fLoopMode,
+                                    fMetadata->fParameters.fVolumeLevel)
+                                  : "m=?";
+        return fmt::printf("%s;o.rk=%s;o.tc=%s;o.prs=%s;o.pre=%s;o.lrs=%s;o.lre=%s;o.lm=%s;o.pvl=%s",
+                           metadata,
+                           toString(root_key),
+                           toString(tune_cents),
+                           toString(play_range_start),
+                           toString(play_range_end),
+                           toString(loop_range_start),
+                           toString(loop_range_end),
+                           toString(loop_mode),
+                           toString(preview_volume_level));
+      }
+    };
+
+    Device(int iSampleRate) : MockDevice(iSampleRate)
+    {
+      fSample0Ref = JBox_GetMotherboardObjectRef("/user_samples/0");
+      fSample1Ref = JBox_GetMotherboardObjectRef("/user_samples/1");
+    }
+
+    void handleDiff(TJBox_PropertyDiff const &iDiff, std::optional<Sample> &oSample)
+    {
+      if(oSample == std::nullopt)
+        oSample = Sample{};
+
+      switch(iDiff.fPropertyTag)
+      {
+        case kJBox_UserSampleItem:
+        {
+          auto info = JBox_GetSampleInfo(iDiff.fCurrentValue);
+          oSample->fMetadata = JBox_GetSampleMetaData(iDiff.fCurrentValue);
+          RE_MOCK_ASSERT(info.fFrameCount == oSample->fMetadata->fSpec.fFrameCount &&
+                         info.fResidentFrameCount == oSample->fMetadata->fResidentFrameCount &&
+                         info.fChannels == oSample->fMetadata->fSpec.fChannels &&
+                         info.fSampleRate == oSample->fMetadata->fSpec.fSampleRate);
+          if(info.fResidentFrameCount > 0)
+            JBox_GetSampleData(iDiff.fCurrentValue, fSampleRange.first,
+                               std::min(static_cast<TJBox_AudioFramePos>(info.fResidentFrameCount), fSampleRange.second),
+                               oSample->fData);
+          break;
+        }
+
+        case kJBox_UserSampleRootKey:
+          oSample->root_key = JBox_GetNumber(iDiff.fCurrentValue);
+          break;
+        case kJBox_UserSampleTuneCents:
+          oSample->tune_cents = JBox_GetNumber(iDiff.fCurrentValue);
+          break;
+        case kJBox_UserSamplePlayRangeStart:
+          oSample->play_range_start = JBox_GetNumber(iDiff.fCurrentValue);
+          break;
+        case kJBox_UserSamplePlayRangeEnd:
+          oSample->play_range_end = JBox_GetNumber(iDiff.fCurrentValue);
+          break;
+        case kJBox_UserSampleLoopRangeStart:
+          oSample->loop_range_start = JBox_GetNumber(iDiff.fCurrentValue);
+          break;
+        case kJBox_UserSampleLoopRangeEnd:
+          oSample->loop_range_end = JBox_GetNumber(iDiff.fCurrentValue);
+          break;
+        case kJBox_UserSampleLoopMode:
+          oSample->loop_mode = JBox_GetNumber(iDiff.fCurrentValue);
+          break;
+        case kJBox_UserSamplePreviewVolumeLevel:
+          oSample->preview_volume_level = JBox_GetNumber(iDiff.fCurrentValue);
+          break;
+      }
+    }
+
+    void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override
+    {
+      // clear the data first
+      fSample0 = std::nullopt;
+      fSample1 = std::nullopt;
+
+      for(int i = 0; i < iDiffCount; i++)
+      {
+        auto diff = iPropertyDiffs[i];
+
+        if(diff.fPropertyRef.fObject == fSample0Ref)
+          handleDiff(diff, fSample0);
+        else if(diff.fPropertyRef.fObject == fSample1Ref)
+          handleDiff(diff, fSample1);
+      }
+
+    }
+
+    std::pair<TJBox_AudioFramePos, TJBox_AudioFramePos> fSampleRange{0, 10};
+    TJBox_ObjectRef fSample0Ref{};
+    std::optional<Sample> fSample0{};
+    TJBox_ObjectRef fSample1Ref{};
+    std::optional<Sample> fSample1{};
+  };
+
+  std::vector<TJBox_AudioSample> sampleMonoData{0,1,2,3,4,5};
+  std::vector<TJBox_AudioSample> sampleStereoData{1,10,2,20,3,30,4,40,5,50};
+
+  auto c = DeviceConfig<Device>::fromSkeleton()
+    .mdef(Config::rtc_owner_property("on_prop_user_sample_return_0", lua::jbox_string_property{}))
+    .mdef(Config::rtc_owner_property("on_prop_user_sample_return_1", lua::jbox_string_property{}))
+    .mdef(Config::user_sample(0, lua::jbox_user_sample_property{}.all_sample_parameters()))
+    .mdef(Config::user_sample(1, lua::jbox_user_sample_property{}.sample_parameter("tune_cents")))
+
+    .sample_data("/Private/mono_sample.data", Resource::Sample{}.sample_rate(44100).channels(1).data(sampleMonoData))
+    .sample_data("/Private/stereo_sample.data", Resource::Sample{}.sample_rate(44100).channels(2).data(sampleStereoData))
+
+    .resource_loading_context("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kPartiallyResident).resident_size(2))
+
+    .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
+                              "RackExtension_RealtimeController_UserSample.lua")});
+
+  auto re = rack.newDevice(c);
+
+  // first frame
+  rack.nextFrame();
+
+  ASSERT_EQ("i=0;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
+            "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=nil;"
+            "m.rk=60.0;m.tc=50.0;m.prs=0.0;m.pre=1.0;m.lrs=0.0;m.lre=1.0;m.lm=loop_off;m.pvl=100.0",
+            re.getString("/custom_properties/on_prop_user_sample_return_0"));
+  ASSERT_EQ("i=1;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
+            "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=nil;"
+            "m.rk=60.0;m.tc=50.0;m.prs=0.0;m.pre=1.0;m.lrs=0.0;m.lre=1.0;m.lm=loop_off;m.pvl=100.0",
+            re.getString("/custom_properties/on_prop_user_sample_return_1"));
+
+  ASSERT_EQ("m.fc=0;m.rfc=0;m.ch=1;m.sr=1;m.st=0;"
+            "m.rk=60;m.tc=50;m.prs=0;m.pre=1;m.lrs=0;m.lre=1;m.lm=0;m.pvl=100;"
+            "o.rk=60;o.tc=50;o.prs=0;o.pre=1;o.lrs=0;o.lre=1;o.lm=0;o.pvl=100",
+            re->fSample0->toString());
+  ASSERT_EQ("m.fc=0;m.rfc=0;m.ch=1;m.sr=1;m.st=0;"
+            "m.rk=60;m.tc=50;m.prs=0;m.pre=1;m.lrs=0;m.lre=1;m.lm=0;m.pvl=100;"
+            "o.rk=?;o.tc=50;o.prs=?;o.pre=?;o.lrs=?;o.lre=?;o.lm=?;o.pvl=?",
+            re->fSample1->toString());
+
+  // we load sample 0 (the "current" sample)
+  re.loadCurrentUserSampleAsync("/Private/mono_sample.data");
+
+  rack.nextFrame();
+
+  ASSERT_EQ("i=0;i.fc=6.0;i.rfc=6.0;i.ch=1.0;i.sr=44100.0;i.st=2.0;"
+            "m.fc=6.0;m.rfc=6.0;m.ch=1.0;m.sr=44100.0;m.ls=resident;"
+            "m.rk=60.0;m.tc=50.0;m.prs=0.0;m.pre=1.0;m.lrs=0.0;m.lre=1.0;m.lm=loop_off;m.pvl=100.0",
+            re.getString("/custom_properties/on_prop_user_sample_return_0"));
+  ASSERT_EQ("m.fc=6;m.rfc=6;m.ch=1;m.sr=44100;m.st=2;"
+            "m.rk=60;m.tc=50;m.prs=0;m.pre=1;m.lrs=0;m.lre=1;m.lm=0;m.pvl=100;"
+            "o.rk=?;o.tc=?;o.prs=?;o.pre=?;o.lrs=?;o.lre=?;o.lm=?;o.pvl=?",
+            re->fSample0->toString());
+  ASSERT_EQ(std::nullopt, re->fSample1);
+
+  // we load sample 1 (the "current" sample)
+  re.setNum("/device_host/sample_context", 1);
+  re.loadCurrentUserSampleAsync("/Private/stereo_sample.data");
+
+  rack.nextFrame();
+
+  ASSERT_EQ("i=1;i.fc=5.0;i.rfc=2.0;i.ch=2.0;i.sr=44100.0;i.st=1.0;"
+            "m.fc=5.0;m.rfc=2.0;m.ch=2.0;m.sr=44100.0;m.ls=partially_resident;"
+            "m.rk=60.0;m.tc=50.0;m.prs=0.0;m.pre=1.0;m.lrs=0.0;m.lre=1.0;m.lm=loop_off;m.pvl=100.0",
+            re.getString("/custom_properties/on_prop_user_sample_return_1"));
+  ASSERT_EQ(std::nullopt, re->fSample0);
+  ASSERT_EQ("m.fc=5;m.rfc=2;m.ch=2;m.sr=44100;m.st=1;"
+            "m.rk=60;m.tc=50;m.prs=0;m.pre=1;m.lrs=0;m.lre=1;m.lm=0;m.pvl=100;"
+            "o.rk=?;o.tc=?;o.prs=?;o.pre=?;o.lrs=?;o.lre=?;o.lm=?;o.pvl=?",
+            re->fSample1->toString());
+
+  // we finish loading it (and change tune_cents)
+  re.loadMoreSample("/user_samples/1/item");
+  re.setNum("/user_samples/1/tune_cents", 45);
+
+  rack.nextFrame();
+
+  ASSERT_EQ("i=1;i.fc=5.0;i.rfc=5.0;i.ch=2.0;i.sr=44100.0;i.st=2.0;"
+            "m.fc=5.0;m.rfc=5.0;m.ch=2.0;m.sr=44100.0;m.ls=resident;"
+            "m.rk=60.0;m.tc=45.0;m.prs=0.0;m.pre=1.0;m.lrs=0.0;m.lre=1.0;m.lm=loop_off;m.pvl=100.0",
+            re.getString("/custom_properties/on_prop_user_sample_return_1"));
+  ASSERT_EQ(std::nullopt, re->fSample0);
+  ASSERT_EQ("m.fc=5;m.rfc=5;m.ch=2;m.sr=44100;m.st=2;"
+            "m.rk=60;m.tc=45;m.prs=0;m.pre=1;m.lrs=0;m.lre=1;m.lm=0;m.pvl=100;"
+            "o.rk=?;o.tc=45;o.prs=?;o.pre=?;o.lrs=?;o.lre=?;o.lm=?;o.pvl=?",
+            re->fSample1->toString());
+
+  // we delete sample 1
+  re.deleteUserSample(1);
+
+  rack.nextFrame();
+
+  ASSERT_EQ("i=1;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
+            "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=nil;"
+            "m.rk=60.0;m.tc=45.0;m.prs=0.0;m.pre=1.0;m.lrs=0.0;m.lre=1.0;m.lm=loop_off;m.pvl=100.0",
+            re.getString("/custom_properties/on_prop_user_sample_return_1"));
+  ASSERT_EQ(std::nullopt, re->fSample0);
+  ASSERT_EQ("m.fc=0;m.rfc=0;m.ch=1;m.sr=1;m.st=0;"
+            "m.rk=60;m.tc=45;m.prs=0;m.pre=1;m.lrs=0;m.lre=1;m.lm=0;m.pvl=100;"
+            "o.rk=?;o.tc=?;o.prs=?;o.pre=?;o.lrs=?;o.lre=?;o.lm=?;o.pvl=?",
+            re->fSample1->toString());
+
+  // we load sample 1 again but with a missing item
+  re.loadUserSampleAsync("/user_samples/1/item", "/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kMissing));
+
+  rack.nextFrame();
+
+  ASSERT_EQ("i=1;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
+            "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=missing;"
+            "m.rk=60.0;m.tc=45.0;m.prs=0.0;m.pre=1.0;m.lrs=0.0;m.lre=1.0;m.lm=loop_off;m.pvl=100.0",
+            re.getString("/custom_properties/on_prop_user_sample_return_1"));
+  ASSERT_EQ(std::nullopt, re->fSample0);
+  ASSERT_EQ("m.fc=0;m.rfc=0;m.ch=1;m.sr=1;m.st=0;"
+            "m.rk=60;m.tc=45;m.prs=0;m.pre=1;m.lrs=0;m.lre=1;m.lm=0;m.pvl=100;"
+            "o.rk=?;o.tc=?;o.prs=?;o.pre=?;o.lrs=?;o.lre=?;o.lm=?;o.pvl=?",
+            re->fSample1->toString());
+
+  // we load sample 1 again but with an error item
+  re.loadUserSampleAsync("/user_samples/1/item", "/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kHasErrors));
+
+  rack.nextFrame();
+
+  ASSERT_EQ("i=1;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
+            "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=has_errors;"
+            "m.rk=60.0;m.tc=45.0;m.prs=0.0;m.pre=1.0;m.lrs=0.0;m.lre=1.0;m.lm=loop_off;m.pvl=100.0",
+            re.getString("/custom_properties/on_prop_user_sample_return_1"));
+  ASSERT_EQ(std::nullopt, re->fSample0);
+  ASSERT_EQ("m.fc=0;m.rfc=0;m.ch=1;m.sr=1;m.st=0;"
+            "m.rk=60;m.tc=45;m.prs=0;m.pre=1;m.lrs=0;m.lre=1;m.lm=0;m.pvl=100;"
+            "o.rk=?;o.tc=?;o.prs=?;o.pre=?;o.lrs=?;o.lre=?;o.lm=?;o.pvl=?",
+            re->fSample1->toString());
 }
 
 

@@ -65,4 +65,38 @@ int MockJBox::loadString(std::string const &iLuaCode)
   return L.runLuaCode(iLuaCode);
 }
 
+//------------------------------------------------------------------------
+// MockJBox::iterateLuaTable
+//------------------------------------------------------------------------
+void MockJBox::iterateLuaTable(std::function<void(lua_table_key_t)> iKeyHandler)
+{
+  int mapStackIndex = lua_gettop(L);
+  // check for NIL
+  if(lua_type(L, mapStackIndex) != LUA_TNIL)
+  {
+    luaL_checktype(L, mapStackIndex, LUA_TTABLE);
+
+    lua_pushnil(L);  /* first key */
+    while(lua_next(L, mapStackIndex) != 0)
+    {
+      auto keyType = lua_type(L, -2);
+      switch(keyType)
+      {
+        case LUA_TSTRING:
+          iKeyHandler(lua_tostring(L, -2));
+          break;
+
+        case LUA_TNUMBER:
+          iKeyHandler(static_cast<int>(lua_tonumber(L, -2)));
+          break;
+
+        default:
+          RE_MOCK_ASSERT(false, "table keys are either strings or integers");
+          break;
+      }
+    }
+  }
+  lua_pop(L, 1);
+}
+
 }

@@ -75,6 +75,8 @@ Motherboard::Motherboard(Config const &iConfig) : fConfig{iConfig}
 {
 //  DLOG_F(INFO, "Motherboard(%p)", this);
 
+  fResourceLoadingContexts = fConfig.fResourceLoadingContexts;
+
   // /custom_properties
   fCustomPropertiesRef = addObject("/custom_properties")->fObjectRef;
 
@@ -297,15 +299,11 @@ void Motherboard::handlePropertyDiff(impl::JboxPropertyDiff const &iPropertyDiff
 {
   if(iWatched)
   {
-    auto binding = fRTCBindings.find(iPropertyDiff.fPropertyRef);
-    if(binding != fRTCBindings.end())
-      fRealtimeController->invokeBinding(this,
-                                         binding->second,
-                                         getPropertyPath(iPropertyDiff.fPropertyRef),
-                                         iPropertyDiff.fCurrentValue);
-
     if(fRTCNotify.find(iPropertyDiff.fPropertyRef) != fRTCNotify.end())
-      addPropertyDiff(iPropertyDiff);
+      addRTCNotifyDiff(iPropertyDiff);
+
+    if(fRTCBindings.find(iPropertyDiff.fPropertyRef) != fRTCBindings.end())
+      fRTCBindingsDiffs.emplace_back(iPropertyDiff);
   }
 }
 
@@ -342,6 +340,17 @@ struct MockJBoxVisitor
   lua::MockJBox &fMockJBox;
   std::string fCode{};
 };
+
+//------------------------------------------------------------------------
+// Motherboard::addDeviceHostProperties
+//------------------------------------------------------------------------
+void Motherboard::addDeviceHostProperties()
+{
+  auto deviceHost = addObject("/device_host");
+  deviceHost->addProperty("sample_context", PropertyOwner::kHostOwner, makeNumber(0), kJBox_DeviceHostSampleContext);
+  deviceHost->addProperty("delete_sample", PropertyOwner::kHostOwner, makeNumber(0), kJBox_DeviceHostDeleteSample);
+  deviceHost->addProperty("edit_sample", PropertyOwner::kHostOwner, makeNumber(0), kJBox_DeviceHostEditSample);
+}
 
 //------------------------------------------------------------------------
 // Motherboard::init
@@ -423,6 +432,14 @@ void Motherboard::init()
   for(auto &&prop: customProperties->rtc_owner)
     addProperty(fCustomPropertiesRef, prop.first, PropertyOwner::kRTCOwner, stl::variant_cast(prop.second));
 
+  // user_samples
+  if(!customProperties->user_samples.empty())
+  {
+    addDeviceHostProperties();
+    for(int i = 0; i < customProperties->user_samples.size(); i++)
+      addUserSample(i, customProperties->user_samples[i]);
+  }
+
   // load the default patch if there is one
   if(fConfig.info().fSupportPatches)
   {
@@ -488,7 +505,10 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 
   struct DefaultValueVisitor
   {
+    // lua::jbox_boolean_property
     std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return fMotherboard->makeBoolean(o->fDefaultValue); }
+
+    // lua::jbox_number_property
     std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return fMotherboard->makeNumber(o->fDefaultValue); }
 
     // lua::jbox_performance_property
@@ -542,8 +562,18 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
       if(o->fDefaultValue)
         return fMotherboard->loadBlobAsync(*o->fDefaultValue);
       else
-        return fMotherboard->makeNil();
+        return fMotherboard->makeEmptyBlob();
     }
+
+    // lua::jbox_sample_property
+    std::unique_ptr<JboxValue> operator()(const std::shared_ptr<lua::jbox_sample_property>& o) const {
+      RE_MOCK_ASSERT(fOwner == PropertyOwner::kRTCOwner, "Sample must be owned by RTC");
+      if(o->fDefaultValue)
+        return fMotherboard->loadSampleAsync(*o->fDefaultValue);
+      else
+        return fMotherboard->makeEmptySample();
+    }
+
     Motherboard *fMotherboard;
     PropertyOwner fOwner;
   };
@@ -561,6 +591,63 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
                                                *persistence);
 }
 
+namespace impl {
+
+
+struct SampleParameterDefaultValue {
+  TJBox_UserSampleTag fTag;
+  TJBox_Float64 fDefaultValue;
+};
+
+// YP implementation note: the default values were extracted from running code in Recon
+static const std::map<std::string, SampleParameterDefaultValue> SAMPLE_PARAMETERS{
+  {"root_key",             {kJBox_UserSampleRootKey,            60.0}},
+  {"tune_cents",           {kJBox_UserSampleTuneCents,          50.0}},
+  {"play_range_start",     {kJBox_UserSamplePlayRangeStart,     0}},
+  {"play_range_end",       {kJBox_UserSamplePlayRangeEnd,       1.0}},
+  {"loop_range_start",     {kJBox_UserSampleLoopRangeStart,     0}},
+  {"loop_range_end",       {kJBox_UserSampleLoopRangeEnd,       1.0}},
+  {"loop_mode",            {kJBox_UserSampleLoopMode,           0.0}},
+  {"preview_volume_level", {kJBox_UserSamplePreviewVolumeLevel, 100}},
+};
+
+}
+
+//------------------------------------------------------------------------
+// Motherboard::addUserSample
+//------------------------------------------------------------------------
+void Motherboard::addUserSample(int iSampleIndex, std::shared_ptr<lua::jbox_user_sample_property> const &iProperty)
+{
+  auto objectName = iProperty->fName ?
+                    fmt::printf("/user_samples/%s", *iProperty->fName) :
+                    fmt::printf("/user_samples/%d", iSampleIndex);
+
+  auto userSample = addObject(objectName);
+
+  userSample->addProperty("item",
+                          PropertyOwner::kDocOwner,
+                          kJBox_Sample,
+                          makeEmptySample(userSample->fObjectRef),
+                          kJBox_UserSampleItem,
+                          *iProperty->fPersistence);
+
+  fUserSamplePropertyPaths.emplace_back(userSample->getProperty("item")->fPropertyPath);
+
+  auto userSampleRef = userSample->fObjectRef;
+
+  for(auto &sampleParameter: iProperty->fSampleParameters)
+  {
+    auto defaultValue = impl::SAMPLE_PARAMETERS.find(sampleParameter);
+    RE_MOCK_ASSERT(defaultValue != impl::SAMPLE_PARAMETERS.end(), "unknown sample parameter %s", sampleParameter);
+    userSample->addProperty(sampleParameter,
+                            PropertyOwner::kDocOwner,
+                            kJBox_Number,
+                            makeNumber(defaultValue->second.fDefaultValue),
+                            defaultValue->second.fTag,
+                            *iProperty->fPersistence);
+  }
+}
+
 //------------------------------------------------------------------------
 // Motherboard::registerRTCNotify
 //------------------------------------------------------------------------
@@ -575,14 +662,14 @@ void Motherboard::registerRTCNotify(std::string const &iPropertyPath)
     auto diffs = objectRef->watchAllPropertiesForChange();
     for(auto &diff: diffs)
     {
-      addPropertyDiff(diff);
+      addRTCNotifyDiff(diff);
       fRTCNotify.emplace(diff.fPropertyRef);
     }
   }
   else
   {
     auto ref = getPropertyRef(iPropertyPath);
-    addPropertyDiff(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
+    addRTCNotifyDiff(fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey));
     fRTCNotify.emplace(ref);
   }
 }
@@ -684,13 +771,29 @@ void Motherboard::nextFrame()
   for(auto buffer: fOutputDSPBuffers)
     buffer->getDSPBuffer().fill(0);
 
-  if(fRealtime.render_realtime)
+  // first we handle rtc bindings
+  auto diffs = std::move(fRTCBindingsDiffs);
+
+  for(auto &diff : diffs)
+  {
+    fRealtimeController->invokeBinding(this,
+                                       fRTCBindings.at(diff.fPropertyRef),
+                                       getPropertyPath(diff.fPropertyRef),
+                                       diff.fCurrentValue);
+  }
+
+  // next we call render_realtime
+  diffs = std::move(fRTCNotifyDiffs);
+
+  auto const instance = getInstance<void *>();
+
+  if(instance != nullptr && fRealtime.render_realtime)
   {
     // The diffs are supposed to be sorted by frame index
-    if(fCurrentFramePropertyDiffs.size() > 1)
+    if(diffs.size() > 1)
     {
-      std::sort(fCurrentFramePropertyDiffs.begin(),
-                fCurrentFramePropertyDiffs.end(),
+      std::sort(diffs.begin(),
+                diffs.end(),
                 [](impl::JboxPropertyDiff const &l, impl::JboxPropertyDiff const &r) {
                   if(l.fAtFrameIndex == r.fAtFrameIndex)
                     return l.fInsertIndex < r.fInsertIndex;
@@ -699,9 +802,9 @@ void Motherboard::nextFrame()
                 });
     }
 
-    std::vector<TJBox_PropertyDiff> diffs{};
-    diffs.reserve(fCurrentFramePropertyDiffs.size());
-    for(auto const &diff: fCurrentFramePropertyDiffs)
+    std::vector<TJBox_PropertyDiff> rtDiffs{};
+    rtDiffs.reserve(diffs.size());
+    for(auto const &diff: diffs)
     {
       auto d = TJBox_PropertyDiff {
         /* .fPreviousValue = */ to_TJBox_Value(diff.fPreviousValue),
@@ -710,14 +813,11 @@ void Motherboard::nextFrame()
         /* .fPropertyTag = */ diff.fPropertyTag,
         /* .fAtFrameIndex = */ diff.fAtFrameIndex
       };
-      diffs.emplace_back(d);
+      rtDiffs.emplace_back(d);
     }
 
-    fRealtime.render_realtime(getInstance<void *>(), diffs.data(), diffs.size());
+    fRealtime.render_realtime(instance, rtDiffs.data(), rtDiffs.size());
   }
-
-  // clearing diffs (consumed)
-  fCurrentFramePropertyDiffs.clear();
 
   // clearing current values
   fCurrentValues.clear();
@@ -725,7 +825,6 @@ void Motherboard::nextFrame()
   // clearing input buffers (consumed)
   for(auto buffer: fInputDSPBuffers)
     buffer->getDSPBuffer().fill(0);
-
 }
 
 //------------------------------------------------------------------------
@@ -829,11 +928,27 @@ std::unique_ptr<JboxValue> Motherboard::makeNativeObject(std::string const &iOpe
 //------------------------------------------------------------------------
 std::unique_ptr<JboxValue> Motherboard::loadBlobAsync(std::string const &iBlobPath)
 {
-  auto b =  std::make_unique<impl::Blob>();
+  RE_MOCK_ASSERT(stl::starts_with(iBlobPath, "/Private/"), "loadBlobAsync path must start with /Private [%s]", iBlobPath);
+
+  auto b = std::make_unique<impl::Blob>();
   auto blobResource = fConfig.findBlobResource(iBlobPath);
-  RE_MOCK_ASSERT(blobResource != std::nullopt, "Could not find blob at path [%s]", iBlobPath);
-  b->fResidentSize = 0;
-  b->fData = std::move(blobResource->fData);
+
+  if(!blobResource)
+  {
+    b->fLoadingContext = Resource::LoadingContext{LoadStatus::kMissing};
+  }
+  else
+  {
+    auto loadingContext = fResourceLoadingContexts.find(iBlobPath);
+    if(loadingContext != fResourceLoadingContexts.end())
+      b->fLoadingContext = loadingContext->second;
+    else
+      b->fLoadingContext = Resource::LoadingContext{LoadStatus::kResident, blobResource->fData.size() };
+
+    if(b->fLoadingContext.isLoadOk())
+      b->fData = std::move(blobResource->fData);
+  }
+
   auto res = std::make_unique<JboxValue>();
   res->fValueType = kJBox_BLOB;
   res->fMotherboardValue = std::move(b);
@@ -843,27 +958,52 @@ std::unique_ptr<JboxValue> Motherboard::loadBlobAsync(std::string const &iBlobPa
 //------------------------------------------------------------------------
 // Motherboard::loadMoreBlob
 //------------------------------------------------------------------------
-void Motherboard::loadMoreBlob(std::string const &iPropertyPath, long iCount)
+bool Motherboard::loadMoreBlob(std::string const &iPropertyPath, long iCount)
 {
-  auto blobValue = getJboxValue(iPropertyPath);
+  auto property = getProperty(iPropertyPath);
+  auto blobValue = property->loadValue();
+
   RE_MOCK_ASSERT(blobValue->fValueType == kJBox_BLOB, "[%s] is not a blob", iPropertyPath);
-  auto &b = blobValue->getBlob();
-  if(iCount < 0)
-    b.fResidentSize = b.fData.size();
-  else
-    b.fResidentSize = std::min(b.fResidentSize + iCount, b.fData.size());
+
+  auto &blob = blobValue->getBlob();
+
+  RE_MOCK_ASSERT(blob.fLoadingContext.isLoadOk(), "loadMoreBlob: Invalid status [%s]", blob.fLoadingContext.getStatusAsString());
+
+  auto status = blob.fLoadingContext.fStatus;
+
+  if(status == LoadStatus::kPartiallyResident)
+  {
+    auto residentSize = blob.getResidentSize();
+    auto newResidentSize = iCount < 0 ? blob.getSize() : std::min(residentSize + iCount, blob.getSize());
+
+    if(newResidentSize == blob.getSize())
+      status = LoadStatus::kResident;
+
+    if(residentSize != newResidentSize)
+    {
+      auto newBlobValue = makeEmptyBlob();
+      auto &newBlob = newBlobValue->getBlob();
+      newBlob = std::move(blob);
+      newBlob.fLoadingContext = {status, static_cast<size_t>(newResidentSize) };
+
+      // this will trigger a notify/diff if being watched
+      storeProperty(property->fPropertyRef, std::move(newBlobValue));
+    }
+  }
+
+  return status == LoadStatus::kResident;
 }
 
 //------------------------------------------------------------------------
 // Motherboard::getBLOBInfo
 //------------------------------------------------------------------------
-TJBox_BLOBInfo Motherboard::getBLOBInfo(JboxValue const &iValue) const
+impl::Blob::Info Motherboard::getBLOBInfo(JboxValue const &iValue) const
 {
   auto const &b = iValue.getBlob();
 
   return {
-    /* .fSize = */         b.fData.size(),
-    /* .fResidentSize = */ b.fResidentSize
+    /* .fSize = */     b.fData.size(),
+    /* .fLoadingContext = */ b.fLoadingContext
   };
 }
 
@@ -877,7 +1017,9 @@ void Motherboard::getBLOBData(TJBox_Value const &iValue, TJBox_SizeT iStart, TJB
     return;
   auto blobValue = from_TJBox_Value(iValue);
   auto const &b = blobValue->getBlob();
-  RE_MOCK_ASSERT(iEnd <= b.fResidentSize, "getBLOBData not enough data iEnd=%l > fResidentSize=%l (did you call loadMoreBlob?)", iEnd, b.fResidentSize);
+  RE_MOCK_ASSERT(b.fLoadingContext.isLoadOk(), "getBLOBData: Cannot get blob data: Invalid status [%s]", b.fLoadingContext.getStatusAsString());
+  RE_MOCK_ASSERT(iEnd <= b.getResidentSize(), "getBLOBData: Not enough data iEnd=%l > fResidentSize=%l", iEnd, b.getResidentSize());
+  RE_MOCK_ASSERT(b.getResidentSize() <= b.getSize()); // sanity check
   std::copy(std::begin(b.fData) + iStart, std::begin(b.fData) + iEnd, oData);
 }
 
@@ -1084,10 +1226,15 @@ std::string Motherboard::toString(JboxValue const &iValue, char const *iFormat) 
     case kJBox_BLOB:
     {
       auto const &blob = iValue.getBlob();
-      return fmt::printf(iFormat ? iFormat : "Blob(%ld, %ld)[%ld]", blob.fResidentSize, blob.fData.size(), iValue.getUniqueId());
+      return fmt::printf(iFormat ? iFormat : "Blob(%ld, %ld)[%ld]", blob.getResidentSize(), blob.getSize(), iValue.getUniqueId());
     }
 
     case kJBox_Sample:
+    {
+      auto const &sample = iValue.getSample();
+      return fmt::printf(iFormat ? iFormat : "Sample(%ld, %ld)[%ld]", sample.getResidentFrameCount(), sample.getFrameCount(), iValue.getUniqueId());
+    }
+
     default:
       return "<TBD>";
   }
@@ -1237,11 +1384,11 @@ void Motherboard::outputNoteEvent(TJBox_NoteEvent const &iNoteEvent)
 //------------------------------------------------------------------------
 // Motherboard::addPropertyDiff
 //------------------------------------------------------------------------
-void Motherboard::addPropertyDiff(impl::JboxPropertyDiff const &iDiff)
+void Motherboard::addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff)
 {
   impl::JboxPropertyDiff diff{iDiff};
-  diff.fInsertIndex = fCurrentFramePropertyDiffs.size();
-  fCurrentFramePropertyDiffs.emplace_back(diff);
+  diff.fInsertIndex = fRTCNotifyDiffs.size();
+  fRTCNotifyDiffs.emplace_back(diff);
 }
 
 //------------------------------------------------------------------------
@@ -1285,6 +1432,9 @@ void Motherboard::loadPatch(Patch const &iPatch)
       void operator()(patch_string_property const &o) {
         if(fMotherboard->getString(fName) != o.fValue)
           fMotherboard->setString(fName, o.fValue);
+      }
+      void operator()(patch_sample_property const &o) {
+        RE_MOCK_LOG_INFO("detected patch sample for %s/%d", fName, o.fValue);
       }
     };
 
@@ -1357,6 +1507,242 @@ std::unique_ptr<JboxValue> Motherboard::makeDSPBuffer() const
 }
 
 //------------------------------------------------------------------------
+// Motherboard::makeEmptyBlob
+//------------------------------------------------------------------------
+std::unique_ptr<JboxValue> Motherboard::makeEmptyBlob() const
+{
+  auto res = std::make_unique<JboxValue>();
+  res->fValueType = kJBox_BLOB;
+  res->fMotherboardValue = std::make_unique<impl::Blob>();
+  return res;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::makeEmptySample
+//------------------------------------------------------------------------
+std::unique_ptr<JboxValue> Motherboard::makeEmptySample(TJBox_ObjectRef iSampleItem) const
+{
+  auto res = std::make_unique<JboxValue>();
+  res->fValueType = kJBox_Sample;
+  res->fMotherboardValue = std::make_unique<impl::Sample>();
+  res->getSample().fSampleItem = iSampleItem;
+  return res;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getSampleInfo
+//------------------------------------------------------------------------
+TJBox_SampleInfo Motherboard::getSampleInfo(JboxValue const &iValue) const
+{
+  return iValue.getSample().getSampleInfo();
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getSampleMetadata
+//------------------------------------------------------------------------
+impl::Sample::Metadata Motherboard::getSampleMetadata(JboxValue const &iValue) const
+{
+  auto sample = iValue.getSample();
+
+  impl::Sample::Metadata res;
+  auto &md = res.fMain;
+
+  res.fLoadingContext = sample.fLoadingContext;
+
+  md.fSpec = {
+    /* .fFrameCount = */ sample.getFrameCount(),
+    /* .fChannels = */   sample.fChannels,
+    /* .fSampleRate = */ sample.fSampleRate
+  };
+  md.fResidentFrameCount = sample.getResidentFrameCount();
+  md.fStatus = sample.fLoadingContext.getStatusAsInt();
+
+  if(sample.fSampleItem > 0)
+  {
+    auto const item = getObject(sample.fSampleItem);
+
+    md.fParameters.fRootNote =
+      item->hasProperty(kJBox_UserSampleRootKey) ?
+      item->loadValue(kJBox_UserSampleRootKey)->getNumber() :
+      impl::SAMPLE_PARAMETERS.at("root_key").fDefaultValue;
+
+    md.fParameters.fTuneCents =
+      item->hasProperty(kJBox_UserSampleTuneCents) ?
+      item->loadValue(kJBox_UserSampleTuneCents)->getNumber() :
+      impl::SAMPLE_PARAMETERS.at("tune_cents").fDefaultValue;
+
+    md.fParameters.fPlayRangeStart =
+      item->hasProperty(kJBox_UserSamplePlayRangeStart) ?
+      item->loadValue(kJBox_UserSamplePlayRangeStart)->getNumber() :
+      impl::SAMPLE_PARAMETERS.at("play_range_start").fDefaultValue;
+
+    md.fParameters.fPlayRangeEnd =
+      item->hasProperty(kJBox_UserSamplePlayRangeEnd) ?
+      item->loadValue(kJBox_UserSamplePlayRangeEnd)->getNumber() :
+      impl::SAMPLE_PARAMETERS.at("play_range_end").fDefaultValue;
+
+    md.fParameters.fLoopRangeStart =
+      item->hasProperty(kJBox_UserSampleLoopRangeStart) ?
+      item->loadValue(kJBox_UserSampleLoopRangeStart)->getNumber() :
+      impl::SAMPLE_PARAMETERS.at("loop_range_start").fDefaultValue;
+
+    md.fParameters.fLoopRangeEnd =
+      item->hasProperty(kJBox_UserSampleLoopRangeEnd) ?
+      item->loadValue(kJBox_UserSampleLoopRangeEnd)->getNumber() :
+      impl::SAMPLE_PARAMETERS.at("loop_range_end").fDefaultValue;
+
+    md.fParameters.fLoopMode =
+      item->hasProperty(kJBox_UserSampleLoopMode) ?
+      item->loadValue(kJBox_UserSampleLoopMode)->getNumber() :
+      impl::SAMPLE_PARAMETERS.at("loop_mode").fDefaultValue;
+
+    md.fParameters.fVolumeLevel =
+      item->hasProperty(kJBox_UserSamplePreviewVolumeLevel) ?
+      item->loadValue(kJBox_UserSamplePreviewVolumeLevel)->getNumber() :
+      impl::SAMPLE_PARAMETERS.at("preview_volume_level").fDefaultValue;
+  }
+  else
+  {
+    md.fParameters.fRootNote = impl::SAMPLE_PARAMETERS.at("root_key").fDefaultValue;
+    md.fParameters.fTuneCents = impl::SAMPLE_PARAMETERS.at("tune_cents").fDefaultValue;
+    md.fParameters.fPlayRangeStart = impl::SAMPLE_PARAMETERS.at("play_range_start").fDefaultValue;
+    md.fParameters.fPlayRangeEnd = impl::SAMPLE_PARAMETERS.at("play_range_end").fDefaultValue;
+    md.fParameters.fLoopRangeStart = impl::SAMPLE_PARAMETERS.at("loop_range_start").fDefaultValue;
+    md.fParameters.fLoopRangeEnd = impl::SAMPLE_PARAMETERS.at("loop_range_end").fDefaultValue;
+    md.fParameters.fLoopMode = impl::SAMPLE_PARAMETERS.at("loop_mode").fDefaultValue;
+    md.fParameters.fVolumeLevel = impl::SAMPLE_PARAMETERS.at("preview_volume_level").fDefaultValue;
+  }
+
+  return res;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::loadSampleAsync
+//------------------------------------------------------------------------
+std::unique_ptr<JboxValue> Motherboard::loadSampleAsync(std::string const &iSamplePath)
+{
+  RE_MOCK_ASSERT(stl::starts_with(iSamplePath, "/Private/"), "loadSampleAsync path must start with /Private [%s]", iSamplePath);
+
+  auto sample =  std::make_unique<impl::Sample>();
+  auto sampleResource = fConfig.findSampleResource(iSamplePath);
+
+  if(!sampleResource)
+  {
+    sample->fLoadingContext = Resource::LoadingContext{LoadStatus::kMissing};
+  }
+  else
+  {
+    RE_MOCK_ASSERT(sampleResource->fChannels > 0);
+
+    auto loadingContext = fResourceLoadingContexts.find(iSamplePath);
+    if(loadingContext != fResourceLoadingContexts.end())
+      sample->fLoadingContext = loadingContext->second;
+    else
+      sample->fLoadingContext = Resource::LoadingContext{LoadStatus::kResident, sampleResource->fData.size() / sampleResource->fChannels };
+
+    if(sample->fLoadingContext.isLoadOk())
+    {
+      sample->fSampleRate = sampleResource->fSampleRate;
+      sample->fChannels = sampleResource->fChannels;
+      sample->fData = std::move(sampleResource->fData);
+    }
+  }
+
+  auto res = std::make_unique<JboxValue>();
+  res->fValueType = kJBox_Sample;
+  res->fMotherboardValue = std::move(sample);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::loadMoreSample
+//------------------------------------------------------------------------
+bool Motherboard::loadMoreSample(std::string const &iPropertyPath, long iFrameCount)
+{
+  auto property = getProperty(iPropertyPath);
+  auto sampleValue = property->loadValue();
+
+  RE_MOCK_ASSERT(sampleValue->fValueType == kJBox_Sample, "[%s] is not a sample", iPropertyPath);
+
+  auto &sample = sampleValue->getSample();
+
+  RE_MOCK_ASSERT(sample.fLoadingContext.isLoadOk(), "loadMoreSample: Invalid status [%s]", sample.fLoadingContext.getStatusAsString());
+
+  auto status = sample.fLoadingContext.fStatus;
+
+  if(status == LoadStatus::kPartiallyResident)
+  {
+    auto residentFrameCount = sample.getResidentFrameCount();
+    auto newResidentFrameCount = iFrameCount < 0 ?
+                                 sample.getFrameCount() :
+                                 std::min(residentFrameCount + static_cast<TJBox_AudioFramePos>(iFrameCount), sample.getFrameCount());
+
+    if(newResidentFrameCount == sample.getFrameCount())
+      status = LoadStatus::kResident;
+
+    if(residentFrameCount != newResidentFrameCount)
+    {
+      auto newSampleValue = makeEmptySample(sample.fSampleItem);
+      auto &newSample = newSampleValue->getSample();
+      newSample = std::move(sample);
+      newSample.fLoadingContext = {status, static_cast<size_t>(newResidentFrameCount) };
+
+      // this will trigger a notify/diff if being watched
+      storeProperty(property->fPropertyRef, std::move(newSampleValue));
+    }
+  }
+
+  return status == LoadStatus::kResident;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::loadUserSampleAsync
+//------------------------------------------------------------------------
+void Motherboard::loadUserSampleAsync(std::string const &iPropertyPath,
+                                      std::string const &iResourcePath,
+                                      std::optional<Resource::LoadingContext> iCtx)
+{
+  auto sampleItem = getJboxValue(iPropertyPath)->getSample().fSampleItem;
+
+  if(iCtx)
+    setResourceLoadingContext(iResourcePath, *iCtx);
+
+  auto newSample = loadSampleAsync(iResourcePath);
+  newSample->getSample().fSampleItem = sampleItem;
+
+  storeProperty(getPropertyRef(iPropertyPath), std::move(newSample));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::deleteUserSample
+//------------------------------------------------------------------------
+void Motherboard::deleteUserSample(std::string const &iPropertyPath)
+{
+  auto sampleItem = getJboxValue(iPropertyPath)->getSample().fSampleItem;
+  storeProperty(getPropertyRef(iPropertyPath), makeEmptySample(sampleItem));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getSampleData
+//------------------------------------------------------------------------
+void Motherboard::getSampleData(TJBox_Value iValue,
+                                TJBox_AudioFramePos iStartFrame,
+                                TJBox_AudioFramePos iEndFrame,
+                                TJBox_AudioSample *oAudio) const
+{
+  RE_MOCK_ASSERT(iStartFrame >= 0 && iEndFrame >= 0 && iStartFrame <= iEndFrame);
+  if(iStartFrame == iEndFrame)
+    return;
+  auto sampleValue = from_TJBox_Value(iValue);
+  auto const &s = sampleValue->getSample();
+  RE_MOCK_ASSERT(s.fLoadingContext.isLoadOk(), "getSampleData: Cannot get blob data: Invalid status [%s]", s.fLoadingContext.getStatusAsString());
+  RE_MOCK_ASSERT(iEndFrame <= s.getResidentFrameCount(), "getSampleData: Not enough data iEndFrame=%l > fResidentFrameCount=%l", iEndFrame, s.getResidentFrameCount());
+  RE_MOCK_ASSERT(s.getResidentFrameCount() <= s.getFrameCount()); // sanity check
+  std::copy(std::begin(s.fData) + iStartFrame * s.fChannels, std::begin(s.fData) + iEndFrame * s.fChannels, oAudio);
+}
+
+
+//------------------------------------------------------------------------
 // JboxObject::JboxObject
 //------------------------------------------------------------------------
 impl::JboxObject::JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iObjectRef) :
@@ -1381,6 +1767,16 @@ impl::JboxProperty *impl::JboxObject::getProperty(TJBox_Tag iPropertyTag) const
                            [iPropertyTag](auto const &p) { return p.second->fTag == iPropertyTag; } );
   RE_MOCK_ASSERT(iter != fProperties.end(), "missing property tag [%d] for object [%s]", iPropertyTag, fObjectPath);
   return iter->second.get();
+}
+
+//------------------------------------------------------------------------
+// JboxObject::getProperty
+//------------------------------------------------------------------------
+bool impl::JboxObject::hasProperty(TJBox_Tag iPropertyTag) const
+{
+  return std::find_if(fProperties.begin(),
+                      fProperties.end(),
+                      [iPropertyTag](auto const &p) { return p.second->fTag == iPropertyTag; } ) != fProperties.end();
 }
 
 //------------------------------------------------------------------------
@@ -1521,7 +1917,7 @@ impl::JboxPropertyDiff impl::JboxProperty::storeValue(std::shared_ptr<JboxValue>
   auto previousValue = fValue;
   fValue = std::move(iValue);
   return JboxPropertyDiff{
-    /* .fPreviousValue = */ previousValue,
+    /* .fPreviousValue = */ std::move(previousValue),
     /* .fCurrentValue = */  fValue,
     /* .fPropertyRef = */   fPropertyRef,
     /* .fPropertyTag = */   fTag
@@ -1544,6 +1940,54 @@ impl::JboxPropertyDiff impl::JboxProperty::watchForChange()
     /* .fPropertyTag = */   fTag
   };
 }
+
+//------------------------------------------------------------------------
+// impl::Blob::getBlobInfo
+//------------------------------------------------------------------------
+TJBox_BLOBInfo impl::Blob::Info::to_TJBox_BLOBInfo() const
+{
+  return {
+    /* .fSize = */         getSize(),
+    /* .fResidentSize = */ getResidentSize()
+  };
+}
+
+//------------------------------------------------------------------------
+// Sample::getSampleInfo
+//------------------------------------------------------------------------
+TJBox_SampleInfo impl::Sample::getSampleInfo() const
+{
+  return {
+    /* .fFrameCount = */         getFrameCount(),
+    /* .fResidentFrameCount = */ getResidentFrameCount(),
+    /* .fChannels = */           fChannels,
+    /* .fSampleRate = */         fSampleRate
+  };
+}
+
+//------------------------------------------------------------------------
+// Sample::Metadata::getLoopModeAsString
+//------------------------------------------------------------------------
+std::string impl::Sample::Metadata::getLoopModeAsString() const
+{
+  std::string res;
+  switch(fMain.fParameters.fLoopMode)
+  {
+    case 0:
+      res = "loop_off";
+      break;
+
+    case 1:
+      res = "loop_forward";
+      break;
+
+    case 2:
+      res = "loop_backward_forward";
+      break;
+  }
+  return res;
+}
+
 
 }
 

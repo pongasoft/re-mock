@@ -128,11 +128,15 @@ Patch createPatch(XMLDocument const &iDoc)
     if(type == "boolean")
     {
       RE_MOCK_ASSERT(value == "true" || value == "false", "Invalid boolean property [%s] line [%d]", value, v->GetLineNum());
-      patch.value(property, value == "true");
+      patch.boolean(property, value == "true");
     }
     else if(type == "number")
     {
-      patch.value(property, std::stod(value));
+      patch.number(property, std::stod(value));
+    }
+    else if(type == "sample")
+    {
+      patch.sample(property, std::stoi(value));
     }
     else if(type == "string")
     {
@@ -142,7 +146,7 @@ Patch createPatch(XMLDocument const &iDoc)
         s += static_cast<char>(std::stoi(value.substr(0, 2), nullptr, 16));
         value = value.substr(2);
       }
-      patch.value(property, s);
+      patch.string(property, s);
     }
 
     v = v->NextSiblingElement("Value");

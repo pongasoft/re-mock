@@ -24,6 +24,7 @@
 #include <re/mock/ObjectManager.hpp>
 #include <JukeboxTypes.h>
 #include <map>
+#include <set>
 #include <vector>
 #include <variant>
 #include <optional>
@@ -111,6 +112,38 @@ struct jbox_blob_property {
   jbox_blob_property &default_value(std::string iValue) { fDefaultValue = std::move(iValue); return *this; }
 };
 
+struct jbox_sample_property {
+  int fPropertyTag{};
+  std::optional<std::string> fDefaultValue{};
+  std::optional<EPersistence> fPersistence{};
+
+  TJBox_ValueType value_type() const { return kJBox_Sample; }
+
+  jbox_sample_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
+  jbox_sample_property &default_value(std::string iValue) { fDefaultValue = std::move(iValue); return *this; }
+};
+
+struct jbox_user_sample_property {
+  std::optional<std::string> fName{};
+  std::set<std::string> fSampleParameters{};
+  std::optional<EPersistence> fPersistence{};
+
+  jbox_user_sample_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
+  jbox_user_sample_property &name(std::string s) { fName = std::move(s); return *this;}
+  jbox_user_sample_property &sample_parameter(std::string s) { fSampleParameters.emplace(s); return *this; }
+  jbox_user_sample_property &all_sample_parameters() {
+    sample_parameter("root_key");
+    sample_parameter("tune_cents");
+    sample_parameter("play_range_start");
+    sample_parameter("play_range_end");
+    sample_parameter("loop_range_start");
+    sample_parameter("loop_range_end");
+    sample_parameter("loop_mode");
+    sample_parameter("preview_volume_level");
+    return *this;
+  }
+};
+
 struct jbox_performance_property {
   enum class Type { UNKNOWN, MOD_WHEEL, PITCH_BEND, SUSTAIN_PEDAL, EXPRESSION, BREATH_CONTROL, AFTERTOUCH };
 
@@ -159,6 +192,8 @@ using jbox_object = std::variant<
   std::shared_ptr<jbox_number_property>,
   std::shared_ptr<jbox_string_property>,
   std::shared_ptr<jbox_performance_property>,
+  std::shared_ptr<jbox_sample_property>,
+  std::shared_ptr<jbox_user_sample_property>,
   std::shared_ptr<impl::jbox_property_set>,
   std::shared_ptr<impl::jbox_socket>
   >;
@@ -170,7 +205,8 @@ using jbox_property = std::variant<
   std::shared_ptr<jbox_boolean_property>,
   std::shared_ptr<jbox_number_property>,
   std::shared_ptr<jbox_string_property>,
-  std::shared_ptr<jbox_performance_property>
+  std::shared_ptr<jbox_performance_property>,
+  std::shared_ptr<jbox_sample_property>
 >;
 
 using gui_jbox_property = std::variant<
@@ -189,6 +225,7 @@ using document_jbox_property = std::variant<
 using rtc_jbox_property = std::variant<
   std::shared_ptr<jbox_native_object>,
   std::shared_ptr<jbox_blob_property>,
+  std::shared_ptr<jbox_sample_property>,
   std::shared_ptr<jbox_boolean_property>,
   std::shared_ptr<jbox_number_property>,
   std::shared_ptr<jbox_string_property>
@@ -205,6 +242,7 @@ struct JboxPropertySet {
   std::map<std::string, document_jbox_property> document_owner{};
   std::map<std::string, rtc_jbox_property> rtc_owner{};
   std::map<std::string, rt_jbox_property> rt_owner{};
+  std::vector<std::shared_ptr<jbox_user_sample_property>> user_samples{};
 };
 
 class MotherboardDef : public MockJBox
@@ -221,6 +259,8 @@ public:
   int luaString();
   int luaSocket(jbox_sockets::Type iSocketType);
   int luaPropertySet();
+  int luaSample();
+  int luaUserSample();
 
   template<typename T>
   std::shared_ptr<T> getGlobal(std::string const &iName)
@@ -276,7 +316,7 @@ protected:
 
   void populatePropertyTag(jbox_property iProperty);
 
-  void populatePersistence(jbox_property iProperty);
+  std::optional<EPersistence> getPersistence();
 
   template<typename jbox_property_type>
   void filter(jbox_object_map_t &iMap,

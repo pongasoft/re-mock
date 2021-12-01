@@ -46,9 +46,16 @@ public:
   int luaMakeNativeObject(bool iReadOnly);
   int luaIsNativeObject();
 
+  int luaMakeEmptyBlob();
   int luaIsBlob();
   int luaLoadBlobAsync();
   int luaGetBlobInfo();
+
+  int luaIsSample();
+  int luaMakeEmptySample();
+  int luaLoadSampleAsync();
+  int luaGetSampleInfo();
+  int luaGetSampleMetaData();
 
   std::map<std::string, std::string> getBindings();
   std::set<std::string> getRTInputSetupNotify();
@@ -71,6 +78,7 @@ protected:
 
 private:
   Motherboard *fMotherboard{};
+  std::string fBindingSourcePropertyPath{};
   ObjectManager<std::shared_ptr<const JboxValue>> fJboxValues{};
 };
 

@@ -88,6 +88,16 @@ static int lua_property_set(lua_State *L)
   return MotherboardDef::loadFromRegistry(L)->luaPropertySet();
 }
 
+static int lua_sample(lua_State *L)
+{
+  return MotherboardDef::loadFromRegistry(L)->luaSample();
+}
+
+static int lua_user_sample(lua_State *L)
+{
+  return MotherboardDef::loadFromRegistry(L)->luaUserSample();
+}
+
 static int lua_ignored(lua_State *L)
 {
   return MotherboardDef::loadFromRegistry(L)->luaIgnored();
@@ -139,7 +149,7 @@ MotherboardDef::MotherboardDef()
     {"performance_pitchbend",              lua_performance_pitch_bend},
     {"performance_sustainpedal",           lua_performance_sustain_pedal},
     {"property_set",                       lua_property_set},
-    {"sample",                             lua_ignored},
+    {"sample",                             lua_sample},
     {"set_effect_auto_bypass_routing",     lua_ignored},
     {"string",                             lua_string},
     {"trace",                              lua_ignored},
@@ -148,7 +158,7 @@ MotherboardDef::MotherboardDef()
     {"ui_percent",                         lua_ignored},
     {"ui_selector",                        lua_ignored},
     {"ui_text",                            lua_ignored},
-    {"user_sample",                        lua_ignored},
+    {"user_sample",                        lua_user_sample},
     {nullptr,                              nullptr}
   };
 
@@ -286,7 +296,7 @@ int MotherboardDef::luaBoolean()
 {
   auto p = std::make_shared<jbox_boolean_property>();
   populatePropertyTag(p);
-  populatePersistence(p);
+  p->fPersistence = getPersistence();
   p->fDefaultValue = L.getTableValueAsBoolean("default", 1);
   return addObjectOnTopOfStack(std::move(p));
 }
@@ -298,7 +308,7 @@ int MotherboardDef::luaNumber()
 {
   auto p = std::make_shared<jbox_number_property>();
   populatePropertyTag(p);
-  populatePersistence(p);
+  p->fPersistence = getPersistence();
   p->fDefaultValue = L.getTableValueAsNumber("default", 1);
   return addObjectOnTopOfStack(std::move(p));
 }
@@ -311,7 +321,7 @@ int MotherboardDef::luaPerformance(jbox_performance_property::Type iType)
   auto p = std::make_shared<jbox_performance_property>();
   p->fType = iType;
   populatePropertyTag(p);
-  populatePersistence(p);
+  p->fPersistence = getPersistence();
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -322,7 +332,7 @@ int MotherboardDef::luaString()
 {
   auto p = std::make_shared<jbox_string_property>();
   populatePropertyTag(p);
-  populatePersistence(p);
+  p->fPersistence = getPersistence();
   p->fDefaultValue = L.getTableValueAsString("default", 1);
   p->fMaxSize = L.getTableValueAsNumber("max_size", 1);
   return addObjectOnTopOfStack(std::move(p));
@@ -368,6 +378,36 @@ void MotherboardDef::luaPropertySet(char const *iKey, jbox_object_map_t &oMap)
 }
 
 //------------------------------------------------------------------------
+// MotherboardDef::luaSample
+//------------------------------------------------------------------------
+int MotherboardDef::luaSample()
+{
+  auto p = std::make_shared<jbox_sample_property>();
+  populatePropertyTag(p);
+  p->fDefaultValue = L.getTableValueAsOptionalString("default", 1);
+  return addObjectOnTopOfStack(std::move(p));
+}
+
+//------------------------------------------------------------------------
+// MotherboardDef::luaUserSample
+//------------------------------------------------------------------------
+int MotherboardDef::luaUserSample()
+{
+  auto p = std::make_shared<jbox_user_sample_property>();
+  p->fPersistence = getPersistence();
+
+  lua_getfield(L, 1, "sample_parameters");
+  iterateLuaTable([this, &p](lua_table_key_t key) {
+    RE_MOCK_ASSERT(std::holds_alternative<int>(key), "malformed sample_parameters list");
+    luaL_checktype(L, -1, LUA_TSTRING);
+    p->sample_parameter(lua_tostring(L, -1));
+    lua_pop(L, 1);
+  });
+
+  return addObjectOnTopOfStack(std::move(p));
+}
+
+//------------------------------------------------------------------------
 // setDefaultPersistence
 //------------------------------------------------------------------------
 template<typename T>
@@ -394,6 +434,8 @@ std::optional<gui_jbox_property> to_gui_jbox_property(std::string iKey, std::opt
     std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_blob_property>) { return std::nullopt; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_sample_property>) { return std::nullopt; }
+    std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_user_sample_property>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<jbox_performance_property>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
     std::optional<gui_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
@@ -430,6 +472,8 @@ std::optional<document_jbox_property> to_document_jbox_property(std::string iKey
     std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
     std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
     std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_blob_property>) { return std::nullopt; }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_sample_property>) { return std::nullopt; }
+    std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_user_sample_property>) { return std::nullopt; }
     std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
     std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
 
@@ -483,9 +527,11 @@ std::optional<rtc_jbox_property> to_rtc_jbox_property(std::string iKey, std::opt
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_performance_property>) { return std::nullopt; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_user_sample_property>) { return std::nullopt; }
 
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_native_object> o) { return o; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_blob_property> o) { return o; }
+    std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_sample_property> o) { return o; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) { return o; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_number_property> o) { return o; }
     std::optional<rtc_jbox_property> operator()(std::shared_ptr<jbox_string_property> o) { return o; }
@@ -514,6 +560,8 @@ std::optional<rt_jbox_property> to_rt_jbox_property(std::string iKey, std::optio
     std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_performance_property>) { return std::nullopt; }
     std::optional<rt_jbox_property> operator()(std::shared_ptr<impl::jbox_property_set>) { return std::nullopt; }
     std::optional<rt_jbox_property> operator()(std::shared_ptr<impl::jbox_socket>) { return std::nullopt; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_user_sample_property>) { return std::nullopt; }
+    std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_sample_property>) { return std::nullopt; }
 
     std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_boolean_property> o) { return o; }
     std::optional<rt_jbox_property> operator()(std::shared_ptr<jbox_number_property> o) { return o; }
@@ -587,9 +635,9 @@ void MotherboardDef::populatePropertyTag(jbox_property iProperty)
 }
 
 //------------------------------------------------------------------------
-// MotherboardDef::populatePersistence
+// MotherboardDef::getPersistence
 //------------------------------------------------------------------------
-void MotherboardDef::populatePersistence(jbox_property iProperty)
+std::optional<EPersistence> MotherboardDef::getPersistence()
 {
   RE_MOCK_ASSERT(lua_gettop(L) > 0, "Missing table... Did you use () instead of {}?");
 
@@ -606,7 +654,7 @@ void MotherboardDef::populatePersistence(jbox_property iProperty)
       RE_MOCK_ASSERT(*persistenceString == "none", "persistence [%s] should be patch/song/none", persistenceString->c_str());
   }
 
-  std::visit([persistence](auto &t) { t->fPersistence = persistence; }, iProperty);
+  return persistence;
 }
 
 //------------------------------------------------------------------------
@@ -676,6 +724,26 @@ std::shared_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
   }
 
   lua_pop(L, 1);
+
+  lua_getglobal(L, "user_samples");
+  int stringKeyCount = 0;
+  int indexKeyCount = 0;
+  iterateLuaTable([this, &set, &stringKeyCount, &indexKeyCount](lua_table_key_t key) {
+    auto userSample = std::get<std::shared_ptr<jbox_user_sample_property>>(*getObjectOnTopOfStack());
+    setDefaultPersistence(userSample, EPersistence::kNone);
+    if(std::holds_alternative<std::string>(key))
+    {
+      RE_MOCK_ASSERT(indexKeyCount == 0, "Cannot mix and match named and indexed sample in user_samples");
+      userSample->name(std::get<std::string>(key));
+      stringKeyCount++;
+    }
+    else
+    {
+      RE_MOCK_ASSERT(stringKeyCount == 0, "Cannot mix and match named and indexed sample in user_samples");
+      indexKeyCount++;
+    }
+    set->user_samples.emplace_back(userSample);
+  });
 
   fCustomProperties = std::move(set);
 
