@@ -65,7 +65,7 @@ set(re-mock_BUILD_HEADERS
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.h
     ${re-mock_CPP_SRC_DIR}/re/mock/MotherboardImpl.h
-    ${re-mock_CPP_SRC_DIR}/re/mock/Patch.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/PatchParser.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Rack.h
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.h
     ${re-mock_CPP_SRC_DIR}/re/mock/stl.h
@@ -84,7 +84,7 @@ set(re-mock_BUILD_SOURCES
     ${re-mock_CPP_SRC_DIR}/re/mock/Jukebox.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.cpp
-    ${re-mock_CPP_SRC_DIR}/re/mock/Patch.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/PatchParser.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/InfoLua.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp

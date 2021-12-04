@@ -201,13 +201,13 @@ TEST(MotherboardDef, All)
     ASSERT_EQ(ptr->fSampleParameters, std::set<std::string>(
       {"root_key", "tune_cents", "play_range_start", "play_range_end", "loop_range_start", "loop_range_end",
        "loop_mode", "preview_volume_level"}));
-    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kPatch);
   }
   {
     auto ptr = customProperties->user_samples[1];
     ASSERT_EQ(ptr->fName, std::nullopt);
     ASSERT_EQ(ptr->fSampleParameters, std::set<std::string>({"preview_volume_level"}));
-    ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kPatch);
   }
 
   ASSERT_EQ(def->getStackString(), "<empty>");

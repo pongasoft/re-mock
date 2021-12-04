@@ -389,6 +389,7 @@ int RealtimeController::luaGetSampleMetaData()
     L.setTableValue("resident_frame_count", md.fResidentFrameCount);
     L.setTableValue("channels", md.fSpec.fChannels);
     L.setTableValue("sample_rate", md.fSpec.fSampleRate);
+    L.setTableValue("sample_name", metadata.getSampleName());
 
     auto &params = metadata.fMain.fParameters;
     L.setTableValue("root_key", params.fRootNote);

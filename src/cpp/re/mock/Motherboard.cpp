@@ -347,7 +347,7 @@ struct MockJBoxVisitor
 void Motherboard::addDeviceHostProperties()
 {
   auto deviceHost = addObject("/device_host");
-  deviceHost->addProperty("sample_context", PropertyOwner::kHostOwner, makeNumber(0), kJBox_DeviceHostSampleContext);
+  deviceHost->addProperty("sample_context", PropertyOwner::kHostOwner, makeNumber(0), kJBox_DeviceHostSampleContext, lua::EPersistence::kPatch);
   deviceHost->addProperty("delete_sample", PropertyOwner::kHostOwner, makeNumber(0), kJBox_DeviceHostDeleteSample);
   deviceHost->addProperty("edit_sample", PropertyOwner::kHostOwner, makeNumber(0), kJBox_DeviceHostEditSample);
 }
@@ -418,7 +418,8 @@ void Motherboard::init()
   auto customProperties = def.getCustomProperties();
 
   // gui_owner.properties
-  fGUIProperties = customProperties->gui_owner;
+  for(auto &&prop: customProperties->gui_owner)
+    fGUIProperties[fmt::printf("/custom_properties/%s", prop.first)] = prop.second;
 
   // document_owner.properties
   for(auto &&prop: customProperties->document_owner)
@@ -444,7 +445,7 @@ void Motherboard::init()
   if(fConfig.info().fSupportPatches)
   {
     RE_MOCK_ASSERT(!fConfig.info().fDefaultPatch.empty(), "support_patches is set to true but no default patch provided");
-    loadPatch(ConfigFile{fConfig.info().fDefaultPatch});
+    loadPatch(fConfig.info().fDefaultPatch);
   }
 
   // rt_input_setup.notify
@@ -501,7 +502,10 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
                               PropertyOwner iOwner,
                               lua::jbox_property const &iProperty)
 {
-  RE_MOCK_ASSERT(fGUIProperties.find(iPropertyName) == fGUIProperties.end(), "duplicate property [%s] (already defined in gui_owner)", iPropertyName);
+  auto &o = fJboxObjects.get(iParentObject);
+
+  auto fullPropertyPath = fmt::printf("%s/%s", o->fObjectPath, iPropertyName);
+  RE_MOCK_ASSERT(fGUIProperties.find(fullPropertyPath) == fGUIProperties.end(), "duplicate property [%s] (already defined in gui_owner)", fullPropertyPath);
 
   struct DefaultValueVisitor
   {
@@ -583,12 +587,12 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
   auto persistence = std::visit([](auto &p) { return p->fPersistence; }, iProperty);
   auto valueType = std::visit([](auto &p) { return p->value_type(); }, iProperty);
 
-  fJboxObjects.get(iParentObject)->addProperty(iPropertyName,
-                                               iOwner,
-                                               valueType,
-                                               std::move(defaultValue),
-                                               propertyTag,
-                                               *persistence);
+  o->addProperty(iPropertyName,
+                 iOwner,
+                 valueType,
+                 std::move(defaultValue),
+                 propertyTag,
+                 *persistence);
 }
 
 namespace impl {
@@ -931,6 +935,7 @@ std::unique_ptr<JboxValue> Motherboard::loadBlobAsync(std::string const &iBlobPa
   RE_MOCK_ASSERT(stl::starts_with(iBlobPath, "/Private/"), "loadBlobAsync path must start with /Private [%s]", iBlobPath);
 
   auto b = std::make_unique<impl::Blob>();
+  b->fBlobPath = iBlobPath;
   auto blobResource = fConfig.findBlobResource(iBlobPath);
 
   if(!blobResource)
@@ -1226,13 +1231,24 @@ std::string Motherboard::toString(JboxValue const &iValue, char const *iFormat) 
     case kJBox_BLOB:
     {
       auto const &blob = iValue.getBlob();
-      return fmt::printf(iFormat ? iFormat : "Blob(%ld, %ld)[%ld]", blob.getResidentSize(), blob.getSize(), iValue.getUniqueId());
+      return fmt::printf(iFormat ? iFormat : "Blob{.fSize=%ld,.fResidentSize=%ld,.fLoadStatus=%s,.fBlobPath=[%s]}",
+                         blob.getSize(),
+                         blob.getResidentSize(),
+                         blob.fLoadingContext.getStatusAsString(),
+                         blob.fBlobPath);
     }
 
     case kJBox_Sample:
     {
       auto const &sample = iValue.getSample();
-      return fmt::printf(iFormat ? iFormat : "Sample(%ld, %ld)[%ld]", sample.getResidentFrameCount(), sample.getFrameCount(), iValue.getUniqueId());
+      return fmt::printf(iFormat ? iFormat : "%s{.fChannels=%d,.fSampleRate=%d,.fFrameCount=%d,.fResidentFrameCount=%d,.fLoadStatus=%s,.fSamplePath=[%s]}",
+                         sample.isUserSample() ? "UserSample" : "Sample",
+                         sample.fChannels,
+                         sample.fSampleRate,
+                         sample.getFrameCount(),
+                         sample.getResidentFrameCount(),
+                         sample.fLoadingContext.getStatusAsString(),
+                         sample.fSamplePath);
     }
 
     default:
@@ -1394,64 +1410,84 @@ void Motherboard::addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff)
 //------------------------------------------------------------------------
 // Motherboard::loadPatch
 //------------------------------------------------------------------------
-void Motherboard::loadPatch(ConfigFile const &iPatchFile)
+void Motherboard::loadPatch(std::string const &iPatchPath)
 {
-  auto patchResource = fConfig.findPatchResource(iPatchFile.fFilename);
-  RE_MOCK_ASSERT(patchResource != std::nullopt, "loadPatch: Cannot find patch [%s]", iPatchFile.fFilename);
-  std::visit([this](auto &source) { loadPatch(Patch::from(source)); }, patchResource->fXMLSource);
+  RE_MOCK_ASSERT(stl::starts_with(iPatchPath, "/"), "patch path must start with / [%s]", iPatchPath);
+  auto patchResource = fConfig.findPatchResource(iPatchPath);
+  RE_MOCK_ASSERT(patchResource != std::nullopt, "loadPatch: Cannot find patch [%s]", iPatchPath);
+  loadPatch(*patchResource);
 }
 
 //------------------------------------------------------------------------
 // Motherboard::loadPatch
 //------------------------------------------------------------------------
-void Motherboard::loadPatch(Patch const &iPatch)
+void Motherboard::loadPatch(ConfigFile const &iPatchFile, std::optional<std::vector<std::string>> iSampleReferences)
 {
-  for(auto const &[propertyName, property]: iPatch.fProperties)
-  {
-    // it is a GUI property... ignored
-    if(fGUIProperties.find(propertyName) != fGUIProperties.end())
-      continue;
-
-    auto name = fmt::printf("/custom_properties/%s", propertyName);
-
-    RE_MOCK_ASSERT(getProperty(name)->fPersistence == lua::EPersistence::kPatch);
-
-    struct visitor
-    {
-      std::string fName{};
-      Motherboard *fMotherboard{};
-
-      void operator()(patch_boolean_property const &o) {
-        if(fMotherboard->getBool(fName) != o.fValue)
-          fMotherboard->setBool(fName, o.fValue);
-      }
-      void operator()(patch_number_property const &o) {
-        if(!stl::almost_equal(fMotherboard->getNum(fName), o.fValue))
-          fMotherboard->setNum(fName, o.fValue);
-      }
-      void operator()(patch_string_property const &o) {
-        if(fMotherboard->getString(fName) != o.fValue)
-          fMotherboard->setString(fName, o.fValue);
-      }
-      void operator()(patch_sample_property const &o) {
-        RE_MOCK_LOG_INFO("detected patch sample for %s/%d", fName, o.fValue);
-      }
-    };
-
-    std::visit(visitor{name, this}, property);
-  }
+  auto sampleResolver = [&iSampleReferences](int i) -> std::string {
+    RE_MOCK_ASSERT(iSampleReferences != std::nullopt, "Patch contains sample properties so you must provide iSampleReferences");
+    RE_MOCK_ASSERT(i < iSampleReferences->size(), "Cannot find sample reference [%d]", i);
+    return iSampleReferences->at(i);
+  };
+  loadPatch(PatchParser::from(iPatchFile, sampleResolver));
 }
 
 //------------------------------------------------------------------------
-// Motherboard::getResourceFile
+// Motherboard::loadPatch
 //------------------------------------------------------------------------
-ConfigFile Motherboard::getResourceFile(ConfigFile const &iUnixPath) const
+void Motherboard::loadPatch(ConfigString const &iPatchString, std::optional<std::vector<std::string>> iSampleReferences)
 {
-  auto res = fConfig.resource_file(iUnixPath);
-  if(res)
-    return *res;
-  else
-    return ConfigFile{fmt::path(fmt::split(iUnixPath.fFilename, '/'))};
+  auto sampleResolver = [&iSampleReferences](int i) -> std::string {
+    RE_MOCK_ASSERT(iSampleReferences != std::nullopt, "Patch contains sample properties so you must provide iSampleReferences");
+    RE_MOCK_ASSERT(i < iSampleReferences->size(), "Cannot find sample reference [%d]", i);
+    return iSampleReferences->at(i);
+  };
+  loadPatch(PatchParser::from(iPatchString, sampleResolver));
+}
+
+//------------------------------------------------------------------------
+// Motherboard::loadPatch
+//------------------------------------------------------------------------
+void Motherboard::loadPatch(Resource::Patch const &iPatch)
+{
+  for(auto const &[propertyPath, property]: iPatch.fProperties)
+  {
+    // it is a GUI property... ignored
+    if(fGUIProperties.find(propertyPath) != fGUIProperties.end())
+      continue;
+
+    RE_MOCK_ASSERT(getProperty(propertyPath)->fPersistence == lua::EPersistence::kPatch,
+                   "Property [%s] must have a persistence set to \"patch\"", propertyPath);
+
+    struct visitor
+    {
+      std::string fPropertyPath{};
+      Motherboard *fMotherboard{};
+
+      void operator()(Resource::Patch::boolean_property const &o) {
+        if(fMotherboard->getBool(fPropertyPath) != o.fValue)
+          fMotherboard->setBool(fPropertyPath, o.fValue);
+      }
+      void operator()(Resource::Patch::number_property const &o) {
+        if(!stl::almost_equal(fMotherboard->getNum(fPropertyPath), o.fValue))
+          fMotherboard->setNum(fPropertyPath, o.fValue);
+      }
+      void operator()(Resource::Patch::string_property const &o) {
+        if(fMotherboard->getString(fPropertyPath) != o.fValue)
+          fMotherboard->setString(fPropertyPath, o.fValue);
+      }
+      void operator()(Resource::Patch::sample_property const &o) {
+        auto property = fMotherboard->getProperty(fPropertyPath);
+        if(property->loadValue()->getSample().fSamplePath != o.fValue)
+        {
+          auto newSample = fMotherboard->loadSampleAsync(o.fValue);
+          newSample->getSample().fSampleItem = property->loadValue()->getSample().fSampleItem;
+          fMotherboard->storeProperty(property->fPropertyRef, std::move(newSample));
+        }
+      }
+    };
+
+    std::visit(visitor{propertyPath, this}, property);
+  }
 }
 
 //------------------------------------------------------------------------
@@ -1548,6 +1584,7 @@ impl::Sample::Metadata Motherboard::getSampleMetadata(JboxValue const &iValue) c
   auto &md = res.fMain;
 
   res.fLoadingContext = sample.fLoadingContext;
+  res.fSamplePath = sample.fSamplePath;
 
   md.fSpec = {
     /* .fFrameCount = */ sample.getFrameCount(),
@@ -1557,7 +1594,7 @@ impl::Sample::Metadata Motherboard::getSampleMetadata(JboxValue const &iValue) c
   md.fResidentFrameCount = sample.getResidentFrameCount();
   md.fStatus = sample.fLoadingContext.getStatusAsInt();
 
-  if(sample.fSampleItem > 0)
+  if(sample.isUserSample())
   {
     auto const item = getObject(sample.fSampleItem);
 
@@ -1624,6 +1661,7 @@ std::unique_ptr<JboxValue> Motherboard::loadSampleAsync(std::string const &iSamp
   RE_MOCK_ASSERT(stl::starts_with(iSamplePath, "/Private/"), "loadSampleAsync path must start with /Private [%s]", iSamplePath);
 
   auto sample =  std::make_unique<impl::Sample>();
+  sample->fSamplePath = iSamplePath;
   auto sampleResource = fConfig.findSampleResource(iSamplePath);
 
   if(!sampleResource)
@@ -1740,7 +1778,6 @@ void Motherboard::getSampleData(TJBox_Value iValue,
   RE_MOCK_ASSERT(s.getResidentFrameCount() <= s.getFrameCount()); // sanity check
   std::copy(std::begin(s.fData) + iStartFrame * s.fChannels, std::begin(s.fData) + iEndFrame * s.fChannels, oAudio);
 }
-
 
 //------------------------------------------------------------------------
 // JboxObject::JboxObject
@@ -1986,6 +2023,17 @@ std::string impl::Sample::Metadata::getLoopModeAsString() const
       break;
   }
   return res;
+}
+
+//------------------------------------------------------------------------
+// Sample::Metadata::getSampleName
+//------------------------------------------------------------------------
+std::string impl::Sample::Metadata::getSampleName() const
+{
+  auto p = fSamplePath.find_last_of('/');
+  if(p == std::string::npos || p == fSamplePath.size() - 1)
+    return fSamplePath;
+  return fSamplePath.substr(p + 1);
 }
 
 

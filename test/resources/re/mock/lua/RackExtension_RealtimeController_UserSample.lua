@@ -22,6 +22,7 @@ function on_prop_user_sample(index, new_value)
           ";m.ch=" .. tostring(metadata.channels) ..
           ";m.sr=" .. tostring(metadata.sample_rate) ..
           ";m.ls=" .. tostring(metadata.load_status) ..
+          ";m.sn=[" .. tostring(metadata.sample_name) .. "]" ..
           ";m.rk=" .. tostring(metadata.root_key) ..
           ";m.tc=" .. tostring(metadata.tune_cents) ..
           ";m.prs=" .. tostring(metadata.play_range_start) ..

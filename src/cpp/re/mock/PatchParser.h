@@ -16,28 +16,24 @@
  * @author Yan Pujante
  */
 
-#include <re/mock/fmt.h>
-#include <gtest/gtest.h>
+#ifndef RE_MOCK_PATCHLOADER_H
+#define RE_MOCK_PATCHLOADER_H
 
-namespace re::mock::Test {
+#include "Config.h"
+#include <functional>
 
-using namespace mock;
+namespace re::mock {
 
-// Fmt.path
-TEST(Fmt, path)
+class PatchParser
 {
-  std::vector<std::string> v{"a1", "a2"};
+public:
+  using sample_reference_resolver = std::function<std::string(int)>;
 
-  auto sep = std::string(1, fmt::impl::pathSeparator);
-
-  ASSERT_EQ("root" + sep + "c1" + sep + "a1" + sep + "a2" + sep + "c2", fmt::path("root", "c1", v, "c2"));
-}
-
-// Fmt.printf
-TEST(Fmt, printf)
-{
-  ASSERT_EQ("12,[abc],[def],99.10", fmt::printf("%d,[%s],[%s],%.2f", 12, "abc", std::string("def"), 99.1));
-}
-
+public:
+  static Resource::Patch from(ConfigFile iPatchFile, sample_reference_resolver iSampleResolver = {});
+  static Resource::Patch from(ConfigString iPatchString, sample_reference_resolver iSampleResolver = {});
+};
 
 }
+
+#endif //RE_MOCK_PATCHLOADER_H

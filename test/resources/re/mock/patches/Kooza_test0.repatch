@@ -20,5 +20,13 @@
             </Value>
         </Object>
         <Object name="transport" />
+        <Object name="user_samples/0" >
+            <Value property="root_key"  type="number" >
+                61
+            </Value>
+            <Value property="item"  type="sample" >
+                1
+            </Value>
+        </Object>
     </Properties>
 </JukeboxPatch>

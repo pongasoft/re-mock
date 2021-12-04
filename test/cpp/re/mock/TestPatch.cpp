@@ -16,7 +16,7 @@
  * @author Yan Pujante
  */
 
-#include <re/mock/Patch.h>
+#include <re/mock/PatchParser.h>
 #include <re/mock/Rack.h>
 #include <re/mock/MockDevices.h>
 #include <re/mock/MockJukebox.h>
@@ -54,11 +54,11 @@ TEST(Patch, String)
 </JukeboxPatch>
 )";
 
-  auto patch = Patch::from(ConfigString{patchString});
+  auto patch = PatchParser::from(ConfigString{patchString});
 
-  ASSERT_FLOAT_EQ(0.5, std::get<patch_number_property>(patch.fProperties["prop_number"]).fValue);
-  ASSERT_TRUE(std::get<patch_boolean_property>(patch.fProperties["prop_boolean"]).fValue);
-  ASSERT_EQ("ABC", std::get<patch_string_property>(patch.fProperties["prop_string"]).fValue);
+  ASSERT_FLOAT_EQ(0.5, std::get<Resource::Patch::number_property>(patch.fProperties["/custom_properties/prop_number"]).fValue);
+  ASSERT_TRUE(std::get<Resource::Patch::boolean_property>(patch.fProperties["/custom_properties/prop_boolean"]).fValue);
+  ASSERT_EQ("ABC", std::get<Resource::Patch::string_property>(patch.fProperties["/custom_properties/prop_string"]).fValue);
 }
 
 // Patch.Load
@@ -86,6 +86,14 @@ TEST(Patch, Load)
             </Value>
         </Object>
         <Object name="transport" />
+        <Object name="user_samples/0" >
+            <Value property="root_key"  type="number" >
+                25
+            </Value>
+            <Value property="item"  type="sample" >
+                0
+            </Value>
+        </Object>
     </Properties>
 </JukeboxPatch>
 )";
@@ -102,37 +110,67 @@ TEST(Patch, Load)
       for(int i = 0; i < iDiffCount; i++)
       {
         auto diff = iPropertyDiffs[i];
+        char const *f = nullptr;
+        if(JBox_GetType(diff.fCurrentValue) == kJBox_Number)
+          f = "%.1f";
         fDiffs[JBox_toString(diff.fPropertyRef)] =
-          JBox_toString(diff.fPreviousValue) + "->" + JBox_toString(diff.fCurrentValue) + "@" + std::to_string(diff.fAtFrameIndex);
+          JBox_toString(diff.fPreviousValue, f) + "->" + JBox_toString(diff.fCurrentValue, f) + "@" + std::to_string(diff.fAtFrameIndex);
       }
     }
 
     std::map<std::string, std::string> fDiffs{};
   };
 
+  std::vector<TJBox_AudioSample> sampleMonoData{0,1,2,3,4,5};
+  std::vector<TJBox_AudioSample> sampleStereoData{1,10,2,20,3,30,4,40,5,50};
+
+  std::vector<std::string> sampleReferences = {"/Private/mono_sample.data", "/Private/stereo_sample.data"};
+
   auto c = DeviceConfig<Device>::fromSkeleton()
     .device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"))
-    .default_patch("/Public/default.repatch", ConfigString{defaultPatchString})
-    .patch_file("/Public/patch1.repatch", "/re/mock/patches/Kooza_test1.repatch") // relative to device_resources_dir
+    .default_patch("/Public/default.repatch")
     .mdef(Config::gui_owner_property("gui_prop_float", lua::jbox_number_property{}.default_value(0.9))) // ignored
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}))
     .mdef(Config::document_owner_property("prop_string", lua::jbox_string_property{}.default_value("abcd")))
+    .mdef(Config::user_sample(0, lua::jbox_user_sample_property{}.sample_parameter("root_key")))
+    .mdef(Config::user_sample(1, lua::jbox_user_sample_property{}))
     .rtc(Config::rt_input_setup_notify("/custom_properties/prop_float"))
     .rtc(Config::rt_input_setup_notify("/custom_properties/prop_bool"))
-    .rtc(Config::rt_input_setup_notify("/custom_properties/prop_string"));
+    .rtc(Config::rt_input_setup_notify("/custom_properties/prop_string"))
+    .rtc(Config::rt_input_setup_notify("/user_samples/0/*"))
+    .rtc(Config::rt_input_setup_notify("/user_samples/1/*"))
+    .rtc(Config::rt_input_setup_notify("/device_host/sample_context"))
+    .sample_data("/Private/mono_sample.data", Resource::Sample{}.sample_rate(44100).mono().data(sampleMonoData))
+    .sample_data("/Private/stereo_sample.data", Resource::Sample{}.sample_rate(48000).stereo().data(sampleStereoData))
+
+    .patch_sample_references("/Public/default.repatch", sampleReferences)
+
+    .patch_string("/Public/default.repatch", defaultPatchString)
+
+    // relative to device_resources_dir
+    .patch_file("/Public/patch1.repatch", "/re/mock/patches/Kooza_test1.repatch", sampleReferences)
+
+    .patch_data("/Public/patch2.repatch", Resource::Patch{}.number("/device_host/sample_context", 1).sample("/user_samples/0/item", "/Private/stereo_sample.data"))
+    ;
 
   auto re = rack.newDevice(c);
 
   // first frame: get default_value->patch_value
   rack.nextFrame();
-  ASSERT_EQ(3, re->fDiffs.size());
+  ASSERT_EQ(7, re->fDiffs.size());
 
   {
     std::map<std::string, std::string> expected{};
-    expected["/custom_properties/prop_float"] = "0.800000->0.500000@0";
+    expected["/custom_properties/prop_float"] = "0.8->0.5@0";
     expected["/custom_properties/prop_bool"] = "false->true@0";
     expected["/custom_properties/prop_string"] = "abcd->ABC@0";
+    expected["/device_host/sample_context"] = "0.0->0.0@0";
+    expected["/user_samples/0/item"] = "UserSample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=nil,.fSamplePath=[]}->"
+                                       "UserSample{.fChannels=1,.fSampleRate=44100,.fFrameCount=6,.fResidentFrameCount=6,.fLoadStatus=resident,.fSamplePath=[/Private/mono_sample.data]}@0";
+    expected["/user_samples/0/root_key"] = "60.0->25.0@0";
+    expected["/user_samples/1/item"] = "UserSample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=nil,.fSamplePath=[]}->"
+                                       "UserSample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=nil,.fSamplePath=[]}@0";
 
     ASSERT_EQ(expected, re->fDiffs);
   }
@@ -167,31 +205,42 @@ TEST(Patch, Load)
   }
 
   // load a patch file (via absolute path) (2 changes)
-  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
+  ASSERT_THROW(re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")})), Exception);
+
+  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}),
+               sampleReferences);
   rack.nextFrame();
-  ASSERT_EQ(2, re->fDiffs.size());
+  ASSERT_EQ(4, re->fDiffs.size());
 
   {
     std::map<std::string, std::string> expected{};
-    expected["/custom_properties/prop_float"] = "0.500000->1.000000@0";
+    expected["/custom_properties/prop_float"] = "0.5->1.0@0";
     expected["/custom_properties/prop_string"] = "DEF->Kooza?@0";
+    expected["/user_samples/0/item"] = "UserSample{.fChannels=1,.fSampleRate=44100,.fFrameCount=6,.fResidentFrameCount=6,.fLoadStatus=resident,.fSamplePath=[/Private/mono_sample.data]}->"
+                                       "UserSample{.fChannels=2,.fSampleRate=48000,.fFrameCount=5,.fResidentFrameCount=5,.fLoadStatus=resident,.fSamplePath=[/Private/stereo_sample.data]}@0";
+    expected["/user_samples/0/root_key"] = "25.0->61.0@0";
 
     ASSERT_EQ(expected, re->fDiffs);
   }
 
   // load the same patch file (no change!)
-  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
+  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}),
+               sampleReferences);
   rack.nextFrame();
   ASSERT_EQ(0, re->fDiffs.size());
 
   // load another patch (via indirect mapping)
-  re.loadPatch(ConfigFile{"/Public/patch1.repatch"});
+  re.loadPatch("/Public/patch1.repatch");
   rack.nextFrame();
-  ASSERT_EQ(1, re->fDiffs.size());
+  ASSERT_EQ(4, re->fDiffs.size());
 
   {
     std::map<std::string, std::string> expected{};
-    expected["/custom_properties/prop_float"] = "1.000000->0.200000@0";
+    expected["/custom_properties/prop_float"] = "1.0->0.2@0";
+    expected["/device_host/sample_context"] = "0.0->1.0@0";
+    expected["/user_samples/0/item"] = "UserSample{.fChannels=2,.fSampleRate=48000,.fFrameCount=5,.fResidentFrameCount=5,.fLoadStatus=resident,.fSamplePath=[/Private/stereo_sample.data]}->"
+                                       "UserSample{.fChannels=1,.fSampleRate=44100,.fFrameCount=6,.fResidentFrameCount=6,.fLoadStatus=resident,.fSamplePath=[/Private/mono_sample.data]}@0";
+    expected["/user_samples/0/root_key"] = "61.0->62.0@0";
 
     ASSERT_EQ(expected, re->fDiffs);
   }

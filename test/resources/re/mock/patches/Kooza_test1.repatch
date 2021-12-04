@@ -10,5 +10,18 @@
             </Value>
         </Object>
         <Object name="transport" />
+        <Object name="device_host" >
+            <Value property="sample_context"  type="number" >
+                1
+            </Value>
+        </Object>
+        <Object name="user_samples/0" >
+            <Value property="root_key"  type="number" >
+                62
+            </Value>
+            <Value property="item"  type="sample" >
+                0
+            </Value>
+        </Object>
     </Properties>
 </JukeboxPatch>

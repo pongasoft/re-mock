@@ -99,24 +99,24 @@ public:
     inline std::string getObjectPath(TJBox_ObjectRef iObjectRef) const { return motherboard().getObjectPath(iObjectRef); }
 
     template<typename T = TJBox_Float64>
-    T getNum(std::string const &iPropertyPath) const { return motherboard().getNum<T>(iPropertyPath); }
+    inline T getNum(std::string const &iPropertyPath) const { return motherboard().getNum<T>(iPropertyPath); }
     template<typename T = TJBox_Float64>
-    void setNum(std::string const &iPropertyPath, T iValue) { motherboard().setNum<T>(iPropertyPath, iValue);}
+    inline void setNum(std::string const &iPropertyPath, T iValue) { motherboard().setNum<T>(iPropertyPath, iValue);}
 
-    std::string getString(std::string const &iPropertyPath) const { return motherboard().getString(iPropertyPath); }
-    void setString(std::string const &iPropertyPath, std::string iValue) { motherboard().setString(iPropertyPath, std::move(iValue)); }
+    inline std::string getString(std::string const &iPropertyPath) const { return motherboard().getString(iPropertyPath); }
+    inline void setString(std::string const &iPropertyPath, std::string iValue) { motherboard().setString(iPropertyPath, std::move(iValue)); }
 
-    std::string getRTString(std::string const &iPropertyPath) const { return motherboard().getRTString(iPropertyPath); }
-    void setRTString(std::string const &iPropertyPath, std::string const &iValue) { motherboard().setRTString(iPropertyPath, iValue); }
+    inline std::string getRTString(std::string const &iPropertyPath) const { return motherboard().getRTString(iPropertyPath); }
+    inline void setRTString(std::string const &iPropertyPath, std::string const &iValue) { motherboard().setRTString(iPropertyPath, iValue); }
 
-    TJBox_OnOffBypassStates getEffectBypassState() const { return motherboard().getEffectBypassState(); }
-    void setEffectBypassState(TJBox_OnOffBypassStates iState) { motherboard().setEffectBypassState(iState); }
+    inline TJBox_OnOffBypassStates getEffectBypassState() const { return motherboard().getEffectBypassState(); }
+    inline void setEffectBypassState(TJBox_OnOffBypassStates iState) { motherboard().setEffectBypassState(iState); }
 
-    bool isNotePlayerBypassed() const { return motherboard().isNotePlayerBypassed(); }
-    void setNotePlayerBypassed(bool iBypassed) { motherboard().setNotePlayerBypassed(iBypassed); }
+    inline bool isNotePlayerBypassed() const { return motherboard().isNotePlayerBypassed(); }
+    inline void setNotePlayerBypassed(bool iBypassed) { motherboard().setNotePlayerBypassed(iBypassed); }
 
-    void setNoteInEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0) { motherboard().setNoteInEvent(iNoteNumber, iVelocity, iAtFrameIndex); }
-    void setNoteInEvent(TJBox_NoteEvent const &iNoteEvent) { motherboard().setNoteInEvent(iNoteEvent); }
+    inline void setNoteInEvent(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iVelocity, TJBox_UInt16 iAtFrameIndex = 0) { motherboard().setNoteInEvent(iNoteNumber, iVelocity, iAtFrameIndex); }
+    inline void setNoteInEvent(TJBox_NoteEvent const &iNoteEvent) { motherboard().setNoteInEvent(iNoteEvent); }
     inline void setNoteInEvents(Motherboard::NoteEvents const &iNoteEvents) { motherboard().setNoteInEvents(iNoteEvents); }
 
     inline TJBox_Float64 getCVSocketValue(std::string const &iSocketPath) const { return motherboard().getCVSocketValue(iSocketPath); }
@@ -124,13 +124,13 @@ public:
     inline TJBox_Float64 getCVSocketValue(CVSocket const &iSocket) const { return motherboard().getCVSocketValue(iSocket.fSocketRef); }
     inline void setCVSocketValue(CVSocket const &iSocket, TJBox_Float64 iValue) const { motherboard().setCVSocketValue(iSocket.fSocketRef, iValue); }
 
-    Motherboard::DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const { return motherboard().getDSPBuffer(iAudioSocketPath); }
-    void setDSPBuffer(std::string const &iAudioSocketPath, Motherboard::DSPBuffer iBuffer) { motherboard().setDSPBuffer(iAudioSocketPath, std::move(iBuffer)); }
-    Motherboard::DSPBuffer getDSPBuffer(AudioSocket const &iSocket) const { return motherboard().getDSPBuffer(iSocket.fSocketRef); }
-    void setDSPBuffer(AudioSocket const &iSocket, Motherboard::DSPBuffer iBuffer) { motherboard().setDSPBuffer(iSocket.fSocketRef, std::move(iBuffer)); }
+    inline Motherboard::DSPBuffer getDSPBuffer(std::string const &iAudioSocketPath) const { return motherboard().getDSPBuffer(iAudioSocketPath); }
+    inline void setDSPBuffer(std::string const &iAudioSocketPath, Motherboard::DSPBuffer iBuffer) { motherboard().setDSPBuffer(iAudioSocketPath, std::move(iBuffer)); }
+    inline Motherboard::DSPBuffer getDSPBuffer(AudioSocket const &iSocket) const { return motherboard().getDSPBuffer(iSocket.fSocketRef); }
+    inline void setDSPBuffer(AudioSocket const &iSocket, Motherboard::DSPBuffer iBuffer) { motherboard().setDSPBuffer(iSocket.fSocketRef, std::move(iBuffer)); }
 
-    void requestResetAudio() { motherboard().requestResetAudio(); }
-    void requestStop() { motherboard().requestStop(); }
+    inline void requestResetAudio() { motherboard().requestResetAudio(); }
+    inline void requestStop() { motherboard().requestStop(); }
 
     template<typename T>
     inline T *getNativeObjectRW(std::string const &iPropertyPath) const { return motherboard().getNativeObjectRW<T>(iPropertyPath); }
@@ -138,14 +138,18 @@ public:
     template<typename T>
     inline const T *getNativeObjectRO(std::string const &iPropertyPath) const { return motherboard().getNativeObjectRO<T>(iPropertyPath); }
 
-    inline void loadPatch(ConfigFile const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
+    inline void loadPatch(std::string const &iPatchPath) { motherboard().loadPatch(iPatchPath); }
     inline void loadPatch(ConfigString const &iPatchString) { motherboard().loadPatch(iPatchString); }
+    inline void loadPatch(ConfigString const &iPatchString, std::vector<std::string> iSampleReferences) { motherboard().loadPatch(iPatchString, iSampleReferences); }
+    inline void loadPatch(ConfigFile const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
+    inline void loadPatch(ConfigFile const &iPatchFile, std::vector<std::string> iSampleReferences) { motherboard().loadPatch(iPatchFile, iSampleReferences); }
+    inline void loadPatch(Resource::Patch const &iPatch) { motherboard().loadPatch(iPatch); }
 
-    bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { return motherboard().loadMoreBlob(iPropertyPath, iCount); }
+    inline bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { return motherboard().loadMoreBlob(iPropertyPath, iCount); }
 
-    void loadUserSampleAsync(std::string const &iPropertyPath,
-                             std::string const &iResourcePath,
-                             std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
+    inline void loadUserSampleAsync(std::string const &iPropertyPath,
+                                    std::string const &iResourcePath,
+                                    std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
       motherboard().loadUserSampleAsync(iPropertyPath, iResourcePath, iCtx);
     }
 
@@ -160,16 +164,16 @@ public:
       motherboard().loadCurrentUserSampleAsync(iResourcePath, iCtx);
     }
 
-    void deleteUserSample(std::string const &iPropertyPath) { motherboard().deleteUserSample(iPropertyPath); }
+    inline void deleteUserSample(std::string const &iPropertyPath) { motherboard().deleteUserSample(iPropertyPath); }
 
     inline void deleteUserSample(int iUserSampleIndex) { motherboard().deleteUserSample(iUserSampleIndex); }
 
     inline void deleteCurrentUserSample() { motherboard().deleteCurrentUserSample(); }
 
-    bool loadMoreSample(std::string const &iPropertyPath, long iFrameCount = -1) { return motherboard().loadMoreSample(iPropertyPath, iFrameCount); }
+    inline bool loadMoreSample(std::string const &iPropertyPath, long iFrameCount = -1) { return motherboard().loadMoreSample(iPropertyPath, iFrameCount); }
 
-    void setResourceLoadingContext(std::string const &iResourcePath, Resource::LoadingContext const &iCtx) { motherboard().setResourceLoadingContext(iResourcePath, iCtx); }
-    void clearResourceLoadingContext(std::string const &iResourcePath) { motherboard().clearResourceLoadingContext(iResourcePath); }
+    inline void setResourceLoadingContext(std::string const &iResourcePath, Resource::LoadingContext const &iCtx) { motherboard().setResourceLoadingContext(iResourcePath, iCtx); }
+    inline void clearResourceLoadingContext(std::string const &iResourcePath) { motherboard().clearResourceLoadingContext(iResourcePath); }
 
     template<typename T>
     inline T* getInstance() const { return motherboard().getInstance<T>(); }

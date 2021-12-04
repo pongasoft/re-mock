@@ -730,7 +730,7 @@ std::shared_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
   int indexKeyCount = 0;
   iterateLuaTable([this, &set, &stringKeyCount, &indexKeyCount](lua_table_key_t key) {
     auto userSample = std::get<std::shared_ptr<jbox_user_sample_property>>(*getObjectOnTopOfStack());
-    setDefaultPersistence(userSample, EPersistence::kNone);
+    setDefaultPersistence(userSample, EPersistence::kPatch);
     if(std::holds_alternative<std::string>(key))
     {
       RE_MOCK_ASSERT(indexKeyCount == 0, "Cannot mix and match named and indexed sample in user_samples");

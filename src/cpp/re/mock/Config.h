@@ -113,7 +113,28 @@ struct Resource
     LoadingContext &status(LoadStatus l) { fStatus = l; return *this; }
   };
 
-  struct Patch { ConfigSource fXMLSource{}; };
+  struct Patch {
+    struct boolean_property { bool fValue{}; };
+    struct number_property { TJBox_Float64 fValue{}; };
+    struct string_property { std::string fValue{}; };
+    struct sample_property { std::string fValue{}; };
+
+    using patch_property = std::variant<
+      boolean_property,
+      number_property,
+      string_property,
+      sample_property
+    >;
+
+    Patch &boolean(std::string iPath, bool iValue) { fProperties[iPath] = boolean_property { iValue }; return *this; };
+    Patch &number(std::string iPath, TJBox_Float64 iValue) { fProperties[iPath] = number_property { iValue }; return *this; };
+    Patch &string(std::string iPath, std::string const &iValue) { fProperties[iPath] = string_property { iValue }; return *this; };
+    Patch &sample(std::string iPath, std::string iValue) { fProperties[iPath] = sample_property { iValue }; return *this; };
+
+    std::map<std::string, patch_property> fProperties{};
+  };
+
+
   struct Blob { std::vector<char> fData{}; };
 
   struct Sample
@@ -123,6 +144,8 @@ struct Resource
     std::vector<TJBox_AudioSample> fData{};
 
     Sample &channels(TJBox_UInt32 c) { fChannels = c; return *this; }
+    Sample &mono() { return channels(1); }
+    Sample &stereo() { return channels(2); }
     Sample &sample_rate(TJBox_UInt32 s) { fSampleRate = s; return *this; }
     Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
   };
@@ -221,9 +244,11 @@ struct Config
   template<typename T>
   Config &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
-  Config& patch(std::string iResourcePath, ConfigSource const &iPatch) { fResources[iResourcePath] = ConfigResource::Patch{iPatch}; return *this; }
-  Config& patch_string(std::string iResourcePath, std::string const &iPatchString) { return patch(iResourcePath, ConfigString{iPatchString}); }
-  Config& patch_file(std::string iResourcePath, std::string const &iPatchFile) { return patch(iResourcePath, ConfigFile{iPatchFile}); }
+  Config& patch_string(std::string iResourcePath, std::string const &iPatchString) { fResources[iResourcePath] = ConfigResource::Patch{ConfigString{iPatchString}}; return *this; }
+  Config& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fResources[iResourcePath] = ConfigResource::Patch{ConfigFile{iPatchFile}}; return *this; }
+  Config& patch_data(std::string iResourcePath, Resource::Patch iPatch) { fResources[iResourcePath] = ConfigResource::Patch{std::move(iPatch)}; return *this; }
+
+  Config& patch_sample_references(std::string iResourcePath, std::vector<std::string> iSampleReferences) { fSampleReferences[iResourcePath] = std::move(iSampleReferences); return *this; }
 
   Config& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fResources[iResourcePath] = ConfigResource::Blob{ConfigFile{iBlobFile}}; return *this; }
   Config& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fResources[iResourcePath] = ConfigResource::Blob{Resource::Blob{std::move(iBlobData)}}; return *this; }
@@ -255,7 +280,7 @@ struct Config
 protected:
   struct ConfigResource
   {
-    using Patch = Resource::Patch;
+    struct Patch { std::variant<ConfigString, ConfigFile, Resource::Patch> fPatchVariant; };
     struct Blob { std::variant<ConfigFile, Resource::Blob> fBlobVariant; };
     struct Sample { std::variant<ConfigFile, Resource::Sample> fSampleVariant; };
   };
@@ -271,6 +296,7 @@ protected:
   rt_callback_t fRealtime{};
   std::map<std::string, AnyConfigResource> fResources{};
   std::map<std::string, Resource::LoadingContext> fResourceLoadingContexts{};
+  std::map<std::string, std::vector<std::string>> fSampleReferences{};
 };
 
 template<typename T>
@@ -293,7 +319,6 @@ struct DeviceConfig
   DeviceConfig &device_resources_dir(std::string s) { fConfig.device_resources_dir(s); return *this;}
 
   DeviceConfig &default_patch(std::string s) { fConfig.default_patch(s); return *this; }
-  DeviceConfig &default_patch(std::string s, ConfigSource const &iPatch) { default_patch(s); return patch(s, iPatch); }
   DeviceConfig &accept_notes(bool b) { fConfig.accept_notes(b); return *this; }
 
   DeviceConfig &mdef(ConfigFile iFile) { fConfig.mdef(iFile); return *this; }
@@ -316,9 +341,21 @@ struct DeviceConfig
 
   DeviceConfig clone() const { return *this; }
 
-  DeviceConfig& patch(std::string iResourcePath, ConfigSource const &iPatch) { fConfig.patch(iResourcePath, iPatch); return *this; }
   DeviceConfig& patch_string(std::string iResourcePath, std::string const &iPatchString) { fConfig.patch_string(iResourcePath, iPatchString); return *this; }
+  DeviceConfig& patch_string(std::string iResourcePath, std::string const &iPatchFile, std::vector<std::string> iSampleReferences) {
+    fConfig.patch_file(iResourcePath, iPatchFile);
+    patch_sample_references(iResourcePath, iSampleReferences);
+    return *this;
+  }
   DeviceConfig& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fConfig.patch_file(iResourcePath, iPatchFile); return *this; }
+  DeviceConfig& patch_file(std::string iResourcePath, std::string const &iPatchFile, std::vector<std::string> iSampleReferences) {
+    fConfig.patch_file(iResourcePath, iPatchFile);
+    patch_sample_references(iResourcePath, iSampleReferences);
+    return *this;
+  }
+  DeviceConfig& patch_data(std::string iResourcePath, Resource::Patch iPatch) { fConfig.patch_data(iResourcePath, std::move(iPatch)); return *this; }
+
+  DeviceConfig& patch_sample_references(std::string iResourcePath, std::vector<std::string> iSampleReferences) { fConfig.patch_sample_references(iResourcePath, std::move(iSampleReferences)); return *this; }
 
   DeviceConfig& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fConfig.blob_file(iResourcePath, iBlobFile); return *this; }
   DeviceConfig& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fConfig.blob_data(iResourcePath, iBlobData); return *this; }

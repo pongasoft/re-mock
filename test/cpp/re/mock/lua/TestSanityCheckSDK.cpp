@@ -21,7 +21,7 @@
 #include <re/mock/lua/InfoLua.h>
 #include <gtest/gtest.h>
 #include <re_mock_build.h>
-#include <re/mock/Patch.h>
+#include <re/mock/PatchParser.h>
 
 namespace re::mock::lua::Test {
 
@@ -46,6 +46,10 @@ static auto SDK_EXAMPLES = {
  */
 TEST(SanityCheck, SDKExamples)
 {
+  auto sampleResolver = [](int i) -> std::string {
+    return fmt::printf("/Private/sample_%d.data", i);
+  };
+
   for(auto &p: SDK_EXAMPLES)
   {
     {
@@ -59,7 +63,7 @@ TEST(SanityCheck, SDKExamples)
       if(def->supports_patches())
       {
         auto patchFile = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "Resources", def->default_patch());
-        auto patch = Patch::from(ConfigFile{patchFile});
+        auto patch = PatchParser::from(ConfigFile{patchFile}, sampleResolver);
         patchPropertiesCount = patch.fProperties.size();
       }
 

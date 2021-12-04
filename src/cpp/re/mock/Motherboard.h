@@ -36,7 +36,7 @@
 #include "MotherboardImpl.h"
 #include "lua/MotherboardDef.h"
 #include "lua/RealtimeController.h"
-#include "Patch.h"
+#include "PatchParser.h"
 
 bool operator==(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
 bool operator!=(TJBox_NoteEvent const &lhs, TJBox_NoteEvent const &rhs);
@@ -127,8 +127,10 @@ public: // used by regular code
   template<typename T>
   T* getInstance() const;
 
-  void loadPatch(ConfigFile const &iPatchFile);
-  inline void loadPatch(ConfigString const &iPatchString) { loadPatch(Patch::from(iPatchString)); }
+  void loadPatch(std::string const &iPatchPath);
+  void loadPatch(ConfigString const &iPatchString, std::optional<std::vector<std::string>> iSampleReferences = {});
+  void loadPatch(ConfigFile const &iPatchFile, std::optional<std::vector<std::string>> iSampleReferences = {});
+  void loadPatch(Resource::Patch const &iPatch);
 
   void loadUserSampleAsync(std::string const &iPropertyPath,
                            std::string const &iResourcePath,
@@ -278,10 +280,6 @@ protected:
   void nextFrame();
 
   void addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff);
-
-  ConfigFile getResourceFile(ConfigFile const &iUnixPath) const;
-
-  void loadPatch(Patch const &iPatch);
 
   TJBox_Value to_TJBox_Value(std::shared_ptr<const JboxValue> const &iValue) const;
   std::shared_ptr<const JboxValue> from_TJBox_Value(TJBox_Value const &iValue) const;

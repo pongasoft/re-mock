@@ -16,7 +16,7 @@
  * @author Yan Pujante
  */
 
-#include "Patch.h"
+#include "PatchParser.h"
 #include "stl.h"
 #include <tinyxml2.h>
 
@@ -68,36 +68,12 @@ std::string getAttributeValue(XMLElement const *iElement, char const *iAttribute
   return *v;
 }
 
-
-XMLElement const *findChildElementWithAttribute(XMLElement const *iParent,
-                                                char const *iElementName,
-                                                char const* iAttributeName,
-                                                char const *iAttributeValue)
-{
-  if(!iParent)
-    return nullptr;
-
-  auto e = iParent->FirstChildElement(iElementName);
-
-  while(e)
-  {
-    auto v = findAttributeValue(e, iAttributeName);
-
-    if(v && v == std::string(iAttributeValue))
-      return e;
-
-    e = e->NextSiblingElement(iElementName);
-  }
-
-  return nullptr;
-}
-
 //------------------------------------------------------------------------
 // createPatch
 //------------------------------------------------------------------------
-Patch createPatch(XMLDocument const &iDoc)
+Resource::Patch createPatch(XMLDocument const &iDoc, PatchParser::sample_reference_resolver iSampleResolver)
 {
-  Patch patch;
+  Resource::Patch patch;
 
   auto e = iDoc.FirstChildElement("JukeboxPatch");
   RE_MOCK_ASSERT(e != nullptr, "Missing JukeboxPatch root element");
@@ -109,51 +85,51 @@ Patch createPatch(XMLDocument const &iDoc)
   if(!e)
     return patch;
 
-  // <Object name="custom_properties" >
-  e = findChildElementWithAttribute(e, "Object", "name", "custom_properties");
+  auto o = e->FirstChildElement("Object");
 
-  // no custom_properties
-  if(!e)
-    return patch;
-
-  // <Value property="prop_number" type="number" >0.5</Value>
-  auto v = e->FirstChildElement("Value");
-
-  while(v)
+  while(o != nullptr)
   {
-    auto property = fmt::trim(getAttributeValue(v, "property"));
-    auto type = fmt::trim(getAttributeValue(v, "type"));
-    auto value = fmt::trim(v->GetText());
+    auto objectName = fmt::trim(getAttributeValue(o, "name"));
+    // <Value property="prop_number" type="number" >0.5</Value>
+    auto v = o->FirstChildElement("Value");
+    while(v)
+    {
+      auto property = fmt::printf("/%s/%s", objectName, fmt::trim(getAttributeValue(v, "property")));
+      auto type = fmt::trim(getAttributeValue(v, "type"));
+      auto value = fmt::trim(v->GetText());
 
-    if(type == "boolean")
-    {
-      RE_MOCK_ASSERT(value == "true" || value == "false", "Invalid boolean property [%s] line [%d]", value, v->GetLineNum());
-      patch.boolean(property, value == "true");
-    }
-    else if(type == "number")
-    {
-      patch.number(property, std::stod(value));
-    }
-    else if(type == "sample")
-    {
-      patch.sample(property, std::stoi(value));
-    }
-    else if(type == "string")
-    {
-      std::string s = "";
-      while(!value.empty())
+      if(type == "boolean")
       {
-        s += static_cast<char>(std::stoi(value.substr(0, 2), nullptr, 16));
-        value = value.substr(2);
+        RE_MOCK_ASSERT(value == "true" || value == "false", "Invalid boolean property [%s] line [%d]", value, v->GetLineNum());
+        patch.boolean(property, value == "true");
       }
-      patch.string(property, s);
-    }
+      else if(type == "number")
+      {
+        patch.number(property, std::stod(value));
+      }
+      else if(type == "sample")
+      {
+        RE_MOCK_ASSERT(static_cast<bool>(iSampleResolver),
+                       "Patch contains sample properties so you must provide a resolver (parsing of <Samples> section not implemented)");
+        patch.sample(property, iSampleResolver(std::stoi(value)));
+      }
+      else if(type == "string")
+      {
+        std::string s = "";
+        while(!value.empty())
+        {
+          s += static_cast<char>(std::stoi(value.substr(0, 2), nullptr, 16));
+          value = value.substr(2);
+        }
+        patch.string(property, s);
+      }
 
-    v = v->NextSiblingElement("Value");
+      v = v->NextSiblingElement("Value");
+    }
+    o = o->NextSiblingElement("Object");
   }
 
   return patch;
-
 }
 
 }
@@ -161,23 +137,24 @@ Patch createPatch(XMLDocument const &iDoc)
 //------------------------------------------------------------------------
 // Patch::from (file)
 //------------------------------------------------------------------------
-Patch Patch::from(ConfigFile iPatchFile)
+Resource::Patch PatchParser::from(ConfigFile iPatchFile, sample_reference_resolver iSampleResolver)
 {
   XMLDocument doc;
   auto res = doc.LoadFile(iPatchFile.fFilename.c_str());
   RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch file %s", res, iPatchFile.fFilename);
-  return impl::createPatch(doc);
+  auto patch = impl::createPatch(doc, iSampleResolver);
+  return patch;
 }
 
 //------------------------------------------------------------------------
 // Patch::from (String)
 //------------------------------------------------------------------------
-Patch Patch::from(ConfigString iPatchString)
+Resource::Patch PatchParser::from(ConfigString iPatchString, sample_reference_resolver iSampleResolver)
 {
   XMLDocument doc;
   auto res = doc.Parse(iPatchString.fString.c_str());
   RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch string %s", res, iPatchString.fString);
-  return impl::createPatch(doc);
+  return impl::createPatch(doc, iSampleResolver);
 }
 
 }

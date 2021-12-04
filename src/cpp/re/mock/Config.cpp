@@ -17,6 +17,7 @@
  */
 
 #include "Config.h"
+#include "PatchParser.h"
 #include "lua/InfoLua.h"
 #include <fstream>
 
@@ -541,24 +542,38 @@ std::optional<Resource::Patch> Config::findPatchResource(std::string const &iRes
 {
   auto resourceFile = ConfigFile{iResourcePath};
 
+  auto sampleResolver = [this, &iResourcePath](int i) -> std::string {
+    auto sampleReferences = fSampleReferences.find(iResourcePath);
+    RE_MOCK_ASSERT(sampleReferences != fSampleReferences.end(), "Cannot find sample references for [%s]", iResourcePath);
+    RE_MOCK_ASSERT(i < sampleReferences->second.size(), "Cannot find sample reference [%d] for [%s]", i, iResourcePath);
+    return sampleReferences->second[i];
+  };
+
   auto patchResource = fResources.find(iResourcePath);
   if(patchResource != fResources.end())
   {
     auto r = std::get<ConfigResource::Patch>(patchResource->second);
-    if(std::holds_alternative<ConfigString>(r.fXMLSource))
-      return r;
+
+    // it's already a patch...
+    if(std::holds_alternative<Resource::Patch>(r.fPatchVariant))
+      return std::get<Resource::Patch>(r.fPatchVariant);
+
+    // it's a string
+    if(std::holds_alternative<ConfigString>(r.fPatchVariant))
+      return PatchParser::from(std::get<ConfigString>(r.fPatchVariant), sampleResolver);
     else
-      resourceFile = std::get<ConfigFile>(r.fXMLSource);
+      // it's a file
+      resourceFile = std::get<ConfigFile>(r.fPatchVariant);
   }
 
   // check the path as-is
   if(impl::fileExists(resourceFile))
-    return Resource::Patch{resourceFile};
+    return PatchParser::from(resourceFile, sampleResolver);
 
   // resolve the path against the resource dir
   auto resolvedResource = resource_file(resourceFile);
   if(resolvedResource && impl::fileExists(*resolvedResource))
-    return Resource::Patch{*resolvedResource};
+    return PatchParser::from(*resolvedResource, sampleResolver);
 
   return std::nullopt;
 }
