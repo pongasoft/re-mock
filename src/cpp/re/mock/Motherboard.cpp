@@ -1658,7 +1658,7 @@ impl::Sample::Metadata Motherboard::getSampleMetadata(JboxValue const &iValue) c
 //------------------------------------------------------------------------
 std::unique_ptr<JboxValue> Motherboard::loadSampleAsync(std::string const &iSamplePath)
 {
-  RE_MOCK_ASSERT(stl::starts_with(iSamplePath, "/Private/"), "loadSampleAsync path must start with /Private [%s]", iSamplePath);
+  RE_MOCK_ASSERT(stl::starts_with(iSamplePath, "/"), "loadSampleAsync path must start with / [%s]", iSamplePath);
 
   auto sample =  std::make_unique<impl::Sample>();
   sample->fSamplePath = iSamplePath;
