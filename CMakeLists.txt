@@ -62,6 +62,7 @@ set(re-mock_BUILD_HEADERS
     ${re-mock_CPP_SRC_DIR}/re/mock/Config.h
     ${re-mock_CPP_SRC_DIR}/re/mock/DeviceTesters.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Errors.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/FileManager.h
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.h
     ${re-mock_CPP_SRC_DIR}/re/mock/MotherboardImpl.h
@@ -80,11 +81,12 @@ set(re-mock_BUILD_HEADERS
 set(re-mock_BUILD_SOURCES
     ${re-mock_CPP_SRC_DIR}/re/mock/Config.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/DeviceTesters.cpp
-    ${re-mock_CPP_SRC_DIR}/re/mock/Rack.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/FileManager.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Jukebox.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/PatchParser.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/Rack.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/InfoLua.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp
@@ -102,6 +104,13 @@ add_subdirectory(external/lua-cmake)
 # Including tinyxml2
 add_subdirectory(external/tinyxml2-9.0.0)
 
+# Function to add support for audio file loading (.wav/.aiff)
+function(re_mock_add_support_for_audio_file target)
+  include(libsndfile.cmake)
+  target_compile_definitions(${target} PUBLIC RE_MOCK_SUPPORT_FOR_AUDIO_FILE=1)
+  target_link_libraries(${target} PUBLIC SndFile::sndfile)
+endfunction()
+
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
@@ -112,6 +121,8 @@ if(NOT APPLE)
 endif()
 
 if(re-mock_DEV_BUILD)
+  # We always include libsndfile in this case
+  re_mock_add_support_for_audio_file(${target})
 
   # Generate the re_mock_build.h file
   set(GENERATED_FILES_DIR "${CMAKE_BINARY_DIR}/generated")
@@ -151,4 +162,9 @@ if(re-mock_DEV_BUILD)
   target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}" "${GENERATED_FILES_DIR}")
 
   gtest_discover_tests("${target_test}")
+else()
+  option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE "Whether re-mock can load audio files (.wav / .aiff). Only needed if the device handles samples." OFF)
+  if(RE_MOCK_SUPPORT_FOR_AUDIO_FILE)
+    re_mock_add_support_for_audio_file(${target})
+  endif()
 endif()

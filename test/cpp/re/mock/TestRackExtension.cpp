@@ -628,7 +628,6 @@ TEST(RackExtension, RealtimeController_Sample)
     TJBox_AudioSample fSampleData[10];
   };
 
-  std::vector<TJBox_AudioSample> sampleMonoData{0,1,2,3,4,5};
   std::vector<TJBox_AudioSample> sampleStereoData{1,10,2,20,3,30,4,40,5,50};
 
   auto c = DeviceConfig<Device>::fromSkeleton()
@@ -642,7 +641,8 @@ TEST(RackExtension, RealtimeController_Sample)
     .mdef(Config::rtc_owner_property("prop_sample", lua::jbox_sample_property{}.property_tag(5000)))
 
     .sample_data("/Private/sample.default", Resource::Sample{}.sample_rate(44100).channels(1).data({0,1,2,3}))
-    .sample_data("/Private/mono_sample.data", Resource::Sample{}.sample_rate(44100).channels(1).data(sampleMonoData))
+    .sample_file("/Private/mono_sample.file", fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio",
+                                                        "sine.wav"))
     .sample_data("/Private/stereo_sample.data", Resource::Sample{}.sample_rate(44100).channels(2).data(sampleStereoData))
 
     .resource_loading_context("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kPartiallyResident).resident_size(2))
@@ -683,19 +683,17 @@ TEST(RackExtension, RealtimeController_Sample)
   ASSERT_EQ(std::nullopt, re->fSampleInfo);
 
   // load_mono_sample_data
-  re.setString("/custom_properties/prop_function", "load_mono_sample_data");
+  re.setString("/custom_properties/prop_function", "load_mono_sample_file");
   rack.nextFrame();
-  ASSERT_EQ("load_mono_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
+  ASSERT_EQ("load_mono_sample_file -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(1, re->fSampleInfo->fChannels);
   ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
-  ASSERT_EQ(sampleMonoData.size(), re->fSampleInfo->fResidentFrameCount);
-  ASSERT_EQ(sampleMonoData.size(), re->fSampleInfo->fFrameCount);
-  ASSERT_EQ(std::vector<TJBox_AudioSample>({0,1,2,3,4,5,0,0,0,0}),
-            std::vector<TJBox_AudioSample>(std::begin(re->fSampleData), std::end(re->fSampleData)));
-  ASSERT_EQ("Sample{.fChannels=1,.fSampleRate=44100,.fFrameCount=6,.fResidentFrameCount=6,.fLoadStatus=resident,.fSamplePath=[/Private/mono_sample.data]}",
+  ASSERT_EQ(100, re->fSampleInfo->fResidentFrameCount);
+  ASSERT_EQ(100, re->fSampleInfo->fFrameCount);
+  ASSERT_EQ("Sample{.fChannels=1,.fSampleRate=44100,.fFrameCount=100,.fResidentFrameCount=100,.fLoadStatus=resident,.fSamplePath=[/Private/mono_sample.file]}",
             re->fSampleString);
   rack.nextFrame();
-  ASSERT_EQ("is_sample=true;frame_count=6.0;resident_count=6.0;channels=1.0;sample_rate=44100.0;state=2.0",
+  ASSERT_EQ("is_sample=true;frame_count=100.0;resident_count=100.0;channels=1.0;sample_rate=44100.0;state=2.0",
             re.getString("/custom_properties/on_prop_sample_return"));
 
   // load_stereo_sample_data (2 frames)

@@ -17,6 +17,7 @@
  */
 
 #include "Config.h"
+#include "FileManager.h"
 #include "PatchParser.h"
 #include "lua/InfoLua.h"
 #include <fstream>
@@ -458,83 +459,6 @@ std::optional<ConfigFile> Config::resource_file(ConfigFile iRelativeResourcePath
     return std::nullopt;
 }
 
-namespace impl {
-
-//------------------------------------------------------------------------
-// fileSize
-//------------------------------------------------------------------------
-std::ifstream::pos_type fileSize(ConfigFile const &iFile)
-{
-  std::ifstream in(iFile.fFilename, std::ifstream::ate | std::ifstream::binary);
-  return in.tellg();
-}
-
-//------------------------------------------------------------------------
-// fileExists
-//------------------------------------------------------------------------
-bool fileExists(ConfigFile const &iFile)
-{
-  return std::ifstream{iFile.fFilename}.is_open();
-}
-
-//------------------------------------------------------------------------
-// loadFile
-//------------------------------------------------------------------------
-template<typename Container, size_t BUFFER_SIZE = 1024>
-long loadFile(ConfigFile const &iFile, Container &oBuffer)
-{
-  std::ifstream ifs{iFile.fFilename, std::fstream::binary};
-  if(!ifs)
-    return -1;
-
-  char buf[BUFFER_SIZE];
-
-  bool complete = false;
-
-  size_t fileSize = 0;
-
-  while(!complete)
-  {
-    ifs.read(buf, BUFFER_SIZE);
-
-    if(ifs.bad())
-    {
-      RE_MOCK_LOG_ERROR("Error while reading file %s", iFile.fFilename);
-      return -1;
-    }
-
-    if(ifs.gcount() > 0)
-    {
-      std::copy(std::begin(buf), std::begin(buf) + ifs.gcount(), std::back_inserter(oBuffer));
-      fileSize += ifs.gcount();
-    }
-
-    complete = ifs.eof();
-  }
-
-  return fileSize;
-}
-
-//------------------------------------------------------------------------
-// loadBlob
-//------------------------------------------------------------------------
-std::optional<Resource::Blob> loadBlob(ConfigFile const &iFile)
-{
-
-  auto size = fileSize(iFile);
-  if(size > -1)
-  {
-    Resource::Blob blob{};
-    blob.fData.reserve(size);
-    auto readSize = loadFile(iFile, blob.fData);
-    RE_MOCK_ASSERT(readSize == size);
-    return blob;
-  }
-  return std::nullopt;
-}
-
-}
-
 //------------------------------------------------------------------------
 // Config::findPatchResource
 //------------------------------------------------------------------------
@@ -567,12 +491,12 @@ std::optional<Resource::Patch> Config::findPatchResource(std::string const &iRes
   }
 
   // check the path as-is
-  if(impl::fileExists(resourceFile))
+  if(FileManager::fileExists(resourceFile))
     return PatchParser::from(resourceFile, sampleResolver);
 
   // resolve the path against the resource dir
   auto resolvedResource = resource_file(resourceFile);
-  if(resolvedResource && impl::fileExists(*resolvedResource))
+  if(resolvedResource && FileManager::fileExists(*resolvedResource))
     return PatchParser::from(*resolvedResource, sampleResolver);
 
   return std::nullopt;
@@ -596,14 +520,14 @@ std::optional<Resource::Blob> Config::findBlobResource(std::string const &iResou
   }
 
   // check the path as-is
-  auto blob = impl::loadBlob(resourceFile);
+  auto blob = FileManager::loadBlob(resourceFile);
   if(blob)
     return blob;
 
   // resolve the path against the resource dir
   auto resolvedResource = resource_file(resourceFile);
-  if(resolvedResource && impl::fileExists(*resolvedResource))
-    return impl::loadBlob(*resolvedResource);
+  if(resolvedResource && FileManager::fileExists(*resolvedResource))
+    return FileManager::loadBlob(*resolvedResource);
 
   return std::nullopt;
 }
@@ -626,7 +550,15 @@ std::optional<Resource::Sample> Config::findSampleResource(std::string const &iR
       resourceFile = std::get<ConfigFile>(s.fSampleVariant);
   }
 
-  RE_MOCK_ASSERT(false, "Loading file sample not implemented yet (requires libsndfile integration)");
+  // check the path as-is
+  auto sample = FileManager::loadSample(resourceFile);
+  if(sample)
+    return sample;
+
+  // resolve the path against the resource dir
+  auto resolvedResource = resource_file(resourceFile);
+  if(resolvedResource)
+    return FileManager::loadSample(*resolvedResource);
 
   return std::nullopt;
 }

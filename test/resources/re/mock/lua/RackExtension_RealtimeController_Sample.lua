@@ -31,10 +31,10 @@ global_rtc = {
     --print("from on_prop_function " .. tostring(new_value))
     if new_value == 'noop' then
       jbox.store_property("/custom_properties/prop_function_return", "noop -> void")
-    elseif new_value == 'load_mono_sample_data' then
-      local new_no = jbox.load_sample_async("/Private/mono_sample.data")
+    elseif new_value == 'load_mono_sample_file' then
+      local new_no = jbox.load_sample_async("/Private/mono_sample.file")
       jbox.store_property("/custom_properties/prop_sample", new_no)
-      jbox.store_property("/custom_properties/prop_function_return", "load_mono_sample_data -> " .. tostring(jbox.is_sample(new_no)))
+      jbox.store_property("/custom_properties/prop_function_return", "load_mono_sample_file -> " .. tostring(jbox.is_sample(new_no)))
     elseif new_value == 'load_stereo_sample_data' then
       local new_no = jbox.load_sample_async("/Private/stereo_sample.data")
       jbox.store_property("/custom_properties/prop_sample", new_no)

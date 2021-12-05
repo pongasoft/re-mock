@@ -89,6 +89,13 @@ add_re_plugin(
 > #### Note
 > This project can be opened directly to work on the project itself! It contains its own set of unit tests. 
 
+If the device under test uses samples that get loaded via patch or apis, you must enable support for sample loading by using the `RE_MOCK_SUPPORT_FOR_AUDIO_FILE` option like so:
+
+```cmake
+option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE "" ON) # must be set BEFORE including re-mock
+add_subdirectory("re-mock" EXCLUDE_FROM_ALL)
+```
+
 Documentation
 -------------
 
@@ -102,12 +109,6 @@ are supported.
 
 Here is a list of the Jukebox API currently not implemented:
 
-* `JBox_GetSampleInfo`
-* `JBox_GetSampleMetaData`
-* `JBox_GetSampleData`
-* `JBox_GetBLOBInfo`
-* `JBox_GetBLOBData`
-* `JBox_GetOptimalFFTAlignment`
 * `JBox_FFTRealForward`
 * `JBox_FFTRealInverse`
 
@@ -151,3 +152,5 @@ License
 - This project includes [lua-cmake](https://github.com/lubgr/lua-cmake) released under an [MIT License](external/lua-cmake/LICENSE)
 
 - This project includes [lua 5.4.1](https://www.lua.org/) released under an [MIT License](https://www.lua.org/license.html)
+
+- This project (optionally) uses [libsndfile](https://github.com/libsndfile/libsndfile) relased under an [LGPL-2.1 License](https://github.com/libsndfile/libsndfile/blob/master/COPYING)
