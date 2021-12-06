@@ -378,6 +378,8 @@ document_owner_properties["prop_volume_rw"]       = jbox.number { default = 0.9 
 rtc_owner_properties["prop_gain_ro"]               = jbox.native_object{ }
 rtc_owner_properties["prop_gain_rw"]               = jbox.native_object{ }
 )")
+    .mdef(Config::rtc_owner_property("prop_blob", lua::jbox_blob_property{}))
+    .mdef(Config::rtc_owner_property("prop_sample", lua::jbox_sample_property{}))
     .rtc(Config::rtc_binding("/custom_properties/prop_volume_ro", "/global_rtc/new_gain_ro"))
     .rtc(Config::rtc_binding("/custom_properties/prop_volume_rw", "/global_rtc/new_gain_rw"))
     .rtc_string(R"(
@@ -409,10 +411,12 @@ end
   ASSERT_STREQ("false", re.toString(JBox_MakeBoolean(false)).c_str());
   ASSERT_STREQ("false", re.toString("/audio_outputs/output_1/connected").c_str());
   ASSERT_STREQ("0.800000", re.toString("/custom_properties/prop_volume_ro").c_str());
-  ASSERT_STREQ("DSPBuffer[", re.toString("/audio_outputs/output_1/buffer").substr(0, 10).c_str());
+  ASSERT_STREQ("DSPBuffer{", re.toString("/audio_outputs/output_1/buffer").substr(0, 10).c_str());
   ASSERT_STREQ("abc", re.toString("/custom_properties/prop_string").c_str());
-  ASSERT_STREQ("RONativeObject[", re.toString("/custom_properties/prop_gain_ro").substr(0, 15).c_str());
-  ASSERT_STREQ("RWNativeObject[", re.toString("/custom_properties/prop_gain_rw").substr(0, 15).c_str());
+  ASSERT_STREQ("RONativeObject{", re.toString("/custom_properties/prop_gain_ro").substr(0, 15).c_str());
+  ASSERT_STREQ("RWNativeObject{", re.toString("/custom_properties/prop_gain_rw").substr(0, 15).c_str());
+  ASSERT_STREQ("Blob{.fSize=0,.fResidentSize=0,.fLoadStatus=nil,.fBlobPath=[]}", re.toString("/custom_properties/prop_blob").c_str());
+  ASSERT_STREQ("Sample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=nil,.fSamplePath=[]}", re.toString("/custom_properties/prop_sample").c_str());
 
   re.use([&re]{
     auto o1 = JBox_GetMotherboardObjectRef("/audio_outputs/output_1");
@@ -426,9 +430,11 @@ end
                              re.getValue("/custom_properties/prop_volume_ro"),
                              re.getValue("/custom_properties/prop_gain_ro"),
                              re.getValue("/custom_properties/prop_gain_rw"),
+                             re.getValue("/custom_properties/prop_blob"),
+                             re.getValue("/custom_properties/prop_sample"),
                              };
 
-    JBOX_TRACEVALUES("Nil=^0, connected=^1, buffer=^2, prop_string=^3, prop_volume_ro=^4, prop_gain_ro=^5, prop_gain_rw=^6, Nil=^0", values, 7);
+    JBOX_TRACEVALUES("Nil=^0, connected=^1, buffer=^2, prop_string=^3, prop_volume_ro=^4, prop_gain_ro=^5, prop_gain_rw=^6, prop_blob=^7, prop_sample=^8, Nil=^0", values, 9);
   });
 }
 

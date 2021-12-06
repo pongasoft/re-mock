@@ -60,7 +60,7 @@ std::string getAttributeValue(XMLElement const *iElement, char const *iAttribute
 XMLElement const *findElement(XMLElement const *iElement, char const *iSubPath)
 {
   RE_MOCK_ASSERT(iSubPath != nullptr);
-  
+
   auto e = iElement;
 
   auto elts = fmt::split(iSubPath, '/');
@@ -88,11 +88,15 @@ sample_reference_resolver extractSampleReferenceResolver(XMLElement const *e)
   {
     std::optional<std::string> ref{};
 
-    // Try AbsolutePath/Path
+    // Try AbsolutePath/NativeURL
     {
-      auto pathElt = findElement(sr, "AbsolutePath/Path");
+      auto pathElt = findElement(sr, "AbsolutePath/NativeURL");
       if(pathElt && pathElt->GetText())
-        ref = fmt::trim(pathElt->GetText());
+      {
+        std::string url{fmt::trim(pathElt->GetText())};
+        RE_MOCK_ASSERT(stl::starts_with(url, "file://"), "Unsupported url format [%s]", url);
+        ref = fmt::url_decode(url.substr(7));
+      }
     }
 
     // Try DatabasePath/Path (jukebox)

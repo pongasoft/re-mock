@@ -59,30 +59,30 @@ std::string printf(const std::string& format, Args ... args )
 #pragma clang diagnostic pop
 
 /**
- * Appends the content of the c-style, null terminated string, to `first` (but not beyond `last`).
- * @return the last value of `first` (for continue processing) */
-template<typename Iter>
-Iter to_chars(char const *iValue, Iter first, Iter last)
+ * Appends the content of the c-style, null terminated string, to `out`
+ * @return the last value of `out` (for continue processing) */
+template<typename OutputIterator>
+constexpr OutputIterator to_chars(char const *iValue, OutputIterator out)
 {
   auto input = iValue;
-  char c;
+  char c{};
 
-  while(first != last && (c = *input++) != 0)
-    *first++ = c;
+  while((c = *input++) != 0)
+    *out++ = c;
 
-  return first;
+  return out;
 }
 
 //------------------------------------------------------------------------
 // printf using Jukebox format (^0, ... )
 //------------------------------------------------------------------------
-template<typename Iter>
-Iter printf(Iter first, Iter last, char const *iFormat, std::vector<std::string> const &iParams)
+template<typename OutputIterator>
+OutputIterator printf(char const *iFormat, std::vector<std::string> const &iParams, OutputIterator out)
 {
   auto input = iFormat;
   char c;
 
-  while(first != last && (c = *input++) != 0)
+  while((c = *input++) != 0)
   {
     if(c == '^')
     {
@@ -91,7 +91,7 @@ Iter printf(Iter first, Iter last, char const *iFormat, std::vector<std::string>
       // we reached the end
       if(n == 0)
       {
-        *first++ = '^';
+        *out++ = '^';
         break; // out of while
       }
 
@@ -107,26 +107,99 @@ Iter printf(Iter first, Iter last, char const *iFormat, std::vector<std::string>
         case '7':
         case '8':
         case '9':
-          first = to_chars(iParams[n - '0'].c_str(), first, last);
+          out = to_chars(iParams[n - '0'].c_str(), out);
           break;
 
         default:
-          *first++ = c;
+          *out++ = c;
           break;
       }
     }
     else
     {
-      *first++ = c;
+      *out++ = c;
     }
   }
   
-  // must be null terminated
-  if(first == last)
-    first--;
-  *first++ = '\0';
+  return out;
+}
 
-  return first;
+//------------------------------------------------------------------------
+// ASCIIHexToInt
+//------------------------------------------------------------------------
+static int ASCIIHexToInt[] = {
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
+  -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+};
+
+//! utility to convert ascii char to hex
+constexpr int ascii_hex_to_int(char c)
+{
+  if(c < 0 || c > 127)
+    return -1;
+  return ASCIIHexToInt[c];
+}
+
+constexpr char INVALID_SYNTAX_CHAR = 0xff;
+
+//------------------------------------------------------------------------
+// url_decode
+//------------------------------------------------------------------------
+template<typename OutputIterator>
+constexpr OutputIterator url_decode(char const *u, OutputIterator out)
+{
+  if(u == nullptr)
+    return out;
+
+  auto input = u;
+  char c{};
+
+  while((c = *input++) != 0)
+  {
+    if(c == '+')
+    {
+      *out++ = ' ';
+    } else if(c == '%')
+    {
+      auto n1 = *input++;
+
+      // we reached the end
+      if(n1 == 0)
+      {
+        *out++ = '%';
+        break; // out of while
+      }
+
+      auto n2 = *input++;
+      // we reached the end
+      if(n2 == 0)
+      {
+        *out++ = '%';
+        *out++ = n1;
+        break; // out of while
+      }
+
+      auto h1 = ascii_hex_to_int(n1);
+      auto h2 = ascii_hex_to_int(n2);
+
+      if(h1 == -1 || h2 == -1)
+        *out++ = INVALID_SYNTAX_CHAR;
+      else
+        *out++ = h1 * 16 + h2;
+    }
+    else
+    {
+      *out++ = c;
+    }
+  }
+
+  return out;
 }
 
 }
@@ -187,6 +260,10 @@ std::string trim(std::string const &s);
 //------------------------------------------------------------------------
 std::vector<std::string> split(const std::string &s, char delimiter, bool includeEmptyTokens = false);
 
+//------------------------------------------------------------------------
+// decodes the url provided (%xx => value)
+//------------------------------------------------------------------------
+std::string url_decode(const std::string &u);
 }
 
 #endif //__Pongasoft_re_mock_fmt_h__

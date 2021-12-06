@@ -37,6 +37,36 @@ TEST(Patch, String)
     <DeviceNameInEnglish>
         Kooza
     </DeviceNameInEnglish>
+    <Samples>
+        <SampleReference trueName="Bell.wav"  userFriendlyName="Bell"  type="sample" >
+            <JukeboxDevice internalID="com.acme.Kooza"  uiName="Kooza"  version="1.0.0d1" />
+            <DatabasePath>
+                <ReFillName/>
+                <Path pathKind="jukebox" >
+                    /Rack extensions/com.acme.Kooza/Public/Samples/Bell.wav
+                </Path>
+            </DatabasePath>
+        </SampleReference>
+        <SampleReference trueName="Eastern Gold Voice 01.aif"  userFriendlyName="Eastern Gold Voice 01.aif"  type="sample" >
+            <AbsolutePath>
+                <Volume name=""  type="unknown" />
+                <Path partOfReFill="no" >
+                    /tmp/Music/Samples/Sample 01.aif
+                </Path>
+                <NativeURL mode="OSXFile" >
+                    file:///tmp/Music/Samples/Sample%2001.aif
+                </NativeURL>
+            </AbsolutePath>
+            <RelativePath>
+                <Path>
+                    /Music/Samples/Sample 01.aif
+                </Path>
+                <StepUp>
+                    1
+                </StepUp>
+            </RelativePath>
+        </SampleReference>
+    </Samples>
     <Properties>
         <Object name="custom_properties" >
             <Value property="prop_number"  type="number" >
@@ -50,6 +80,16 @@ TEST(Patch, String)
             </Value>
         </Object>
         <Object name="transport" />
+        <Object name="user_samples/0" >
+            <Value property="item"  type="sample" >
+                0
+            </Value>
+        </Object>
+        <Object name="user_samples/1" >
+            <Value property="item"  type="sample" >
+                1
+            </Value>
+        </Object>
     </Properties>
 </JukeboxPatch>
 )";
@@ -59,6 +99,8 @@ TEST(Patch, String)
   ASSERT_FLOAT_EQ(0.5, std::get<Resource::Patch::number_property>(patch.fProperties["/custom_properties/prop_number"]).fValue);
   ASSERT_TRUE(std::get<Resource::Patch::boolean_property>(patch.fProperties["/custom_properties/prop_boolean"]).fValue);
   ASSERT_EQ("ABC", std::get<Resource::Patch::string_property>(patch.fProperties["/custom_properties/prop_string"]).fValue);
+  ASSERT_EQ("/Public/Samples/Bell.wav", std::get<Resource::Patch::sample_property>(patch.fProperties["/user_samples/0/item"]).fValue);
+  ASSERT_EQ("/tmp/Music/Samples/Sample 01.aif", std::get<Resource::Patch::sample_property>(patch.fProperties["/user_samples/1/item"]).fValue);
 }
 
 // Patch.Load

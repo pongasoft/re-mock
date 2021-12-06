@@ -1216,10 +1216,10 @@ std::string Motherboard::toString(JboxValue const &iValue, char const *iFormat) 
       return fmt::printf(iFormat ? iFormat : "%s", iValue.getBoolean() ? "true" : "false");
 
     case kJBox_DSPBuffer:
-      return fmt::printf(iFormat ? iFormat : "DSPBuffer[%ld]", iValue.getUniqueId());
+      return fmt::printf(iFormat ? iFormat : "DSPBuffer{%ld}", iValue.getUniqueId());
 
     case kJBox_NativeObject:
-      return fmt::printf(iFormat ? iFormat : "R%sNativeObject[%ld]",
+      return fmt::printf(iFormat ? iFormat : "R%sNativeObject{%ld}",
                          iValue.getNativeObject().fAccessMode == impl::NativeObject::kReadWrite ? "W" : "O", iValue.getUniqueId());
 
     case kJBox_Incompatible:

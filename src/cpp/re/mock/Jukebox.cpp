@@ -165,9 +165,9 @@ void JBox_TraceValues(
   values.reserve(iValueCount);
   for(int i = 0; i < iValueCount; i++)
     values.emplace_back(motherboard.toString(iValues[i]));
-  char buf[1024];
-  re::mock::fmt::impl::printf(std::begin(buf), std::end(buf), iTemplate, values);
-  JBox_Trace(iFile, iLine, buf);
+  std::string buf{};
+  re::mock::fmt::impl::printf(iTemplate, values, std::back_inserter(buf));
+  JBox_Trace(iFile, iLine, buf.c_str());
 }
 
 TJBox_UInt32 JBox_GetStringLength(TJBox_Value iValue)

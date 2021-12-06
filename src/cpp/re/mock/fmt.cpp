@@ -23,7 +23,7 @@
 namespace re::mock::fmt {
 
 //------------------------------------------------------------------------
-// stl::trim
+// fmt::trim
 //------------------------------------------------------------------------
 std::string trim(std::string const &s)
 {
@@ -39,7 +39,7 @@ std::string trim(std::string const &s)
 }
 
 //------------------------------------------------------------------------
-// stl::split
+// fmt::split
 //------------------------------------------------------------------------
 std::vector<std::string> split(std::string const &s, char delimiter, bool includeEmptyTokens)
 {
@@ -52,6 +52,16 @@ std::vector<std::string> split(std::string const &s, char delimiter, bool includ
       tokens.push_back(token);
   }
   return tokens;
+}
+
+//------------------------------------------------------------------------
+// fmt::url_decode
+//------------------------------------------------------------------------
+std::string url_decode(std::string const &u)
+{
+  std::string o{};
+  impl::url_decode(u.c_str(), std::back_inserter(o));
+  return o;
 }
 
 }
