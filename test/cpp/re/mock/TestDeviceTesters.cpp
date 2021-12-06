@@ -17,13 +17,15 @@
  */
 
 #include <re/mock/DeviceTesters.h>
+#include <re/mock/FileManager.h>
 #include <gtest/gtest.h>
+#include <re_mock_build.h>
 
 namespace re::mock::Test {
 
 using namespace mock;
 
-// EffectTester.Usage
+// StudioEffectTester.Usage
 TEST(StudioEffectTester, Usage)
 {
   StudioEffectTester<MAUPst> tester(MAUPst::CONFIG);
@@ -56,6 +58,57 @@ TEST(StudioEffectTester, Usage)
   // change to bypass
   tester.setBypassState(kJBox_EnabledBypass);
   ASSERT_EQ(kJBox_EnabledBypass, tester.getBypassState());
+}
+
+// StudioEffectTester.Sample
+TEST(StudioEffectTester, Sample)
+{
+  StudioEffectTester<MAUPst> tester(MAUPst::CONFIG);
+  tester.wireMainIn(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
+  tester.wireMainOut(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
+
+  auto sinePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
+  auto sine = FileManager::loadSample(ConfigFile{sinePath});
+
+  {
+    auto processedSine = tester.processSample(ConfigFile{sinePath});
+
+    // processedSine should be sine (since MAUPst is pass through)
+    ASSERT_EQ(sine->fChannels, processedSine.fChannels);
+    ASSERT_EQ(sine->fSampleRate, tester.rack().getSampleRate());
+    ASSERT_EQ(sine->fData, processedSine.fData);
+  }
+
+  {
+    auto processedSine = tester.processSample(ConfigFile{sinePath}, Duration::SampleFrames{30});
+    auto expectedSine = sine;
+    for(int i = 0; i < 30; i++)
+      expectedSine->fData.emplace_back(0);
+    ASSERT_EQ(expectedSine, processedSine);
+  }
+
+  {
+    auto processedSine = tester.processSample(ConfigFile{sinePath}, Duration::Time{1});
+    // 1ms at 44100 is 44.1 samples => 45
+    auto expectedSine = sine;
+    for(int i = 0; i < 45; i++)
+      expectedSine->fData.emplace_back(0);
+    ASSERT_EQ(expectedSine, processedSine);
+  }
+}
+
+// Duration.Conversion
+TEST(Duration, Conversion)
+{
+  ASSERT_EQ(45, Duration::toSampleFrames(Duration::Time{1}, 44100).fCount);
+  ASSERT_EQ(4410, Duration::toSampleFrames(Duration::Time{100}, 44100).fCount);
+  ASSERT_EQ(100*64, Duration::toSampleFrames(Duration::RackFrames{100}, 44100).fCount);
+  ASSERT_EQ(100, Duration::toSampleFrames(Duration::SampleFrames{100}, 44100).fCount);
+
+  ASSERT_EQ(1, Duration::toRackFrames(Duration::Time{1}, 44100).fCount);
+  ASSERT_EQ(69, Duration::toRackFrames(Duration::Time{100}, 44100).fCount);
+  ASSERT_EQ(100, Duration::toRackFrames(Duration::RackFrames{100}, 44100).fCount);
+  ASSERT_EQ(2, Duration::toRackFrames(Duration::SampleFrames{100}, 44100).fCount);
 }
 
 // InstrumentTester.Usage

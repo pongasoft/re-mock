@@ -148,6 +148,10 @@ struct Resource
     Sample &stereo() { return channels(2); }
     Sample &sample_rate(TJBox_UInt32 s) { fSampleRate = s; return *this; }
     Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const Sample& iBuffer);
+    friend bool operator==(Sample const &lhs, Sample const &rhs);
+    friend bool operator!=(Sample const &lhs, Sample const &rhs);
   };
 };
 

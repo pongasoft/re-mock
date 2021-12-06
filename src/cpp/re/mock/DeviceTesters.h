@@ -25,6 +25,18 @@
 
 namespace re::mock {
 
+struct Duration
+{
+  struct Time { long fMilliseconds{}; };
+  struct SampleFrames { long fCount{}; };
+  struct RackFrames { long fCount{}; };
+
+  using Type = std::variant<Time, SampleFrames, RackFrames>;
+
+  static RackFrames toRackFrames(Type iType, int iSampleRate);
+  static SampleFrames toSampleFrames(Type iType, int iSampleRate);
+};
+
 /**
  * This class represents the base class for all the testers provided by this framework:
  *
@@ -82,7 +94,7 @@ public:
 
   void unwire(Rack::ExtensionDevice<MNPDst> &iDst);
 
-  void nextFrames(int iNumFrames);
+  void nextFrames(Duration::Type iDuration);
 
 protected:
   template<typename Device>
@@ -128,6 +140,9 @@ public:
 
   MockAudioDevice::StereoBuffer nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer);
   void nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
+
+  Resource::Sample processSample(Resource::Sample const &iSample, std::optional<Duration::Type> iTail = std::nullopt);
+  Resource::Sample processSample(ConfigFile const &iSampleFile, std::optional<Duration::Type> iTail = std::nullopt);
 
   TJBox_OnOffBypassStates getBypassState() const { return fDevice.getEffectBypassState(); }
   void setBypassState(TJBox_OnOffBypassStates iState) { fDevice.setEffectBypassState(iState); }

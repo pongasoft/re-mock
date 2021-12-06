@@ -266,6 +266,8 @@ public:
 
   void nextFrame();
 
+  int getSampleRate() const { return fSampleRate; }
+
   static Motherboard &currentMotherboard();
 
   template<typename Device>

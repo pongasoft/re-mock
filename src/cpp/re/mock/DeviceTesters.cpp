@@ -17,6 +17,7 @@
  */
 
 #include "DeviceTesters.h"
+#include "FileManager.h"
 
 namespace re::mock {
 
@@ -196,9 +197,11 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MNPDst> &iDst)
 //------------------------------------------------------------------------
 // DeviceTester::nextFrames
 //------------------------------------------------------------------------
-void DeviceTester::nextFrames(int iNumFrames)
+void DeviceTester::nextFrames(Duration::Type iDuration)
 {
-  for(int i = 0; i < iNumFrames; i++)
+  auto numFrames = Duration::toRackFrames(iDuration, fRack.getSampleRate());
+
+  for(int i = 0; i < numFrames.fCount; i++)
     fRack.nextFrame();
 }
 
@@ -253,6 +256,78 @@ void ExtensionEffectTester::nextFrame(MockAudioDevice::StereoBuffer const &iInpu
   fSrc->fBuffer = iInputBuffer;
   fRack.nextFrame();
   oOutputBuffer = fDst->fBuffer;
+}
+
+//------------------------------------------------------------------------
+// ExtensionEffectTester::processSample
+//------------------------------------------------------------------------
+Resource::Sample ExtensionEffectTester::processSample(Resource::Sample const &iSample, std::optional<Duration::Type> iTail)
+{
+  size_t tailInSampleFrames = 0;
+
+  if(iTail)
+    tailInSampleFrames = Duration::toSampleFrames(*iTail, fRack.getSampleRate()).fCount;
+
+  Resource::Sample res{};
+  res.fChannels = iSample.fChannels;
+  res.fSampleRate = fRack.getSampleRate();
+  res.fData.reserve(iSample.fData.size() + tailInSampleFrames);
+
+  MockAudioDevice::StereoBuffer input{};
+  MockAudioDevice::StereoBuffer output{};
+
+  auto numSampleFramesToProcess = iSample.fData.size() / iSample.fChannels;
+
+  auto totalNumSampleFrames = numSampleFramesToProcess + tailInSampleFrames;
+  auto ptr = iSample.fData.data();
+
+  while(totalNumSampleFrames > 0)
+  {
+    auto numSamplesInThisRackFrame = std::min<size_t>(totalNumSampleFrames, MockAudioDevice::NUM_SAMPLES_PER_FRAME);
+    auto numSamplesToProcessInThisRackFrame = std::min<size_t>(numSampleFramesToProcess, numSamplesInThisRackFrame);
+
+    if(numSamplesToProcessInThisRackFrame > 0)
+    {
+      if(numSamplesToProcessInThisRackFrame < MockAudioDevice::NUM_SAMPLES_PER_FRAME)
+        input.fill(0, 0);
+
+      // fill the input buffer
+      for(size_t i = 0; i < numSamplesToProcessInThisRackFrame; i++)
+      {
+        input.fLeft[i] = *ptr++;
+        if(iSample.fChannels == 2)
+          input.fRight[i] = *ptr++;
+      }
+    }
+    else
+      input.fill(0, 0);
+
+    // process this rack frame
+    nextFrame(input, output);
+
+    // fill the output buffer
+    for(size_t i = 0; i < numSamplesInThisRackFrame; i++)
+    {
+      res.fData.emplace_back(output.fLeft[i]);
+      if(iSample.fChannels == 2)
+        res.fData.emplace_back(output.fRight[i]);
+    }
+
+    totalNumSampleFrames -= numSamplesInThisRackFrame;
+    numSampleFramesToProcess -= numSamplesToProcessInThisRackFrame;
+  }
+
+  return res;
+}
+
+//------------------------------------------------------------------------
+// ExtensionEffectTester::processSample
+//------------------------------------------------------------------------
+Resource::Sample ExtensionEffectTester::processSample(ConfigFile const &iSampleFile, std::optional<Duration::Type> iTail)
+{
+  auto sample = FileManager::loadSample(iSampleFile);
+  RE_MOCK_ASSERT(sample != std::nullopt, "Could not load sample file [%s]", iSampleFile.fFilename);
+  return processSample(*sample, iTail);
 }
 
 //------------------------------------------------------------------------
@@ -322,6 +397,52 @@ MockDevice::NoteEvents ExtensionNotePlayerTester::nextFrame(MockDevice::NoteEven
   fSrc->fNoteEvents = std::move(iSourceEvents);
   fRack.nextFrame();
   return fDst->fNoteEvents;
+}
+
+//------------------------------------------------------------------------
+// Duration::toRackFrames
+//------------------------------------------------------------------------
+Duration::RackFrames Duration::toRackFrames(Duration::Type iType, int iSampleRate)
+{
+  struct visitor
+  {
+    RackFrames operator()(Duration::RackFrames d) { return d; }
+
+    RackFrames operator()(Duration::Time d) {
+      auto frames = std::ceil(d.fMilliseconds * fSampleRate / 1000.0 / MockAudioDevice::NUM_SAMPLES_PER_FRAME);
+      return RackFrames { static_cast<long>(frames)};
+    }
+
+    RackFrames operator()(Duration::SampleFrames d) {
+      return RackFrames{ static_cast<long>(std::ceil(d.fCount / static_cast<double>(MockAudioDevice::NUM_SAMPLES_PER_FRAME))) };
+    }
+
+    int fSampleRate;
+  };
+
+  return std::visit(visitor{iSampleRate}, iType);
+}
+
+//------------------------------------------------------------------------
+// Duration::toSampleFrames
+//------------------------------------------------------------------------
+Duration::SampleFrames Duration::toSampleFrames(Duration::Type iType, int iSampleRate)
+{
+  struct visitor
+  {
+    SampleFrames operator()(Duration::RackFrames d) { return SampleFrames{d.fCount * MockAudioDevice::NUM_SAMPLES_PER_FRAME}; }
+
+    SampleFrames operator()(Duration::Time d) {
+      auto frames = std::ceil(d.fMilliseconds * fSampleRate / 1000.0);
+      return SampleFrames { static_cast<long>(frames)};
+    }
+
+    SampleFrames operator()(Duration::SampleFrames d) { return d; }
+
+    int fSampleRate;
+  };
+
+  return std::visit(visitor{iSampleRate}, iType);
 }
 
 }
