@@ -70,6 +70,24 @@ TEST(Patch, Load)
     <DeviceNameInEnglish>
         Kooza
     </DeviceNameInEnglish>
+    <Samples>
+        <SampleReference trueName="mono_sample.data"  userFriendlyName="mono_sample"  type="sample" >
+            <DatabasePath>
+                <ReFillName/>
+                <Path pathKind="jukebox" >
+                    /Rack extensions/com.acme.Kooza/Private/mono_sample.data
+                </Path>
+            </DatabasePath>
+        </SampleReference>
+        <SampleReference trueName="stereo_sample.data"  userFriendlyName="stereo_sample"  type="sample" >
+            <DatabasePath>
+                <ReFillName/>
+                <Path pathKind="jukebox" >
+                    /Rack extensions/com.acme.Kooza/Private/stereo_sample.data
+                </Path>
+            </DatabasePath>
+        </SampleReference>
+    </Samples>
     <Properties>
         <Object name="custom_properties" >
             <Value property="gui_prop_float"  type="number" >
@@ -124,8 +142,6 @@ TEST(Patch, Load)
   std::vector<TJBox_AudioSample> sampleMonoData{0,1,2,3,4,5};
   std::vector<TJBox_AudioSample> sampleStereoData{1,10,2,20,3,30,4,40,5,50};
 
-  std::vector<std::string> sampleReferences = {"/Private/mono_sample.data", "/Private/stereo_sample.data"};
-
   auto c = DeviceConfig<Device>::fromSkeleton()
     .device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"))
     .default_patch("/Public/default.repatch")
@@ -144,12 +160,10 @@ TEST(Patch, Load)
     .sample_data("/Private/mono_sample.data", Resource::Sample{}.sample_rate(44100).mono().data(sampleMonoData))
     .sample_data("/Private/stereo_sample.data", Resource::Sample{}.sample_rate(48000).stereo().data(sampleStereoData))
 
-    .patch_sample_references("/Public/default.repatch", sampleReferences)
-
     .patch_string("/Public/default.repatch", defaultPatchString)
 
     // relative to device_resources_dir
-    .patch_file("/Public/patch1.repatch", "/re/mock/patches/Kooza_test1.repatch", sampleReferences)
+    .patch_file("/Public/patch1.repatch", "/re/mock/patches/Kooza_test1.repatch")
 
     .patch_data("/Public/patch2.repatch", Resource::Patch{}.number("/device_host/sample_context", 1).sample("/user_samples/0/item", "/Private/stereo_sample.data"))
     ;
@@ -189,6 +203,9 @@ TEST(Patch, Load)
             </Value>
         </Object>
         <Object name="transport" />
+        <Object name="user_samples/0" >
+            <Value property="item"  type="sample"/>
+        </Object>
     </Properties>
 </JukeboxPatch>
 )";
@@ -205,10 +222,7 @@ TEST(Patch, Load)
   }
 
   // load a patch file (via absolute path) (2 changes)
-  ASSERT_THROW(re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")})), Exception);
-
-  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}),
-               sampleReferences);
+  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
   rack.nextFrame();
   ASSERT_EQ(4, re->fDiffs.size());
 
@@ -224,8 +238,7 @@ TEST(Patch, Load)
   }
 
   // load the same patch file (no change!)
-  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}),
-               sampleReferences);
+  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
   rack.nextFrame();
   ASSERT_EQ(0, re->fDiffs.size());
 

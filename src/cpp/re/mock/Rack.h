@@ -140,9 +140,7 @@ public:
 
     inline void loadPatch(std::string const &iPatchPath) { motherboard().loadPatch(iPatchPath); }
     inline void loadPatch(ConfigString const &iPatchString) { motherboard().loadPatch(iPatchString); }
-    inline void loadPatch(ConfigString const &iPatchString, std::vector<std::string> iSampleReferences) { motherboard().loadPatch(iPatchString, iSampleReferences); }
     inline void loadPatch(ConfigFile const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
-    inline void loadPatch(ConfigFile const &iPatchFile, std::vector<std::string> iSampleReferences) { motherboard().loadPatch(iPatchFile, iSampleReferences); }
     inline void loadPatch(Resource::Patch const &iPatch) { motherboard().loadPatch(iPatch); }
 
     inline bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { return motherboard().loadMoreBlob(iPropertyPath, iCount); }

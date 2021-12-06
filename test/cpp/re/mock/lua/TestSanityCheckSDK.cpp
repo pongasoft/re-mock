@@ -46,10 +46,6 @@ static auto SDK_EXAMPLES = {
  */
 TEST(SanityCheck, SDKExamples)
 {
-  auto sampleResolver = [](int i) -> std::string {
-    return fmt::printf("/Private/sample_%d.data", i);
-  };
-
   for(auto &p: SDK_EXAMPLES)
   {
     {
@@ -63,7 +59,7 @@ TEST(SanityCheck, SDKExamples)
       if(def->supports_patches())
       {
         auto patchFile = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "Resources", def->default_patch());
-        auto patch = PatchParser::from(ConfigFile{patchFile}, sampleResolver);
+        auto patch = PatchParser::from(ConfigFile{patchFile});
         patchPropertiesCount = patch.fProperties.size();
       }
 

@@ -466,13 +466,6 @@ std::optional<Resource::Patch> Config::findPatchResource(std::string const &iRes
 {
   auto resourceFile = ConfigFile{iResourcePath};
 
-  auto sampleResolver = [this, &iResourcePath](int i) -> std::string {
-    auto sampleReferences = fSampleReferences.find(iResourcePath);
-    RE_MOCK_ASSERT(sampleReferences != fSampleReferences.end(), "Cannot find sample references for [%s]", iResourcePath);
-    RE_MOCK_ASSERT(i < sampleReferences->second.size(), "Cannot find sample reference [%d] for [%s]", i, iResourcePath);
-    return sampleReferences->second[i];
-  };
-
   auto patchResource = fResources.find(iResourcePath);
   if(patchResource != fResources.end())
   {
@@ -484,7 +477,7 @@ std::optional<Resource::Patch> Config::findPatchResource(std::string const &iRes
 
     // it's a string
     if(std::holds_alternative<ConfigString>(r.fPatchVariant))
-      return PatchParser::from(std::get<ConfigString>(r.fPatchVariant), sampleResolver);
+      return PatchParser::from(std::get<ConfigString>(r.fPatchVariant));
     else
       // it's a file
       resourceFile = std::get<ConfigFile>(r.fPatchVariant);
@@ -492,12 +485,12 @@ std::optional<Resource::Patch> Config::findPatchResource(std::string const &iRes
 
   // check the path as-is
   if(FileManager::fileExists(resourceFile))
-    return PatchParser::from(resourceFile, sampleResolver);
+    return PatchParser::from(resourceFile);
 
   // resolve the path against the resource dir
   auto resolvedResource = resource_file(resourceFile);
   if(resolvedResource && FileManager::fileExists(*resolvedResource))
-    return PatchParser::from(*resolvedResource, sampleResolver);
+    return PatchParser::from(*resolvedResource);
 
   return std::nullopt;
 }

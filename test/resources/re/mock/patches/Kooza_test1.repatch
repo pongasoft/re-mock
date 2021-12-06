@@ -3,6 +3,24 @@
     <DeviceNameInEnglish>
         Kooza
     </DeviceNameInEnglish>
+    <Samples>
+        <SampleReference trueName="mono_sample.data"  userFriendlyName="mono_sample"  type="sample" >
+            <DatabasePath>
+                <ReFillName/>
+                <Path pathKind="jukebox" >
+                    /Rack extensions/com.acme.Kooza/Private/mono_sample.data
+                </Path>
+            </DatabasePath>
+        </SampleReference>
+        <SampleReference trueName="stereo_sample.data"  userFriendlyName="stereo_sample"  type="sample" >
+            <DatabasePath>
+                <ReFillName/>
+                <Path pathKind="jukebox" >
+                    /Rack extensions/com.acme.Kooza/Private/stereo_sample.data
+                </Path>
+            </DatabasePath>
+        </SampleReference>
+    </Samples>
     <Properties>
         <Object name="custom_properties" >
             <Value property="prop_float"  type="number" >

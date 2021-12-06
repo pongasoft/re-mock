@@ -128,8 +128,8 @@ public: // used by regular code
   T* getInstance() const;
 
   void loadPatch(std::string const &iPatchPath);
-  void loadPatch(ConfigString const &iPatchString, std::optional<std::vector<std::string>> iSampleReferences = {});
-  void loadPatch(ConfigFile const &iPatchFile, std::optional<std::vector<std::string>> iSampleReferences = {});
+  void loadPatch(ConfigString const &iPatchString);
+  void loadPatch(ConfigFile const &iPatchFile);
   void loadPatch(Resource::Patch const &iPatch);
 
   void loadUserSampleAsync(std::string const &iPropertyPath,

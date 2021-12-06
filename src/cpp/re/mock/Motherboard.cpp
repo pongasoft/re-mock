@@ -1421,27 +1421,17 @@ void Motherboard::loadPatch(std::string const &iPatchPath)
 //------------------------------------------------------------------------
 // Motherboard::loadPatch
 //------------------------------------------------------------------------
-void Motherboard::loadPatch(ConfigFile const &iPatchFile, std::optional<std::vector<std::string>> iSampleReferences)
+void Motherboard::loadPatch(ConfigFile const &iPatchFile)
 {
-  auto sampleResolver = [&iSampleReferences](int i) -> std::string {
-    RE_MOCK_ASSERT(iSampleReferences != std::nullopt, "Patch contains sample properties so you must provide iSampleReferences");
-    RE_MOCK_ASSERT(i < iSampleReferences->size(), "Cannot find sample reference [%d]", i);
-    return iSampleReferences->at(i);
-  };
-  loadPatch(PatchParser::from(iPatchFile, sampleResolver));
+  loadPatch(PatchParser::from(iPatchFile));
 }
 
 //------------------------------------------------------------------------
 // Motherboard::loadPatch
 //------------------------------------------------------------------------
-void Motherboard::loadPatch(ConfigString const &iPatchString, std::optional<std::vector<std::string>> iSampleReferences)
+void Motherboard::loadPatch(ConfigString const &iPatchString)
 {
-  auto sampleResolver = [&iSampleReferences](int i) -> std::string {
-    RE_MOCK_ASSERT(iSampleReferences != std::nullopt, "Patch contains sample properties so you must provide iSampleReferences");
-    RE_MOCK_ASSERT(i < iSampleReferences->size(), "Cannot find sample reference [%d]", i);
-    return iSampleReferences->at(i);
-  };
-  loadPatch(PatchParser::from(iPatchString, sampleResolver));
+  loadPatch(PatchParser::from(iPatchString));
 }
 
 //------------------------------------------------------------------------

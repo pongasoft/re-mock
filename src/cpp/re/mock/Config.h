@@ -248,8 +248,6 @@ struct Config
   Config& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fResources[iResourcePath] = ConfigResource::Patch{ConfigFile{iPatchFile}}; return *this; }
   Config& patch_data(std::string iResourcePath, Resource::Patch iPatch) { fResources[iResourcePath] = ConfigResource::Patch{std::move(iPatch)}; return *this; }
 
-  Config& patch_sample_references(std::string iResourcePath, std::vector<std::string> iSampleReferences) { fSampleReferences[iResourcePath] = std::move(iSampleReferences); return *this; }
-
   Config& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fResources[iResourcePath] = ConfigResource::Blob{ConfigFile{iBlobFile}}; return *this; }
   Config& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fResources[iResourcePath] = ConfigResource::Blob{Resource::Blob{std::move(iBlobData)}}; return *this; }
 
@@ -296,7 +294,6 @@ protected:
   rt_callback_t fRealtime{};
   std::map<std::string, AnyConfigResource> fResources{};
   std::map<std::string, Resource::LoadingContext> fResourceLoadingContexts{};
-  std::map<std::string, std::vector<std::string>> fSampleReferences{};
 };
 
 template<typename T>
@@ -342,20 +339,8 @@ struct DeviceConfig
   DeviceConfig clone() const { return *this; }
 
   DeviceConfig& patch_string(std::string iResourcePath, std::string const &iPatchString) { fConfig.patch_string(iResourcePath, iPatchString); return *this; }
-  DeviceConfig& patch_string(std::string iResourcePath, std::string const &iPatchFile, std::vector<std::string> iSampleReferences) {
-    fConfig.patch_file(iResourcePath, iPatchFile);
-    patch_sample_references(iResourcePath, iSampleReferences);
-    return *this;
-  }
   DeviceConfig& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fConfig.patch_file(iResourcePath, iPatchFile); return *this; }
-  DeviceConfig& patch_file(std::string iResourcePath, std::string const &iPatchFile, std::vector<std::string> iSampleReferences) {
-    fConfig.patch_file(iResourcePath, iPatchFile);
-    patch_sample_references(iResourcePath, iSampleReferences);
-    return *this;
-  }
   DeviceConfig& patch_data(std::string iResourcePath, Resource::Patch iPatch) { fConfig.patch_data(iResourcePath, std::move(iPatch)); return *this; }
-
-  DeviceConfig& patch_sample_references(std::string iResourcePath, std::vector<std::string> iSampleReferences) { fConfig.patch_sample_references(iResourcePath, std::move(iSampleReferences)); return *this; }
 
   DeviceConfig& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fConfig.blob_file(iResourcePath, iBlobFile); return *this; }
   DeviceConfig& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fConfig.blob_data(iResourcePath, iBlobData); return *this; }

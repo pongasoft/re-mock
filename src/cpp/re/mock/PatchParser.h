@@ -27,11 +27,8 @@ namespace re::mock {
 class PatchParser
 {
 public:
-  using sample_reference_resolver = std::function<std::string(int)>;
-
-public:
-  static Resource::Patch from(ConfigFile iPatchFile, sample_reference_resolver iSampleResolver = {});
-  static Resource::Patch from(ConfigString iPatchString, sample_reference_resolver iSampleResolver = {});
+  static Resource::Patch from(ConfigFile iPatchFile);
+  static Resource::Patch from(ConfigString iPatchString);
 };
 
 }
