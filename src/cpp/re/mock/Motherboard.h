@@ -209,6 +209,8 @@ public: // used by Jukebox.cpp (need to be public)
 
   std::unique_ptr<JboxValue> loadSampleAsync(std::string const &iSamplePath);
 
+  void trace(const char *iFile, TJBox_Int32 iLine, const char *iMessage) const;
+
   Motherboard(Motherboard const &iOther) = delete;
   Motherboard &operator=(Motherboard const &iOther) = delete;
 

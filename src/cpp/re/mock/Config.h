@@ -148,10 +148,6 @@ struct Resource
     Sample &stereo() { return channels(2); }
     Sample &sample_rate(TJBox_UInt32 s) { fSampleRate = s; return *this; }
     Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
-
-    friend std::ostream& operator<<(std::ostream& os, const Sample& iBuffer);
-    friend bool operator==(Sample const &lhs, Sample const &rhs);
-    friend bool operator!=(Sample const &lhs, Sample const &rhs);
   };
 };
 
@@ -200,6 +196,10 @@ struct Config
 
   bool debug() const { return fDebug; }
   Config &debug(bool iDebug = true) { fDebug = iDebug; return *this; }
+
+  bool traceEnabled() const { return fTraceEnabled; }
+  Config &enable_trace() { fTraceEnabled = true; return *this; }
+  Config &disable_trace() { fTraceEnabled = false; return *this; }
 
   Info const &info() const { return fInfo; }
 
@@ -290,6 +290,7 @@ protected:
   using AnyConfigResource = std::variant<ConfigResource::Patch, ConfigResource::Blob, ConfigResource::Sample>;
 
   bool fDebug{};
+  bool fTraceEnabled{true};
   Info fInfo{};
   std::optional<std::string> fDeviceRootDir{};
   std::optional<std::string> fDeviceResourcesDir{};
@@ -312,9 +313,17 @@ struct DeviceConfig
   Info const &info() const { return fConfig.info(); }
   std::optional<std::string> device_root_dir() const { return fConfig.device_root_dir(); };
   std::optional<std::string> device_resources_dir() const { return fConfig.device_resources_dir(); };
+
   std::optional<ConfigFile> resource_file(ConfigFile iRelativeResourcePath) const { return fConfig.resource_file(iRelativeResourcePath); }
 
+  std::optional<Resource::Patch> findPatchResource(std::string const &iResourcePath) const { return fConfig.findPatchResource(iResourcePath); }
+  std::optional<Resource::Blob> findBlobResource(std::string const &iResourcePath) const { return fConfig.findBlobResource(iResourcePath); }
+  std::optional<Resource::Sample> findSampleResource(std::string const &iResourcePath) const { return fConfig.findSampleResource(iResourcePath); }
+
   DeviceConfig &debug(bool iDebug = true) { fConfig.debug(iDebug); return *this; }
+
+  DeviceConfig &enable_trace() { fConfig.enable_trace(); return *this; }
+  DeviceConfig &disable_trace() { fConfig.disable_trace(); return *this; }
 
   DeviceConfig &device_root_dir(std::string s) { fConfig.device_root_dir(s); return *this;}
   DeviceConfig &device_resources_dir(std::string s) { fConfig.device_resources_dir(s); return *this;}

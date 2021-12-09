@@ -143,7 +143,7 @@ constexpr int ascii_hex_to_int(char c)
 {
   if(c < 0 || c > 127)
     return -1;
-  return ASCIIHexToInt[c];
+  return ASCIIHexToInt[static_cast<unsigned char>(c)];
 }
 
 constexpr char INVALID_SYNTAX_CHAR = 0xff;

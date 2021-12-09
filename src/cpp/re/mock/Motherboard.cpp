@@ -1770,6 +1770,15 @@ void Motherboard::getSampleData(TJBox_Value iValue,
 }
 
 //------------------------------------------------------------------------
+// Motherboard::trace
+//------------------------------------------------------------------------
+void Motherboard::trace(const char *iFile, TJBox_Int32 iLine, const char *iMessage) const
+{
+  if(fConfig.traceEnabled())
+    RE_MOCK_LOG_JUKEBOX_INFO("%s:%d | %s", iFile, iLine, iMessage);
+}
+
+//------------------------------------------------------------------------
 // JboxObject::JboxObject
 //------------------------------------------------------------------------
 impl::JboxObject::JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iObjectRef) :

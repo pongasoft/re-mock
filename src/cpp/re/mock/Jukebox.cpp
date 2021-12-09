@@ -141,7 +141,7 @@ void JBox_SetDSPBufferData(TJBox_Value iValue,
 
 void JBox_Assert(const char iFile[], TJBox_Int32 iLine, const char iFailedExpression[], const char iMessage[])
 {
-  RE_MOCK_LOG_ERROR("%s at %s:%d | %s", iFailedExpression, iFile, iLine, iMessage);
+  RE_MOCK_LOG_JUKEBOX_ERROR("%s at %s:%d | %s", iFailedExpression, iFile, iLine, iMessage);
   abort();
 }
 
@@ -150,7 +150,7 @@ void JBox_Trace(
   TJBox_Int32 iLine,
   const char iMessage[])
 {
-  RE_MOCK_LOG_INFO("%s:%d | %s", iFile, iLine, iMessage);
+  return re::mock::Rack::currentMotherboard().trace(iFile, iLine, iMessage);
 }
 
 void JBox_TraceValues(

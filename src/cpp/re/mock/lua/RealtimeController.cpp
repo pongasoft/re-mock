@@ -183,7 +183,7 @@ int RealtimeController::luaTrace()
   lua_getinfo(L, "nSl", &ar);
   auto s = lua_tostring(L, -1);
   if(s != nullptr)
-    RE_MOCK_LOG_INFO("realtime_controller.lua:%d | %s", ar.currentline, s);
+    getCurrentMotherboard()->trace("realtime_controller.lua", ar.currentline, s);
   return 0;
 }
 
