@@ -26,6 +26,28 @@
 
 namespace re::mock {
 
+struct Midi {
+  constexpr static TJBox_UInt8 C(int octave) noexcept { return (octave + 2) * 12; }
+  constexpr static TJBox_UInt8 C_sharp(int octave) noexcept { return C(octave) + 1; }
+  constexpr static TJBox_UInt8 D_flat(int octave) noexcept { return C_sharp(octave); }
+  constexpr static TJBox_UInt8 D(int octave) noexcept { return D_flat(octave) + 1; }
+  constexpr static TJBox_UInt8 D_sharp(int octave) noexcept { return D(octave) + 1; }
+  constexpr static TJBox_UInt8 E_flat(int octave) noexcept { return D_sharp(octave); }
+  constexpr static TJBox_UInt8 E(int octave) noexcept { return E_flat(octave) + 1; }
+  constexpr static TJBox_UInt8 F(int octave) noexcept { return E(octave) + 1; }
+  constexpr static TJBox_UInt8 F_sharp(int octave) noexcept { return F(octave) + 1; }
+  constexpr static TJBox_UInt8 G_flat(int octave) noexcept { return F_sharp(octave); }
+  constexpr static TJBox_UInt8 G(int octave) noexcept { return G_flat(octave) + 1; }
+  constexpr static TJBox_UInt8 G_sharp(int octave) noexcept { return G(octave) + 1; }
+  constexpr static TJBox_UInt8 A_flat(int octave) noexcept { return G_sharp(octave); }
+  constexpr static TJBox_UInt8 A(int octave) noexcept { return A_flat(octave) + 1; }
+  constexpr static TJBox_UInt8 A_sharp(int octave) noexcept { return A(octave) + 1; }
+  constexpr static TJBox_UInt8 B_flat(int octave) noexcept { return A_sharp(octave); }
+  constexpr static TJBox_UInt8 B(int octave) noexcept { return B_flat(octave) + 1; }
+
+  constexpr static TJBox_UInt8 A_440 = 69; // for some reason A(3) does not compile
+};
+
 class MockDevice
 {
 public:
@@ -91,6 +113,56 @@ public:
 
     static StereoSocket input();
     static StereoSocket output();
+  };
+
+  struct Sample
+  {
+    TJBox_UInt32 fChannels{1};
+    TJBox_UInt32 fSampleRate{1};
+    std::vector<TJBox_AudioSample> fData{};
+
+    Sample &channels(TJBox_UInt32 c) { fChannels = c; return *this; }
+    Sample &mono() { return channels(1); }
+    Sample &stereo() { return channels(2); }
+    Sample &sample_rate(TJBox_UInt32 s) { fSampleRate = s; return *this; }
+    Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
+
+    Sample clone() const { return *this; }
+
+    Sample &append(StereoBuffer const &iAudioBuffer, size_t iFrameCount = -1);
+    Sample &append(Sample const &iOtherSample, size_t iFrameCount = -1);
+
+    Sample &mixWith(Sample const &iOtherSample, size_t iFrameCount = -1);
+    Sample &applyGain(TJBox_Float32 iGain);
+
+    Sample subSample(size_t iFromFrame = 0, size_t iFrameCount = -1) const;
+
+    bool isMono() const { return fChannels == 1; }
+    bool isStereo() const { return fChannels == 2; }
+
+    TJBox_UInt32 getChannels() const { return fChannels; }
+    TJBox_UInt32 getSampleRate() const { return fSampleRate; }
+    std::vector<TJBox_AudioSample> const &getData() const { return fData; }
+
+    TJBox_AudioFramePos getSampleCount() const { return fData.size(); }
+    TJBox_AudioFramePos getFrameCount() const {
+      RE_MOCK_ASSERT(fData.size() % fChannels == 0);
+      return fData.size() / fChannels;
+    }
+    float getDurationMilliseconds() const { return getFrameCount() * 1000.0 / fSampleRate; }
+
+    Sample getLeftChannelSample() const;
+    Sample getRightChannelSample() const;
+
+    static Sample from(Resource::Sample iSample);
+    static Sample from(StereoBuffer const &iStereoBuffer, TJBox_UInt32 iSampleRate);
+
+    static const std::size_t npos = -1;
+
+    friend std::ostream& operator<<(std::ostream& os, const Sample& iBuffer);
+    friend bool operator==(Sample const &lhs, Sample const &rhs);
+    friend bool operator!=(Sample const &lhs, Sample const &rhs) { return !(rhs == lhs); }
+    friend Sample operator+(Sample const &lhs, Sample const &rhs) { return lhs.clone().append(rhs); }
   };
 
   static StereoBuffer buffer(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample);

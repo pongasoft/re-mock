@@ -17,7 +17,6 @@
  */
 
 #include <re/mock/DeviceTesters.h>
-#include <re/mock/FileManager.h>
 #include <gtest/gtest.h>
 #include <re_mock_build.h>
 
@@ -63,27 +62,28 @@ TEST(StudioEffectTester, Usage)
 // StudioEffectTester.Sample
 TEST(StudioEffectTester, Sample)
 {
-  StudioEffectTester<MAUPst> tester(MAUPst::CONFIG);
+  auto c = MAUPst::CONFIG.clone().device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"));
+  StudioEffectTester<MAUPst> tester(c);
   tester.wireMainIn(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
   tester.wireMainOut(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
 
   auto sinePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
-  auto sine = FileManager::loadSample(ConfigFile{sinePath});
+  auto sine = tester.loadSample(ConfigFile{sinePath});
 
   {
     auto processedSine = tester.processSample(ConfigFile{sinePath});
 
     // processedSine should be sine (since MAUPst is pass through)
-    ASSERT_EQ(sine->fChannels, processedSine.fChannels);
-    ASSERT_EQ(sine->fSampleRate, tester.rack().getSampleRate());
-    ASSERT_EQ(sine->fData, processedSine.fData);
+    ASSERT_EQ(sine.fChannels, processedSine.fChannels);
+    ASSERT_EQ(sine.fSampleRate, tester.rack().getSampleRate());
+    ASSERT_EQ(sine.fData, processedSine.fData);
   }
 
   {
-    auto processedSine = tester.processSample(ConfigFile{sinePath}, Duration::SampleFrames{30});
+    auto processedSine = tester.processSample("/re/mock/audio/sine.wav", Duration::SampleFrames{30});
     auto expectedSine = sine;
     for(int i = 0; i < 30; i++)
-      expectedSine->fData.emplace_back(0);
+      expectedSine.fData.emplace_back(0);
     ASSERT_EQ(expectedSine, processedSine);
   }
 
@@ -92,7 +92,7 @@ TEST(StudioEffectTester, Sample)
     // 1ms at 44100 is 44.1 samples => 45
     auto expectedSine = sine;
     for(int i = 0; i < 45; i++)
-      expectedSine->fData.emplace_back(0);
+      expectedSine.fData.emplace_back(0);
     ASSERT_EQ(expectedSine, processedSine);
   }
 }
@@ -131,6 +131,9 @@ TEST(InstrumentTester, Usage)
 
   // device is fully wired
   ASSERT_EQ(tester.nextFrame(), MockAudioDevice::buffer(3.0, 4.0));
+
+  ASSERT_EQ(MockAudioDevice::Sample::from(MockAudioDevice::buffer(3.0, 4.0), 44100),
+            tester.play(Duration::RackFrames{1}));
 }
 
 // NotePlayerTester.Usage
@@ -146,11 +149,11 @@ TEST(NotePlayerTester, Usage)
   ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.nextFrame());
   ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.device()->fNoteEvents);
 
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(69), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(69)));
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(69), tester.device()->fNoteEvents);
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.device()->fNoteEvents);
 
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(69, 25), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOff(69, 25)));
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(69, 25), tester.device()->fNoteEvents);
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(Midi::A_440, 25), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOff(Midi::A_440, 25)));
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(Midi::A_440, 25), tester.device()->fNoteEvents);
 
   // simulating sequencer note
   tester.device().use([](Motherboard &m) {
@@ -161,15 +164,15 @@ TEST(NotePlayerTester, Usage)
 
   // bypass note player (does not receive notes anymore)
   tester.setBypassed(true);
-  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(69)));
+  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
 
   // revert
   tester.setBypassed(false);
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(69), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(69)));
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
 
   // unwire src
   tester.unwire(tester.src());
-  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(69)));
+  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
 }
 
 // HelperTester.Usage

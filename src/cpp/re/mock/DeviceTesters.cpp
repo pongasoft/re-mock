@@ -25,7 +25,7 @@ namespace re::mock {
 // DeviceTester::DeviceTester
 //------------------------------------------------------------------------
 DeviceTester::DeviceTester(Config const &iDeviceConfig, int iSampleRate) :
-  fRack{iSampleRate}, fDevice{fRack.newExtension(iDeviceConfig)}
+  fRack{iSampleRate}, fDevice{fRack.newExtension(iDeviceConfig)}, fDeviceConfig{iDeviceConfig}
 {
 }
 
@@ -206,6 +206,26 @@ void DeviceTester::nextFrames(Duration::Type iDuration)
 }
 
 //------------------------------------------------------------------------
+// DeviceTester::loadSample
+//------------------------------------------------------------------------
+MockAudioDevice::Sample DeviceTester::loadSample(ConfigFile const &iSampleFile) const
+{
+  auto sample = FileManager::loadSample(iSampleFile);
+  RE_MOCK_ASSERT(sample != std::nullopt, "Could not load sample [%s]", iSampleFile.fFilename);
+  return MockAudioDevice::Sample::from(*sample);
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::loadSample
+//------------------------------------------------------------------------
+MockAudioDevice::Sample DeviceTester::loadSample(std::string const &iSampleResource) const
+{
+  auto sample = fDeviceConfig.findSampleResource(iSampleResource);
+  RE_MOCK_ASSERT(sample != std::nullopt, "Could not load sample resource [%s]", iSampleResource);
+  return MockAudioDevice::Sample::from(*sample);
+}
+
+//------------------------------------------------------------------------
 // ExtensionEffectTester::ExtensionEffectTester
 //------------------------------------------------------------------------
 ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig, int iSampleRate) :
@@ -261,14 +281,14 @@ void ExtensionEffectTester::nextFrame(MockAudioDevice::StereoBuffer const &iInpu
 //------------------------------------------------------------------------
 // ExtensionEffectTester::processSample
 //------------------------------------------------------------------------
-Resource::Sample ExtensionEffectTester::processSample(Resource::Sample const &iSample, std::optional<Duration::Type> iTail)
+MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sample const &iSample, std::optional<Duration::Type> iTail)
 {
   size_t tailInSampleFrames = 0;
 
   if(iTail)
     tailInSampleFrames = Duration::toSampleFrames(*iTail, fRack.getSampleRate()).fCount;
 
-  Resource::Sample res{};
+  MockAudioDevice::Sample res{};
   res.fChannels = iSample.fChannels;
   res.fSampleRate = fRack.getSampleRate();
   res.fData.reserve(iSample.fData.size() + tailInSampleFrames);
@@ -321,16 +341,6 @@ Resource::Sample ExtensionEffectTester::processSample(Resource::Sample const &iS
 }
 
 //------------------------------------------------------------------------
-// ExtensionEffectTester::processSample
-//------------------------------------------------------------------------
-Resource::Sample ExtensionEffectTester::processSample(ConfigFile const &iSampleFile, std::optional<Duration::Type> iTail)
-{
-  auto sample = FileManager::loadSample(iSampleFile);
-  RE_MOCK_ASSERT(sample != std::nullopt, "Could not load sample file [%s]", iSampleFile.fFilename);
-  return processSample(*sample, iTail);
-}
-
-//------------------------------------------------------------------------
 // ExtensionInstrumentTester::ExtensionInstrumentTester
 //------------------------------------------------------------------------
 ExtensionInstrumentTester::ExtensionInstrumentTester(Config const &iDeviceConfig, int iSampleRate) :
@@ -376,6 +386,32 @@ void ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents,
   fDevice.setNoteInEvents(iNoteEvents.events());
   fRack.nextFrame();
   oOutputBuffer = fDst->fBuffer;
+}
+
+//------------------------------------------------------------------------
+// ExtensionInstrumentTester::play
+//------------------------------------------------------------------------
+MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration::Type iDuration)
+{
+  auto totalNumSampleFrames = Duration::toSampleFrames(iDuration, fRack.getSampleRate()).fCount;
+
+  MockAudioDevice::Sample res{};
+  res.fChannels = 2;
+  res.fSampleRate = fRack.getSampleRate();
+  res.fData.reserve(totalNumSampleFrames);
+
+  while(totalNumSampleFrames > 0)
+  {
+    fRack.nextFrame();
+
+    auto numSamplesInThisRackFrame = std::min<size_t>(totalNumSampleFrames, MockAudioDevice::NUM_SAMPLES_PER_FRAME);
+
+    res.append(fDst->fBuffer, numSamplesInThisRackFrame);
+
+    totalNumSampleFrames -= numSamplesInThisRackFrame;
+  }
+
+  return res;
 }
 
 //------------------------------------------------------------------------

@@ -679,45 +679,4 @@ int Resource::LoadingContext::getStatusAsInt() const
 }
 
 
-//------------------------------------------------------------------------
-// Resource::Sample::operator<<
-//------------------------------------------------------------------------
-std::ostream &operator<<(std::ostream &os, Resource::Sample const &iBuffer)
-{
-  return os << "{.fChannels=" << iBuffer.fChannels
-            << ",.fSampleRate=" << iBuffer.fSampleRate
-            << ",.fData[" << stl::Join(iBuffer.fData, ", ") << "]}";
-}
-
-//------------------------------------------------------------------------
-// Resource::Sample::operator==
-//------------------------------------------------------------------------
-bool operator==(Resource::Sample const &lhs, Resource::Sample const &rhs)
-{
-  if(lhs.fChannels != rhs.fChannels)
-    return false;
-
-  if(lhs.fSampleRate != rhs.fSampleRate)
-    return false;
-
-  if(lhs.fData.size() != rhs.fData.size())
-    return false;
-
-  for(int i = 0; i < lhs.fData.size(); i++)
-  {
-    if(!stl::almost_equal<TJBox_AudioSample>(lhs.fData[i], rhs.fData[i]))
-      return false;
-  }
-
-  return true;
-}
-
-//------------------------------------------------------------------------
-// Resource::Sample::operator!=
-//------------------------------------------------------------------------
-bool operator!=(Resource::Sample const &lhs, Resource::Sample const &rhs)
-{
-  return !(rhs == lhs);
-}
-
 }

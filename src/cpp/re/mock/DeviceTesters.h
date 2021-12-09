@@ -27,7 +27,7 @@ namespace re::mock {
 
 struct Duration
 {
-  struct Time { long fMilliseconds{}; };
+  struct Time { float fMilliseconds{}; };
   struct SampleFrames { long fCount{}; };
   struct RackFrames { long fCount{}; };
 
@@ -96,12 +96,16 @@ public:
 
   void nextFrames(Duration::Type iDuration);
 
+  MockAudioDevice::Sample loadSample(ConfigFile const &iSampleFile) const;
+  MockAudioDevice::Sample loadSample(std::string const &iSampleResource) const;
+
 protected:
   template<typename Device>
   Rack::ExtensionDevice<Device> getExtensionDevice();
 
   Rack fRack;
   Rack::Extension fDevice;
+  Config fDeviceConfig;
 };
 
 /**
@@ -141,8 +145,13 @@ public:
   MockAudioDevice::StereoBuffer nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer);
   void nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
 
-  Resource::Sample processSample(Resource::Sample const &iSample, std::optional<Duration::Type> iTail = std::nullopt);
-  Resource::Sample processSample(ConfigFile const &iSampleFile, std::optional<Duration::Type> iTail = std::nullopt);
+  MockAudioDevice::Sample processSample(MockAudioDevice::Sample const &iSample, std::optional<Duration::Type> iTail = std::nullopt);
+  MockAudioDevice::Sample processSample(ConfigFile const &iSampleFile, std::optional<Duration::Type> iTail = std::nullopt) {
+    return processSample(loadSample(iSampleFile), iTail);
+  }
+  MockAudioDevice::Sample processSample(std::string const &iSampleResource, std::optional<Duration::Type> iTail = std::nullopt) {
+    return processSample(loadSample(iSampleResource), iTail);
+  }
 
   TJBox_OnOffBypassStates getBypassState() const { return fDevice.getEffectBypassState(); }
   void setBypassState(TJBox_OnOffBypassStates iState) { fDevice.setEffectBypassState(iState); }
@@ -204,6 +213,8 @@ public:
   MockAudioDevice::StereoBuffer nextFrame(MockDevice::NoteEvents iNoteEvents = {});
   void nextFrame(MockDevice::NoteEvents iNoteEvents, MockAudioDevice::StereoBuffer &oOutputBuffer);
   void nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer);
+
+  MockAudioDevice::Sample play(Duration::Type iDuration);
 
   inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
   inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }

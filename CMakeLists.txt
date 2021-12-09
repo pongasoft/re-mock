@@ -146,6 +146,7 @@ if(re-mock_DEV_BUILD)
       "${re-mock_CPP_TST_DIR}/re/mock/TestFmt.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestMisc.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestMockDevices.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestPatch.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRack.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"

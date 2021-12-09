@@ -632,6 +632,203 @@ MockDevice::NoteEvents &MockDevice::NoteEvents::clear()
   return *this;
 }
 
+//------------------------------------------------------------------------
+// MockDevice::Sample::operator<<
+//------------------------------------------------------------------------
+std::ostream &operator<<(std::ostream &os, MockAudioDevice::Sample const &iBuffer)
+{
+  constexpr auto MAX = 64;
+
+  if(iBuffer.fData.size() < MAX)
+  {
+    return os << "{.fChannels=" << iBuffer.fChannels
+              << ",.fSampleRate=" << iBuffer.fSampleRate
+              << ",.fData[" << iBuffer.fData.size() << "]{" << stl::Join(iBuffer.fData, ", ") << "}}";
+  }
+  else
+  {
+    os << "{.fChannels=" << iBuffer.fChannels
+       << ",.fSampleRate=" << iBuffer.fSampleRate
+       << ",.fData[" << iBuffer.fData.size() << "]{";
+    stl::join(std::begin(iBuffer.fData), std::begin(iBuffer.fData) + MAX, os, ",");
+    return os << ", ... }}";
+  }
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::operator==
+//------------------------------------------------------------------------
+bool operator==(MockAudioDevice::Sample const &lhs, MockAudioDevice::Sample const &rhs)
+{
+  if(lhs.fChannels != rhs.fChannels)
+    return false;
+
+  if(lhs.fSampleRate != rhs.fSampleRate)
+    return false;
+
+  if(lhs.fData.size() != rhs.fData.size())
+    return false;
+
+  for(int i = 0; i < lhs.fData.size(); i++)
+  {
+    if(!stl::almost_equal<TJBox_AudioSample>(lhs.fData[i], rhs.fData[i]))
+      return false;
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::from
+//------------------------------------------------------------------------
+MockAudioDevice::Sample MockAudioDevice::Sample::from(Resource::Sample iSample)
+{
+  return {
+    iSample.fChannels,
+    iSample.fSampleRate,
+    std::move(iSample.fData)
+  };
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::from
+//------------------------------------------------------------------------
+MockAudioDevice::Sample MockAudioDevice::Sample::from(StereoBuffer const &iStereoBuffer, TJBox_UInt32 iSampleRate)
+{
+  MockAudioDevice::Sample res{2, iSampleRate};
+  res.fData.reserve(NUM_SAMPLES_PER_FRAME * 2);
+  for(int i = 0; i < NUM_SAMPLES_PER_FRAME; i++)
+  {
+    res.fData.emplace_back(iStereoBuffer.fLeft[i]);
+    res.fData.emplace_back(iStereoBuffer.fRight[i]);
+  }
+  return res;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::getLeftChannelSample
+//------------------------------------------------------------------------
+MockAudioDevice::Sample MockAudioDevice::Sample::getLeftChannelSample() const
+{
+  if(isMono())
+    return *this;
+
+  MockAudioDevice::Sample res{1, fSampleRate};
+
+  res.fData.resize(getFrameCount());
+
+  auto iPtr = fData.data();
+  auto oPtr = res.fData.data();
+
+  for(int i = 0; i < getFrameCount(); i++)
+  {
+    *oPtr = *iPtr;
+    oPtr++;
+    iPtr += fChannels;
+  }
+
+  return res;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::getRightChannelSample
+//------------------------------------------------------------------------
+MockAudioDevice::Sample MockAudioDevice::Sample::getRightChannelSample() const
+{
+  if(isMono())
+    return *this;
+
+  MockAudioDevice::Sample res{1, fSampleRate};
+
+  res.fData.resize(getFrameCount());
+
+  auto iPtr = fData.data();
+  auto oPtr = res.fData.data();
+
+  for(int i = 0; i < getFrameCount(); i++)
+  {
+    *oPtr = *(iPtr + 1);
+    oPtr++;
+    iPtr += fChannels;
+  }
+
+  return res;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::append
+//------------------------------------------------------------------------
+MockAudioDevice::Sample &MockAudioDevice::Sample::append(StereoBuffer const &iAudioBuffer, size_t iFrameCount)
+{
+  RE_MOCK_ASSERT(isStereo());
+
+  auto size = std::min<size_t>(iFrameCount, NUM_SAMPLES_PER_FRAME);
+  fData.reserve(fData.size() + size);
+
+  for(size_t i = 0; i < size; i++)
+  {
+    fData.emplace_back(iAudioBuffer.fLeft[i]);
+    fData.emplace_back(iAudioBuffer.fRight[i]);
+  }
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::append
+//------------------------------------------------------------------------
+MockAudioDevice::Sample &MockAudioDevice::Sample::append(Sample const &iOtherSample, size_t iFrameCount)
+{
+  auto sampleCount = std::min<size_t>(iFrameCount, iOtherSample.getFrameCount()) * fChannels;
+  fData.reserve(fData.size() + sampleCount);
+  std::copy(std::begin(iOtherSample.fData), std::begin(iOtherSample.fData) + sampleCount, std::back_inserter(fData));
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::mixWith
+//------------------------------------------------------------------------
+MockAudioDevice::Sample &MockAudioDevice::Sample::mixWith(MockAudioDevice::Sample const &iOtherSample, size_t iFrameCount)
+{
+  RE_MOCK_ASSERT(fChannels == iOtherSample.fChannels);
+  RE_MOCK_ASSERT(fSampleRate == iOtherSample.fSampleRate);
+
+  auto totalSampleCount = std::min<size_t>(iFrameCount, iOtherSample.getFrameCount()) * fChannels;
+  if(totalSampleCount > fData.size())
+    fData.resize(totalSampleCount); // increases and add 0
+  auto p = fData.data();
+  auto o = iOtherSample.fData.data();
+  for(size_t i = 0; i < totalSampleCount; i++)
+  {
+    *p += *o; // mix (meaning sum) this and other sample
+    ++p;
+    ++o;
+  }
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::applyGain
+//------------------------------------------------------------------------
+MockAudioDevice::Sample &MockAudioDevice::Sample::applyGain(TJBox_Float32 iGain)
+{
+  stl::for_each(fData, [iGain](auto &s) { s *= iGain; });
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::subSample
+//------------------------------------------------------------------------
+MockAudioDevice::Sample MockAudioDevice::Sample::subSample(size_t iFromFrame, size_t iFrameCount) const
+{
+  auto sampleCount = std::min<size_t>(iFrameCount, getFrameCount()) * fChannels;
+  auto startSample = static_cast<ptrdiff_t>(iFromFrame * fChannels);
+  auto endSample = static_cast<ptrdiff_t>(startSample + sampleCount);
+  Sample res{fChannels, fSampleRate};
+  res.fData.reserve(sampleCount);
+  std::copy(std::begin(fData) + startSample, std::begin(fData) + endSample, std::back_inserter(res.fData));
+  return res;
+}
+
 namespace impl {
 
 //------------------------------------------------------------------------
