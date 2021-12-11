@@ -10,7 +10,7 @@ Example of unit test (using GoogleTest):
 
  ```c++
 // Creates a config by reading motherboard_def.lua and realtime_controller.lua
-auto c = DeviceConfig<Device>::fromJBoxExport(RE_CMAKE_MOTHERBOARD_DEF_LUA, RE_CMAKE_REALTIME_CONTROLLER_LUA);
+auto c = DeviceConfig<Device>::fromJBoxExport(RE_CMAKE_PROJECT_DIR);
 
 // Creates a tester for the device (a studio_fx device)
 auto tester = StudioEffectTester<Device>(c);
@@ -106,11 +106,6 @@ Status & Limitations
 
 This project is currently under development and as a result, not all apis and functionalities provided by Reason 
 are supported.
-
-Here is a list of the Jukebox API currently not implemented:
-
-* `JBox_FFTRealForward`
-* `JBox_FFTRealInverse`
 
 Here is a list of known unimplemented features:
 

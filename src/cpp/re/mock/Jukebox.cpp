@@ -21,6 +21,7 @@
 #include "Jukebox.h"
 #include "MockJukebox.h"
 #include "Rack.h"
+#include "fft.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -245,17 +246,17 @@ TJBox_NoteEvent JBox_AsNoteEvent(const TJBox_PropertyDiff &iPropertyDiff)
 
 TJBox_Int32 JBox_GetOptimalFFTAlignment()
 {
-  throw re::mock::Exception("JBox_GetOptimalFFTAlignment: Not implemented yet");
+  return 16;
 }
 
 void JBox_FFTRealForward(TJBox_Int32 iFFTSize, TJBox_Float32 ioData[])
 {
-  throw re::mock::Exception("JBox_FFTRealForward: Not implemented yet");
+  re::mock::computeFFTRealForward(iFFTSize, ioData);
 }
 
 void JBox_FFTRealInverse(TJBox_Int32 iFFTSize, TJBox_Float32 ioData[])
 {
-  throw re::mock::Exception("JBox_FFTRealInverse: Not implemented yet");
+  re::mock::computeFFTRealInverse(iFFTSize, ioData);
 }
 
 #ifdef __cplusplus

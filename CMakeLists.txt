@@ -87,6 +87,7 @@ set(re-mock_BUILD_SOURCES
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/PatchParser.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Rack.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/fft.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/InfoLua.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/LuaState.cpp
@@ -143,6 +144,7 @@ if(re-mock_DEV_BUILD)
 
   set(TEST_CASE_SOURCES
       "${re-mock_CPP_TST_DIR}/re/mock/TestDeviceTesters.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestFft.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestFmt.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestMisc.cpp"
