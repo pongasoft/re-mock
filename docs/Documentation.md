@@ -257,12 +257,11 @@ ASSERT_FLOAT_EQ(<expected value>, cvDst->fValue);
 
 ### How to deal with `/transport`?
 
-Currently, each device gets its own transport object and since there is no real check it can be manipulated
-directly by accessing the properties. This will probably be revisited later (there should be an API on the `Rack` 
-since transport is not a device specific concept).
+In order to change one of the globally available transport properties (like "playing"), you call an API on the rack
+itself.
 
 Example:
 ```c++
-// this changes the "playing" property only of the main device (the other devices have their own value)
-tester.device().setBool("/transport/playing", true);
+// this changes the transport "playing" property for all extensions
+rack.setTransportPlaying(true); // rack.transportStart(); for a shortcut notation
 ```

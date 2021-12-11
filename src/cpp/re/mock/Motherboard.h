@@ -176,8 +176,6 @@ public: // used by Jukebox.cpp (need to be public)
   TJBox_PropertyRef getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
   TJBox_Value loadProperty(TJBox_PropertyRef const &iProperty) const;
   TJBox_Value loadProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag) const;
-  void storeProperty(TJBox_PropertyRef const &iProperty, std::shared_ptr<const JboxValue> const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
-  void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, std::shared_ptr<const JboxValue> const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
   inline void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, TJBox_Value const &iValue, TJBox_UInt16 iAtFrameIndex = 0) {
     storeProperty(iObject, iTag, from_TJBox_Value(iValue), iAtFrameIndex);
   }
@@ -231,6 +229,9 @@ protected:
 
   std::shared_ptr<const JboxValue> getJboxValue(std::string const &iPropertyPath) const;
   std::shared_ptr<JboxValue> getJboxValue(std::string const &iPropertyPath);
+
+  void storeProperty(TJBox_PropertyRef const &iProperty, std::shared_ptr<const JboxValue> const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
+  void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, std::shared_ptr<const JboxValue> const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
 
   inline void setValue(std::string const &iPropertyPath, std::shared_ptr<const JboxValue> const &iValue) {
     storeProperty(getPropertyRef(iPropertyPath), iValue);

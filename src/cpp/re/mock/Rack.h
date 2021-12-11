@@ -78,6 +78,12 @@ public:
     inline void use(std::function<void ()> iCallback) {
       use([callback = std::move(iCallback)](auto &motherboard) { callback(); });
     }
+    template<typename R>
+    inline R use(std::function<R (Motherboard &)> iCallback) { return fImpl->use<R>(std::move(iCallback)); }
+    template<typename R>
+    inline R use(std::function<R ()> iCallback) {
+      return use<R>([callback = std::move(iCallback)](auto &motherboard) -> R { return callback(); });
+    }
 
     AudioOutSocket getAudioOutSocket(std::string const &iSocketName) const;
     StereoAudioOutSocket getStereoAudioOutSocket(std::string const &iLeftSocketName, std::string const &iRightSocketName) const;
@@ -209,6 +215,16 @@ protected:
   public:
     void use(std::function<void (Motherboard &)> iCallback);
 
+    template<typename R>
+    R use(std::function<R (Motherboard &)> iCallback)
+    {
+      R res;
+      use([&iCallback, &res](Motherboard &m) {
+        res = iCallback(m);
+      });
+      return res;
+    }
+
     friend class Rack;
     friend class Rack::Extension;
 
@@ -267,6 +283,45 @@ public:
   void nextFrame();
 
   int getSampleRate() const { return fSampleRate; }
+  
+  TJBox_Value getTransportValue(TJBox_TransportTag iTag) const { return fTransport.at(iTag); }
+  void setTransportValue(TJBox_TransportTag iTag, TJBox_Value const &iValue);
+
+  bool getTransportPlaying() const { return JBox_GetBoolean(getTransportValue(kJBox_TransportPlaying)); }
+  void setTransportPlaying(bool b) { setTransportValue(kJBox_TransportPlaying, JBox_MakeBoolean(b)); }
+
+  void transportStart() { setTransportPlaying(true); }
+  void transportStop() { setTransportPlaying(false); }
+
+  TJBox_Float64 getTransportPlayPos() const { return JBox_GetNumber(getTransportValue(kJBox_TransportPlayPos)); }
+  void setTransportPlayPos(TJBox_Float64 f) { setTransportValue(kJBox_TransportPlayPos, JBox_MakeNumber(f)); }
+
+  TJBox_Float64 getTransportTempo() const { return JBox_GetNumber(getTransportValue(kJBox_TransportTempo)); }
+  void setTransportTempo(TJBox_Float64 f) { setTransportValue(kJBox_TransportTempo, JBox_MakeNumber(f)); }
+
+  TJBox_Float64 getTransportFilteredTempo() const { return JBox_GetNumber(getTransportValue(kJBox_TransportFilteredTempo)); }
+  void setTransportFilteredTempo(TJBox_Float64 f) { setTransportValue(kJBox_TransportFilteredTempo, JBox_MakeNumber(f)); }
+
+  bool getTransportTempoAutomation() const { return JBox_GetBoolean(getTransportValue(kJBox_TransportTempoAutomation)); }
+  void setTransportTempoAutomation(bool b) { setTransportValue(kJBox_TransportTempoAutomation, JBox_MakeBoolean(b)); }
+
+  TJBox_Float64 getTransportTimeSignatureNumerator() const { return JBox_GetNumber(getTransportValue(kJBox_TransportTimeSignatureNumerator)); }
+  void setTransportTimeSignatureNumerator(TJBox_Float64 f) { setTransportValue(kJBox_TransportTimeSignatureNumerator, JBox_MakeNumber(f)); }
+
+  TJBox_Float64 getTransportTimeSignatureDenominator() const { return JBox_GetNumber(getTransportValue(kJBox_TransportTimeSignatureDenominator)); }
+  void setTransportTimeSignatureDenominator(TJBox_Float64 f) { setTransportValue(kJBox_TransportTimeSignatureDenominator, JBox_MakeNumber(f)); }
+
+  bool getTransportLoopEnabled() const { return JBox_GetBoolean(getTransportValue(kJBox_TransportLoopEnabled)); }
+  void setTransportLoopEnabled(bool b) { setTransportValue(kJBox_TransportLoopEnabled, JBox_MakeBoolean(b)); }
+
+  TJBox_Float64 getTransportLoopStartPos() const { return JBox_GetNumber(getTransportValue(kJBox_TransportLoopStartPos)); }
+  void setTransportLoopStartPos(TJBox_Float64 f) { setTransportValue(kJBox_TransportLoopStartPos, JBox_MakeNumber(f)); }
+
+  TJBox_Float64 getTransportLoopEndPos() const { return JBox_GetNumber(getTransportValue(kJBox_TransportLoopEndPos)); }
+  void setTransportLoopEndPos(TJBox_Float64 f) { setTransportValue(kJBox_TransportLoopEndPos, JBox_MakeNumber(f)); }
+
+  TJBox_Float64 getTransportBarStartPos() const { return JBox_GetNumber(getTransportValue(kJBox_TransportBarStartPos)); }
+  void setTransportBarStartPos(TJBox_Float64 f) { setTransportValue(kJBox_TransportBarStartPos, JBox_MakeNumber(f)); }
 
   static Motherboard &currentMotherboard();
 
@@ -281,7 +336,11 @@ protected:
   void nextFrame(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensions);
 
 protected:
+  using Transport = std::map<TJBox_TransportTag, TJBox_Value>;
+
+protected:
   int fSampleRate;
+  Transport fTransport{};
   ObjectManager<std::shared_ptr<ExtensionImpl>> fExtensions{};
 };
 

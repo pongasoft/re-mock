@@ -281,7 +281,9 @@ void ExtensionEffectTester::nextFrame(MockAudioDevice::StereoBuffer const &iInpu
 //------------------------------------------------------------------------
 // ExtensionEffectTester::processSample
 //------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sample const &iSample, std::optional<Duration::Type> iTail)
+MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sample const &iSample,
+                                                             optional_duration_t iTail,
+                                                             before_frame_hook_t iBeforeFrameHook)
 {
   size_t tailInSampleFrames = 0;
 
@@ -300,6 +302,8 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
 
   auto totalNumSampleFrames = numSampleFramesToProcess + tailInSampleFrames;
   auto ptr = iSample.fData.data();
+
+  int frameCount = 0;
 
   while(totalNumSampleFrames > 0)
   {
@@ -322,6 +326,10 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
     else
       input.fill(0, 0);
 
+    // allow outside code to modify the device prior to invoking nextFrame
+    if(iBeforeFrameHook)
+      iBeforeFrameHook(frameCount);
+
     // process this rack frame
     nextFrame(input, output);
 
@@ -335,6 +343,7 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
 
     totalNumSampleFrames -= numSamplesInThisRackFrame;
     numSampleFramesToProcess -= numSamplesToProcessInThisRackFrame;
+    frameCount++;
   }
 
   return res;
@@ -391,7 +400,7 @@ void ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents,
 //------------------------------------------------------------------------
 // ExtensionInstrumentTester::play
 //------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration::Type iDuration)
+MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration::Type iDuration, before_frame_hook_t iBeforeFrameHook)
 {
   auto totalNumSampleFrames = Duration::toSampleFrames(iDuration, fRack.getSampleRate()).fCount;
 
@@ -400,8 +409,14 @@ MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration::Type iDuration
   res.fSampleRate = fRack.getSampleRate();
   res.fData.reserve(totalNumSampleFrames);
 
+  int frameCount = 0;
+
   while(totalNumSampleFrames > 0)
   {
+    // allow outside code to modify the device prior to invoking nextFrame
+    if(iBeforeFrameHook)
+      iBeforeFrameHook(frameCount);
+
     fRack.nextFrame();
 
     auto numSamplesInThisRackFrame = std::min<size_t>(totalNumSampleFrames, MockAudioDevice::NUM_SAMPLES_PER_FRAME);
@@ -409,6 +424,7 @@ MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration::Type iDuration
     res.append(fDst->fBuffer, numSamplesInThisRackFrame);
 
     totalNumSampleFrames -= numSamplesInThisRackFrame;
+    frameCount++;
   }
 
   return res;

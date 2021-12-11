@@ -81,19 +81,25 @@ TEST(StudioEffectTester, Sample)
 
   {
     auto processedSine = tester.processSample("/re/mock/audio/sine.wav", Duration::SampleFrames{30});
-    auto expectedSine = sine;
+    auto expectedSine = sine; // sine (100 samples) + tail of 30 samples
     for(int i = 0; i < 30; i++)
       expectedSine.fData.emplace_back(0);
     ASSERT_EQ(expectedSine, processedSine);
   }
 
   {
-    auto processedSine = tester.processSample(ConfigFile{sinePath}, Duration::Time{1});
-    // 1ms at 44100 is 44.1 samples => 45
-    auto expectedSine = sine;
+    std::vector<int> frames{};
+
+    auto processedSine = tester.processSample(ConfigFile{sinePath},
+                                              Duration::Time{1},
+                                              [&frames](int f) { frames.emplace_back(f); });
+    // 1ms at 44100 is 44.1 samples => 45 samples
+    auto expectedSine = sine; // sine (100 samples) + tail of 45 samples
     for(int i = 0; i < 45; i++)
       expectedSine.fData.emplace_back(0);
+
     ASSERT_EQ(expectedSine, processedSine);
+    ASSERT_EQ(std::vector<int>({0, 1, 2}), frames); // 145 samples = 3 rack frames
   }
 }
 
@@ -132,8 +138,13 @@ TEST(InstrumentTester, Usage)
   // device is fully wired
   ASSERT_EQ(tester.nextFrame(), MockAudioDevice::buffer(3.0, 4.0));
 
+  std::vector<int> frames{};
+
   ASSERT_EQ(MockAudioDevice::Sample::from(MockAudioDevice::buffer(3.0, 4.0), 44100),
-            tester.play(Duration::RackFrames{1}));
+            tester.play(Duration::RackFrames{1},
+                        [&frames](int f) { frames.emplace_back(f); }));
+
+  ASSERT_EQ(std::vector<int>({0}), frames);
 }
 
 // NotePlayerTester.Usage

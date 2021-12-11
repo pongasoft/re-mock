@@ -137,6 +137,10 @@ protected:
 class ExtensionEffectTester : public DeviceTester
 {
 public:
+  using optional_duration_t = std::optional<Duration::Type>;
+  using before_frame_hook_t = std::function<void(int)>;
+
+public:
   explicit ExtensionEffectTester(Config const &iDeviceConfig, int iSampleRate);
 
   void wireMainIn(std::optional<std::string> iLeftInSocketName, std::optional<std::string> iRightInSocketName);
@@ -145,12 +149,19 @@ public:
   MockAudioDevice::StereoBuffer nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer);
   void nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
 
-  MockAudioDevice::Sample processSample(MockAudioDevice::Sample const &iSample, std::optional<Duration::Type> iTail = std::nullopt);
-  MockAudioDevice::Sample processSample(ConfigFile const &iSampleFile, std::optional<Duration::Type> iTail = std::nullopt) {
-    return processSample(loadSample(iSampleFile), iTail);
+  MockAudioDevice::Sample processSample(MockAudioDevice::Sample const &iSample,
+                                        optional_duration_t iTail = std::nullopt,
+                                        before_frame_hook_t iBeforeFrameHook = {});
+
+  MockAudioDevice::Sample processSample(ConfigFile const &iSampleFile,
+                                        optional_duration_t iTail = std::nullopt,
+                                        before_frame_hook_t iBeforeFrameHook = {}) {
+    return processSample(loadSample(iSampleFile), iTail, std::move(iBeforeFrameHook));
   }
-  MockAudioDevice::Sample processSample(std::string const &iSampleResource, std::optional<Duration::Type> iTail = std::nullopt) {
-    return processSample(loadSample(iSampleResource), iTail);
+  MockAudioDevice::Sample processSample(std::string const &iSampleResource,
+                                        optional_duration_t iTail = std::nullopt,
+                                        before_frame_hook_t iBeforeFrameHook = {}) {
+    return processSample(loadSample(iSampleResource), iTail, std::move(iBeforeFrameHook));
   }
 
   TJBox_OnOffBypassStates getBypassState() const { return fDevice.getEffectBypassState(); }
@@ -206,6 +217,9 @@ protected:
 class ExtensionInstrumentTester : public DeviceTester
 {
 public:
+  using before_frame_hook_t = std::function<void(int)>;
+
+public:
   explicit ExtensionInstrumentTester(Config const &iDeviceConfig, int iSampleRate);
 
   void wireMainOut(std::optional<std::string> iLeftOutSocketName, std::optional<std::string> iRightOutSocketName);
@@ -214,7 +228,7 @@ public:
   void nextFrame(MockDevice::NoteEvents iNoteEvents, MockAudioDevice::StereoBuffer &oOutputBuffer);
   void nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer);
 
-  MockAudioDevice::Sample play(Duration::Type iDuration);
+  MockAudioDevice::Sample play(Duration::Type iDuration, before_frame_hook_t iBeforeFrameHook = {});
 
   inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
   inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }

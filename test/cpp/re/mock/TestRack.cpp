@@ -620,4 +620,85 @@ rtc_bindings = {
   ASSERT_TRUE(re.getInstance<Device>() != nullptr);
   ASSERT_EQ(re.getInstanceId(), re->fInstanceID);
 }
+
+// Rack.Transport
+TEST(Rack, Transport)
+{
+  Rack rack{};
+
+  auto rack_transport = [&rack]() {
+    return fmt::printf("p=%s,pp=%.0f,t=%.0f,ft=%.0f,ta=%s,tsn=%.0f,tsd=%.0f,le=%s,lsp=%.0f,lep=%.0f,bsp=%.0f",
+                       rack.getTransportPlaying() ? "true": "false",
+                       rack.getTransportPlayPos(),
+                       rack.getTransportTempo(),
+                       rack.getTransportFilteredTempo(),
+                       rack.getTransportTempoAutomation() ? "true": "false",
+                       rack.getTransportTimeSignatureNumerator(),
+                       rack.getTransportTimeSignatureDenominator(),
+                       rack.getTransportLoopEnabled() ? "true": "false",
+                       rack.getTransportLoopStartPos(),
+                       rack.getTransportLoopEndPos(),
+                       rack.getTransportBarStartPos()
+    );
+  };
+
+  ASSERT_EQ("p=false,pp=0,t=120,ft=120,ta=false,tsn=4,tsd=4,le=false,lsp=0,lep=0,bsp=0", rack_transport());
+
+  auto src = rack.newDevice(MAUSrc::CONFIG);
+  auto dst = rack.newDevice(MAUDst::CONFIG);
+
+  auto re_transport = []() -> std::string {
+    auto ref = JBox_GetMotherboardObjectRef("/transport");
+
+    return fmt::printf("p=%s,pp=%s,t=%s,ft=%s,ta=%s,tsn=%s,tsd=%s,le=%s,lsp=%s,lep=%s,bsp=%s",
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportPlaying)),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportPlayPos), "%.0f"),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportTempo), "%.0f"),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportFilteredTempo), "%.0f"),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportTempoAutomation)),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportTimeSignatureNumerator), "%.0f"),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportTimeSignatureDenominator), "%.0f"),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportLoopEnabled)),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportLoopStartPos), "%.0f"),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportLoopEndPos), "%.0f"),
+                       JBox_toString(JBox_LoadMOMPropertyByTag(ref, kJBox_TransportBarStartPos), "%.0f")
+                       );
+  };
+
+  ASSERT_EQ("p=false,pp=0,t=120,ft=120,ta=false,tsn=4,tsd=4,le=false,lsp=0,lep=0,bsp=0", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=false,pp=0,t=120,ft=120,ta=false,tsn=4,tsd=4,le=false,lsp=0,lep=0,bsp=0", dst.use<std::string>(re_transport));
+
+  rack.setTransportPlaying(true);
+  rack.setTransportPlayPos(2);
+  rack.setTransportTempo(130);
+  rack.setTransportFilteredTempo(121);
+  rack.setTransportTimeSignatureNumerator(5);
+  rack.setTransportTimeSignatureDenominator(8);
+  rack.setTransportLoopStartPos(3);
+  rack.setTransportLoopEndPos(9);
+  rack.setTransportBarStartPos(17);
+
+  // make sure that ALL extensions get updated
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", rack_transport());
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", dst.use<std::string>(re_transport));
+
+  rack.setTransportTempoAutomation(true);
+
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", rack_transport());
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", dst.use<std::string>(re_transport));
+
+  rack.setTransportLoopEnabled(true);
+
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=17", rack_transport());
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=17", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=17", dst.use<std::string>(re_transport));
+
+  // make sure that a new device gets the "latest" transport
+  auto pst = rack.newDevice(MAUPst::CONFIG);
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=17", pst.use<std::string>(re_transport));
+
+}
+
 }

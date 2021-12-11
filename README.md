@@ -109,7 +109,6 @@ are supported.
 
 Here is a list of known unimplemented features:
 
-* the `/transport` properties (see documentation for workaround)
 * `/patterns` (`patterns = {}` in `motherboard_def.lua`)
 * `/environment/master_tune` (you can change it but it has no effect currently)
 
