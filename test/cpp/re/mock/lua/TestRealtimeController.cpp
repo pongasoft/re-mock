@@ -49,7 +49,7 @@ TEST(RealtimeController, BlankEffect)
   ASSERT_EQ(def->getStackString(), "<empty>");
 
   ASSERT_EQ(def->getBindings().size(), 1);
-  ASSERT_EQ("init_instance", def->getBindings()["/environment/system_sample_rate"]);
+  ASSERT_EQ("init_instance", def->getBindings().at("/environment/system_sample_rate"));
 
   ASSERT_EQ(def->getRTInputSetupNotify().size(), 4);
   ASSERT_THAT(def->getRTInputSetupNotify(), UnorderedElementsAre("/audio_inputs/MainInLeft/connected",

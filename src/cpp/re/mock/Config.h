@@ -170,6 +170,8 @@ struct Config
   static ConfigString user_sample(std::string const &iSampleName, lua::jbox_user_sample_property const &iProperty);
   static ConfigString user_sample(int iSampleIndex, lua::jbox_user_sample_property const &iProperty);
 
+  static ConfigString patterns(int iNumPatterns);
+
   // TODO add performance properties
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
   static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);

@@ -109,7 +109,6 @@ are supported.
 
 Here is a list of known unimplemented features:
 
-* `/patterns` (`patterns = {}` in `motherboard_def.lua`)
 * `/environment/master_tune` (you can change it but it has no effect currently)
 
 If you find other unimplemented feature and/or you want to help in implementation, feel free to open a ticket. I

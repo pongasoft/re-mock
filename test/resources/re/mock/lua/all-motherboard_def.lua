@@ -76,3 +76,5 @@ user_samples = {
     sample_parameters = { "preview_volume_level" }
   }
 }
+
+patterns = { num_patterns = 3 }

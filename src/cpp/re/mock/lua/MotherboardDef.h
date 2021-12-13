@@ -291,6 +291,8 @@ public:
     return getSockets("cv_outputs", jbox_sockets::Type::CV_OUTPUT);
   }
 
+  int getNumPatterns();
+
   static MotherboardDef *loadFromRegistry(lua_State *L);
 
   static std::unique_ptr<MotherboardDef> fromFile(std::string const &iLuaFilename);

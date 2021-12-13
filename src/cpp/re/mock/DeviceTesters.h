@@ -224,6 +224,8 @@ public:
 
   void wireMainOut(std::optional<std::string> iLeftOutSocketName, std::optional<std::string> iRightOutSocketName);
 
+  ExtensionInstrumentTester &setNoteEvents(MockDevice::NoteEvents iNoteEvents);
+
   MockAudioDevice::StereoBuffer nextFrame(MockDevice::NoteEvents iNoteEvents = {});
   void nextFrame(MockDevice::NoteEvents iNoteEvents, MockAudioDevice::StereoBuffer &oOutputBuffer);
   void nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer);

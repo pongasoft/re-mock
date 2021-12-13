@@ -151,6 +151,8 @@ public:
 
     inline bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { return motherboard().loadMoreBlob(iPropertyPath, iCount); }
 
+    inline void selectCurrentUserSample(int iUserSampleIndex) { motherboard().selectCurrentUserSample(iUserSampleIndex); }
+
     inline void loadUserSampleAsync(std::string const &iPropertyPath,
                                     std::string const &iResourcePath,
                                     std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
@@ -175,6 +177,8 @@ public:
     inline void deleteCurrentUserSample() { motherboard().deleteCurrentUserSample(); }
 
     inline bool loadMoreSample(std::string const &iPropertyPath, long iFrameCount = -1) { return motherboard().loadMoreSample(iPropertyPath, iFrameCount); }
+
+    inline void selectCurrentPattern(int iPatternIndex, int iPatternStartPos) { motherboard().selectCurrentPattern(iPatternIndex, iPatternStartPos); }
 
     inline void setResourceLoadingContext(std::string const &iResourcePath, Resource::LoadingContext const &iCtx) { motherboard().setResourceLoadingContext(iResourcePath, iCtx); }
     inline void clearResourceLoadingContext(std::string const &iResourcePath) { motherboard().clearResourceLoadingContext(iResourcePath); }

@@ -501,6 +501,11 @@ TEST(RackExtension, RealtimeController_Blob)
   rack.nextFrame();
   ASSERT_EQ("is_blob=true;size=13600.0;resident_size=100.0;state=1.0", re.getString("/custom_properties/on_prop_blob_return"));
 
+  // checking is_blob
+  re.setString("/custom_properties/prop_function", "is_blob");
+  rack.nextFrame();
+  ASSERT_EQ("is_blob -> true", re.getString("/custom_properties/prop_function_return"));
+
   // load the rest
   re.loadMoreBlob("/custom_properties/prop_blob");
   re->fBlobRange = std::make_pair(1000, 1010);
@@ -1009,7 +1014,7 @@ TEST(RackExtension, RealtimeController_UserSample)
   ASSERT_EQ(std::nullopt, re->fSample1);
 
   // we load sample 1 (the "current" sample)
-  re.setNum("/device_host/sample_context", 1);
+  re.selectCurrentUserSample(1);
   re.loadCurrentUserSampleAsync("/Private/stereo_sample.data");
 
   rack.nextFrame();

@@ -369,6 +369,16 @@ void ExtensionInstrumentTester::wireMainOut(std::optional<std::string> iLeftOutS
 }
 
 //------------------------------------------------------------------------
+// ExtensionEffectTester::setNoteEvents
+//------------------------------------------------------------------------
+ExtensionInstrumentTester & ExtensionInstrumentTester::setNoteEvents(MockDevice::NoteEvents iNoteEvents)
+{
+  fDevice.setNoteInEvents(iNoteEvents.events());
+  return *this;
+}
+
+
+//------------------------------------------------------------------------
 // ExtensionInstrumentTester::nextFrame
 //------------------------------------------------------------------------
 void ExtensionInstrumentTester::nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer)
@@ -392,7 +402,7 @@ MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextFrame(MockDevice::N
 void ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents,
                                           MockAudioDevice::StereoBuffer &oOutputBuffer)
 {
-  fDevice.setNoteInEvents(iNoteEvents.events());
+  setNoteEvents(iNoteEvents);
   fRack.nextFrame();
   oOutputBuffer = fDst->fBuffer;
 }

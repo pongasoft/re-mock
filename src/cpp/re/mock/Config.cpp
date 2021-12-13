@@ -350,6 +350,14 @@ ConfigString Config::user_sample(int iSampleIndex, lua::jbox_user_sample_propert
   return impl::custom_property("user_samples", iSampleIndex + 1, "user_sample", args);
 }
 
+//------------------------------------------------------------------------
+// Config::patterns
+//------------------------------------------------------------------------
+ConfigString Config::patterns(int iNumPatterns)
+{
+  return ConfigString{fmt::printf("patterns = { num_patterns = %d }", iNumPatterns)};
+}
+
 
 //------------------------------------------------------------------------
 // Config::rt_owner_property

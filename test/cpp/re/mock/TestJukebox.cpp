@@ -65,6 +65,7 @@ global_rtc = {
     .mdef(Config::document_owner_property("prop_string", lua::jbox_string_property{}.default_value("abcd")))
     .mdef(Config::document_owner_property("prop_volume_ro", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_volume_rw", lua::jbox_number_property{}.default_value(0.9)))
+    .mdef(Config::patterns(2))
 
     .mdef(Config::rtc_owner_property("prop_gain_default", lua::jbox_native_object{ }))
     .mdef(Config::rtc_owner_property("prop_gain",
@@ -200,6 +201,18 @@ global_rtc = {
 
     auto tooBig = std::array<TJBox_UInt8, 101>{};
     ASSERT_THROW(JBox_SetRTStringData(JBox_MakePropertyRef(customProperties, "prop_rt_string"), tooBig.size(), tooBig.data()), Exception);
+
+    // patterns
+    ASSERT_EQ(0, JBox_LoadMOMPropertyAsNumber(JBox_GetMotherboardObjectRef("/patterns/0"), kJBox_PatternsLength));
+    ASSERT_EQ(0, JBox_LoadMOMPropertyAsNumber(JBox_GetMotherboardObjectRef("/patterns/1"), kJBox_PatternsLength));
+    ASSERT_EQ(kJBox_NoPatternIndex, JBox_LoadMOMPropertyAsNumber(JBox_GetMotherboardObjectRef("/transport"), kJBox_TransportPatternIndex));
+    ASSERT_EQ(0, JBox_LoadMOMPropertyAsNumber(JBox_GetMotherboardObjectRef("/transport"), kJBox_TransportPatternStartPos));
+  });
+
+  re.selectCurrentPattern(1, 128);
+  re.use([]() {
+    ASSERT_EQ(1, JBox_LoadMOMPropertyAsNumber(JBox_GetMotherboardObjectRef("/transport"), kJBox_TransportPatternIndex));
+    ASSERT_EQ(128, JBox_LoadMOMPropertyAsNumber(JBox_GetMotherboardObjectRef("/transport"), kJBox_TransportPatternStartPos));
   });
 
   std::string expected = "ab";

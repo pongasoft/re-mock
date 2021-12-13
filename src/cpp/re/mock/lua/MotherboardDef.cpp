@@ -751,7 +751,7 @@ std::shared_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
 }
 
 //------------------------------------------------------------------------
-// jbox_property::filter
+// MotherboardDef::filter
 //------------------------------------------------------------------------
 template<typename jbox_property_type>
 void MotherboardDef::filter(jbox_object_map_t &iMap, std::map<std::string, jbox_property_type> &oMap,
@@ -763,6 +763,23 @@ void MotherboardDef::filter(jbox_object_map_t &iMap, std::map<std::string, jbox_
     if(property)
       oMap[iter.first] = property.value();
   }
+}
+
+//------------------------------------------------------------------------
+// MotherboardDef::getNumPatterns
+//------------------------------------------------------------------------
+int MotherboardDef::getNumPatterns()
+{
+  int res = 0;
+  if(lua_getglobal(L, "patterns") != LUA_TNIL)
+  {
+    res = L.getTableValueAsInteger("num_patterns");
+    RE_MOCK_ASSERT(res >= 1 && res <= 32, "num_patterns [%d] must be between 1 and 32", res);
+  }
+
+  lua_pop(L, 1);
+
+  return res;
 }
 
 //------------------------------------------------------------------------

@@ -39,6 +39,9 @@ global_rtc = {
       local new_no = jbox.make_empty_blob()
       jbox.store_property("/custom_properties/prop_blob", new_no)
       jbox.store_property("/custom_properties/prop_function_return", "nil_blob -> " .. tostring(jbox.is_blob(new_no)))
+    elseif new_value == 'is_blob' then
+      local blob = jbox.load_property("/custom_properties/prop_blob")
+      jbox.store_property("/custom_properties/prop_function_return", "is_blob -> " .. tostring(jbox.is_blob(blob)))
     end
   end,
 }

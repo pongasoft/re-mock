@@ -210,6 +210,8 @@ TEST(MotherboardDef, All)
     ASSERT_EQ(ptr->fPersistence, EPersistence::kPatch);
   }
 
+  ASSERT_EQ(3, def->getNumPatterns());
+
   ASSERT_EQ(def->getStackString(), "<empty>");
 }
 

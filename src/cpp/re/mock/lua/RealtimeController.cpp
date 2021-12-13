@@ -194,7 +194,7 @@ int RealtimeController::luaLoadProperty()
 {
   luaL_checktype(L, 1, LUA_TSTRING);
   auto const propertyPath = lua_tostring(L, 1);
-  RE_MOCK_ASSERT(fBindingSourcePropertyPath == std::string(propertyPath),
+  RE_MOCK_ASSERT(stl::contains_key(getBindings(), propertyPath),
                  "Load property '%s' failed. Can only read this property in rtc_bindings function with this property as source.", propertyPath);
   auto value = getCurrentMotherboard()->getJboxValue(propertyPath);
   pushJBoxValue(value);
@@ -422,8 +422,8 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
                                        std::shared_ptr<const JboxValue> const &iNewValue)
 {
   RE_MOCK_ASSERT(fMotherboard == nullptr, "calling binding from a binding");
+  RE_MOCK_ASSERT(stl::contains_key(getBindings(), iSourcePropertyPath));
   fMotherboard = iMotherboard;
-  fBindingSourcePropertyPath = iSourcePropertyPath;
   putBindingOnTopOfStack(iBindingName);
   lua_pushstring(L, iSourcePropertyPath.c_str());
   pushJBoxValue(iNewValue);
@@ -439,36 +439,39 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
                    errorMsg.c_str());
   }
   fMotherboard = nullptr;
-  fBindingSourcePropertyPath = "";
   fJboxValues.reset();
 }
 
 //------------------------------------------------------------------------
 // RealtimeController::getBindings
 //------------------------------------------------------------------------
-std::map<std::string, std::string> RealtimeController::getBindings()
+std::map<std::string, std::string> const &RealtimeController::getBindings()
 {
-  std::map<std::string, std::string> bindings{};
-  if(lua_getglobal(L, "rtc_bindings") != LUA_TNIL)
+  if(!fBindings)
   {
-    auto mapIndex = lua_gettop(L);
-    luaL_checktype(L, mapIndex, LUA_TTABLE);
-    auto n = L.getTableSize(mapIndex);
-    for(int i = 1; i <= n; i++)
+    std::map<std::string, std::string> bindings{};
+    if(lua_getglobal(L, "rtc_bindings") != LUA_TNIL)
     {
-      lua_geti(L, mapIndex, i);
-      auto source = L.getTableValueAsString("source");
-      auto dest = L.getTableValueAsString("dest");
-      RE_MOCK_ASSERT(dest.find("/global_rtc/") == 0, "invalid rtc_binding [%s]", dest);
-      dest = dest.substr(12);  // skip /global_rtc/
-      putBindingOnTopOfStack(dest); // this will check that the binding exists
-      lua_pop(L, 1);
-      bindings[source] = dest;
-      lua_pop(L, 1);
+      auto mapIndex = lua_gettop(L);
+      luaL_checktype(L, mapIndex, LUA_TTABLE);
+      auto n = L.getTableSize(mapIndex);
+      for(int i = 1; i <= n; i++)
+      {
+        lua_geti(L, mapIndex, i);
+        auto source = L.getTableValueAsString("source");
+        auto dest = L.getTableValueAsString("dest");
+        RE_MOCK_ASSERT(dest.find("/global_rtc/") == 0, "invalid rtc_binding [%s]", dest);
+        dest = dest.substr(12);  // skip /global_rtc/
+        putBindingOnTopOfStack(dest); // this will check that the binding exists
+        lua_pop(L, 1);
+        bindings[source] = dest;
+        lua_pop(L, 1);
+      }
     }
+    lua_pop(L, 1);
+    fBindings = std::move(bindings);
   }
-  lua_pop(L, 1);
-  return bindings;
+  return *fBindings;
 }
 
 //------------------------------------------------------------------------

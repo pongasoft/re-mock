@@ -95,6 +95,12 @@ inline constexpr Function for_each_indexed(Container const &iContainer, Function
   return for_each_indexed(std::begin(iContainer), std::end(iContainer), std::forward<Function>(iFunction));
 }
 
+template<typename Container, typename Key>
+inline constexpr bool contains_key(Container const &iContainer, Key const &iKey)
+{
+  return iContainer.find(iKey) != iContainer.end();
+}
+
 template<typename InputIterator, typename Stream, typename Separator = std::string>
 inline Stream &join(InputIterator iFirst, InputIterator iLast, Stream &os, Separator iSeparator = {})
 {

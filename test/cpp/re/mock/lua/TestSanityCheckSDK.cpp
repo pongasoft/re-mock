@@ -84,6 +84,7 @@ TEST(SanityCheck, SDKExamples)
                 << ";document_owner=" << customProperties->document_owner.size()
                 << ";rtc_owner=" << customProperties->rtc_owner.size()
                 << ";rt_owner=" << customProperties->rt_owner.size()
+                << ";patterns=" << def->getNumPatterns()
                 << std::endl;
     }
 

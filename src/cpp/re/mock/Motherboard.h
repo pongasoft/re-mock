@@ -132,6 +132,8 @@ public: // used by regular code
   void loadPatch(ConfigFile const &iPatchFile);
   void loadPatch(Resource::Patch const &iPatch);
 
+  inline void selectCurrentUserSample(int iUserSampleIndex) { setNum<int>("/device_host/sample_context", iUserSampleIndex); }
+
   void loadUserSampleAsync(std::string const &iPropertyPath,
                            std::string const &iResourcePath,
                            std::optional<Resource::LoadingContext> iCtx = std::nullopt);
@@ -158,6 +160,11 @@ public: // used by regular code
   bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1);
 
   bool loadMoreSample(std::string const &iPropertyPath, long iFrameCount = -1);
+
+  inline void selectCurrentPattern(int iPatternIndex, int iPatternStartPos) {
+    setNum<int>("/transport/pattern_index", iPatternIndex);
+    setNum<int>("/transport/pattern_start_pos", iPatternStartPos);
+  }
 
   void setResourceLoadingContext(std::string const &iResourcePath, Resource::LoadingContext const &iCtx) { fResourceLoadingContexts[iResourcePath] = iCtx; }
   void clearResourceLoadingContext(std::string const &iResourcePath) { fResourceLoadingContexts.erase(iResourcePath); }
@@ -250,6 +257,8 @@ protected:
   void addCVOutput(std::string const &iSocketName);
   void addProperty(TJBox_ObjectRef iParentObject, std::string const &iPropertyName, PropertyOwner iOwner, lua::jbox_property const &iProperty);
   void addUserSample(int iSampleIndex, std::shared_ptr<lua::jbox_user_sample_property> const &iProperty);
+  void addPatterns(int iPatternCount);
+
   void registerRTCNotify(std::string const &iPropertyPath);
   impl::JboxPropertyDiff registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingName);
   void handlePropertyDiff(impl::JboxPropertyDiff const &iPropertyDiff, bool iWatched);

@@ -93,7 +93,7 @@ Motherboard::Motherboard(Config const &iConfig) : fConfig{iConfig}
   // global_rtc
   addObject("/global_rtc");
 
-  if(iConfig.info().fAcceptNotes)
+  if(iConfig.info().fAcceptNotes || iConfig.info().fDeviceType == DeviceType::kNotePlayer)
   {
     // note_states
     auto noteStates = addObject("/note_states");
@@ -353,6 +353,24 @@ void Motherboard::addDeviceHostProperties()
 }
 
 //------------------------------------------------------------------------
+// Motherboard::addPatterns
+//------------------------------------------------------------------------
+void Motherboard::addPatterns(int iPatternCount)
+{
+  RE_MOCK_ASSERT(iPatternCount >= 1 && iPatternCount <= 32, "num_patterns [%d] must be between 1 and 32", iPatternCount);
+
+  auto transport = getObject("/transport");
+  transport->addProperty("pattern_index", PropertyOwner::kHostOwner, makeNumber(kJBox_NoPatternIndex), kJBox_TransportPatternIndex, lua::EPersistence::kPatch);
+  transport->addProperty("pattern_start_pos", PropertyOwner::kHostOwner, makeNumber(0), kJBox_TransportPatternStartPos, lua::EPersistence::kPatch);
+
+  for(int i = 0; i < iPatternCount; i++)
+  {
+    auto pattern = addObject(fmt::printf("/patterns/%d", i));
+    pattern->addProperty("length", PropertyOwner::kRTOwner, makeNumber(0), kJBox_PatternsLength);
+  }
+}
+
+//------------------------------------------------------------------------
 // Motherboard::init
 //------------------------------------------------------------------------
 void Motherboard::init()
@@ -441,24 +459,10 @@ void Motherboard::init()
       addUserSample(i, customProperties->user_samples[i]);
   }
 
-  // load the default patch if there is one
-  if(fConfig.info().fSupportPatches)
+  // patterns
+  if(def.getNumPatterns() > 0)
   {
-    RE_MOCK_ASSERT(!fConfig.info().fDefaultPatch.empty(), "support_patches is set to true but no default patch provided");
-    loadPatch(fConfig.info().fDefaultPatch);
-  }
-
-  // rt_input_setup.notify
-  for(auto &&propertyPath: fRealtimeController->getRTInputSetupNotify())
-  {
-    registerRTCNotify(propertyPath);
-  }
-
-  // rtc_bindings
-  for(auto const &[propertyPath, bindingKey]: fRealtimeController->getBindings())
-  {
-    auto diff = registerRTCBinding(propertyPath, bindingKey);
-    fRealtimeController->invokeBinding(this, bindingKey, getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
+    addPatterns(def.getNumPatterns());
   }
 
   // extra properties based on device type
@@ -492,6 +496,25 @@ void Motherboard::init()
       break;
   }
 
+  // load the default patch if there is one
+  if(fConfig.info().fSupportPatches)
+  {
+    RE_MOCK_ASSERT(!fConfig.info().fDefaultPatch.empty(), "support_patches is set to true but no default patch provided");
+    loadPatch(fConfig.info().fDefaultPatch);
+  }
+
+  // rt_input_setup.notify
+  for(auto &&propertyPath: fRealtimeController->getRTInputSetupNotify())
+  {
+    registerRTCNotify(propertyPath);
+  }
+
+  // rtc_bindings
+  for(auto const &[propertyPath, bindingKey]: fRealtimeController->getBindings())
+  {
+    auto diff = registerRTCBinding(propertyPath, bindingKey);
+    fRealtimeController->invokeBinding(this, bindingKey, getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
+  }
 }
 
 //------------------------------------------------------------------------
