@@ -213,6 +213,17 @@ public:
     explicit ExtensionDevice(std::shared_ptr<ExtensionImpl> iExtensionImpl) : Extension{iExtensionImpl} {}
   };
 
+private:
+  struct InternalThreadLocalRAII
+  {
+    explicit InternalThreadLocalRAII(Motherboard *iMotherboard);
+    InternalThreadLocalRAII(InternalThreadLocalRAII &&) = delete;
+    InternalThreadLocalRAII(InternalThreadLocalRAII const &) = delete;
+    ~InternalThreadLocalRAII();
+  private:
+    Motherboard *fPrevious;
+  };
+
 protected:
   class ExtensionImpl
   {
@@ -222,11 +233,8 @@ protected:
     template<typename R>
     R use(std::function<R (Motherboard &)> iCallback)
     {
-      R res;
-      use([&iCallback, &res](Motherboard &m) {
-        res = iCallback(m);
-      });
-      return res;
+      InternalThreadLocalRAII raii{fMotherboard.get()};
+      return iCallback(*fMotherboard.get());
     }
 
     friend class Rack;

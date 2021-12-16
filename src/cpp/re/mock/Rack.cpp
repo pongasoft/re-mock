@@ -332,17 +332,22 @@ void Rack::setTransportValue(TJBox_TransportTag iTag, TJBox_Value const &iValue)
 }
 
 //------------------------------------------------------------------------
-// InternalThreadLocalRAII - to add/remove the "current" motherboard
+// InternalThreadLocalRAII::InternalThreadLocalRAII - to manage the "current" motherboard
 //------------------------------------------------------------------------
-struct InternalThreadLocalRAII
+Rack::InternalThreadLocalRAII::InternalThreadLocalRAII(Motherboard *iMotherboard) : fPrevious{sThreadLocalInstance}
 {
-  explicit InternalThreadLocalRAII(Motherboard *iMotherboard) : fPrevious{sThreadLocalInstance} { sThreadLocalInstance = iMotherboard; }
-  InternalThreadLocalRAII(InternalThreadLocalRAII &&) = delete;
-  InternalThreadLocalRAII(InternalThreadLocalRAII const &) = delete;
-  ~InternalThreadLocalRAII() { sThreadLocalInstance = fPrevious; }
-private:
-  Motherboard *fPrevious;
-};
+  // store the current motherboard in a thread local
+  sThreadLocalInstance = iMotherboard;
+}
+
+//------------------------------------------------------------------------
+// InternalThreadLocalRAII::~InternalThreadLocalRAII
+//------------------------------------------------------------------------
+Rack::InternalThreadLocalRAII::~InternalThreadLocalRAII()
+{
+  // restores the previous motherboard
+  sThreadLocalInstance = fPrevious;
+}
 
 //------------------------------------------------------------------------
 // Rack::ExtensionImpl::use
