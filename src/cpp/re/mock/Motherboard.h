@@ -289,7 +289,7 @@ protected:
                                               std::vector<std::shared_ptr<const JboxValue>> const &iParams,
                                               impl::NativeObject::AccessMode iAccessMode);
 
-  void nextFrame();
+  void nextBatch();
 
   void addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff);
 

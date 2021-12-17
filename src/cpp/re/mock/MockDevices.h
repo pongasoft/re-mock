@@ -90,9 +90,9 @@ class MockAudioDevice : public MockDevice
 public:
   constexpr static auto LEFT_SOCKET = "L";
   constexpr static auto RIGHT_SOCKET = "R";
-  constexpr static auto NUM_SAMPLES_PER_FRAME = 64;
+  constexpr static auto NUM_SAMPLES_PER_BATCH = 64;
 
-  using buffer_type = std::array<TJBox_AudioSample, NUM_SAMPLES_PER_FRAME>;
+  using buffer_type = std::array<TJBox_AudioSample, NUM_SAMPLES_PER_BATCH>;
 
   struct StereoBuffer
   {

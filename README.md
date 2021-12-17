@@ -26,7 +26,7 @@ tester.device().setNum("/custom_properties/gain", 0.7);
 // Populate a stereo buffer (2x64 samples) with the value 0.5 (left) and 0.6 (right) 
 // made available to the device under test on the [in] sockets previously wired ("audioInLeft" / "audioInRight")
 // Read the [out] sockets after processing and return it (buffer)
-auto buffer = tester.nextFrame(MockAudioDevice::buffer(0.5, 0.6));
+auto buffer = tester.nextBatch(MockAudioDevice::buffer(0.5, 0.6));
 
 // Check that the resulting buffer is what we expected (here we assume that it is an effect with a gain knob
 // set to 0 dB change => output == input).

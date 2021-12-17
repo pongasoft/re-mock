@@ -164,7 +164,7 @@ end
   auSrc->fBuffer.fill(1.0, 2.0);
   cvSrc->fValue = 5.0;
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   // we make sure that everything was created properly
   ASSERT_FLOAT_EQ(0.1, re->fNumber);
@@ -187,7 +187,7 @@ end
       /* .fLeft = */  re.getDSPBuffer("/audio_inputs/L"),
       /* .fRight = */ re.getDSPBuffer(re.getAudioInSocket("R"))
     };
-    // after nextFrame input buffers are cleared (they have been consumed)
+    // after nextBatch input buffers are cleared (they have been consumed)
     ASSERT_EQ(buffer, MockAudioDevice::buffer(0, 0));
   }
   {
@@ -351,24 +351,24 @@ TEST(RackExtension, RealtimeController_NativeObject)
     // first frame (default to noop)
     ASSERT_EQ(0, Gain::fCount);
     ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
-    rack.nextFrame();
+    rack.nextBatch();
 
     // trace
     re.setString("/custom_properties/prop_function", "trace");
-    rack.nextFrame();
+    rack.nextBatch();
     ASSERT_EQ("trace -> void", re.getString("/custom_properties/prop_function_return"));
 
     // new_gain
     ASSERT_EQ(std::nullopt, re->fVolume);
     re.setString("/custom_properties/prop_function", "new_gain");
-    rack.nextFrame();
+    rack.nextBatch();
     ASSERT_EQ(1, Gain::fCount);
     ASSERT_EQ("new_gain -> true", re.getString("/custom_properties/prop_function_return"));
     ASSERT_FLOAT_EQ(0.7, *re->fVolume);
 
     // nil_gain
     re.setString("/custom_properties/prop_function", "nil_gain");
-    rack.nextFrame();
+    rack.nextBatch();
     ASSERT_EQ("nil_gain -> true", re.getString("/custom_properties/prop_function_return"));
     ASSERT_EQ(0, Gain::fCount);
     ASSERT_EQ(std::nullopt, re->fVolume);
@@ -460,7 +460,7 @@ TEST(RackExtension, RealtimeController_Blob)
 
   // first frame (default to noop)
   ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(7, re->fDefaultBlobInfo.fResidentSize);
   ASSERT_EQ(7, re->fDefaultBlobInfo.fSize);
@@ -472,44 +472,44 @@ TEST(RackExtension, RealtimeController_Blob)
 
   // loading all prop_blob_default (should do nothing...)
   re.loadMoreBlob("/custom_properties/prop_blob_default");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(7, re->fDefaultBlobInfo.fResidentSize);
   ASSERT_EQ(7, re->fDefaultBlobInfo.fSize);
   ASSERT_EQ(std::nullopt, re->fBlobInfo);
 
   // load_blob_data
   re.setString("/custom_properties/prop_function", "load_blob_data");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(blobData.size(), re->fBlobInfo->fResidentSize);
   ASSERT_EQ(blobData.size(), re->fBlobInfo->fSize);
   ASSERT_EQ(std::vector<TJBox_UInt8>({'A', 'L', 0, 'z', 0, 0, 0, 0, 0, 0}),
             std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
   ASSERT_EQ("Blob{.fSize=4,.fResidentSize=4,.fLoadStatus=resident,.fBlobPath=[/Private/blob.data]}", re->fBlobString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_blob=true;size=4.0;resident_size=4.0;state=2.0", re.getString("/custom_properties/on_prop_blob_return"));
 
   // load_blob_file (100 bytes first)
   re.setString("/custom_properties/prop_function", "load_blob_file");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_blob_file -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(100, re->fBlobInfo->fResidentSize);
   ASSERT_EQ(13600, re->fBlobInfo->fSize);
   ASSERT_EQ(to_TJBox_UInt8_vector("re-mock li"),
             std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
   ASSERT_EQ("Blob{.fSize=13600,.fResidentSize=100,.fLoadStatus=partially_resident,.fBlobPath=[/Private/blob.file]}", re->fBlobString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_blob=true;size=13600.0;resident_size=100.0;state=1.0", re.getString("/custom_properties/on_prop_blob_return"));
 
   // checking is_blob
   re.setString("/custom_properties/prop_function", "is_blob");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_blob -> true", re.getString("/custom_properties/prop_function_return"));
 
   // load the rest
   re.loadMoreBlob("/custom_properties/prop_blob");
   re->fBlobRange = std::make_pair(1000, 1010);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(13600, re->fBlobInfo->fResidentSize);
   ASSERT_EQ(13600, re->fBlobInfo->fSize);
   ASSERT_EQ(to_TJBox_UInt8_vector(" shares, o"),
@@ -520,12 +520,12 @@ TEST(RackExtension, RealtimeController_Blob)
 
   // nil_blob
   re.setString("/custom_properties/prop_function", "nil_blob");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("nil_blob -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
   ASSERT_EQ(0, re->fBlobInfo->fSize);
   ASSERT_EQ("Blob{.fSize=0,.fResidentSize=0,.fLoadStatus=nil,.fBlobPath=[]}", re->fBlobString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_blob=true;size=0.0;resident_size=0.0;state=0.0", re.getString("/custom_properties/on_prop_blob_return"));
 
   // make /Private/blob.data missing
@@ -533,12 +533,12 @@ TEST(RackExtension, RealtimeController_Blob)
 
   // load_blob_data (missing)
   re.setString("/custom_properties/prop_function", "load_blob_data");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
   ASSERT_EQ(0, re->fBlobInfo->fSize);
   ASSERT_EQ("Blob{.fSize=0,.fResidentSize=0,.fLoadStatus=missing,.fBlobPath=[/Private/blob.data]}", re->fBlobString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_blob=true;size=0.0;resident_size=0.0;state=0.0", re.getString("/custom_properties/on_prop_blob_return"));
 
   // in error...
@@ -550,12 +550,12 @@ TEST(RackExtension, RealtimeController_Blob)
   // load_blob_data (missing)
   re.setString("/custom_properties/prop_function", "noop");
   re.setString("/custom_properties/prop_function", "load_blob_data");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(0, re->fBlobInfo->fResidentSize);
   ASSERT_EQ(0, re->fBlobInfo->fSize);
   ASSERT_EQ("Blob{.fSize=0,.fResidentSize=0,.fLoadStatus=has_errors,.fBlobPath=[/Private/blob.data]}", re->fBlobString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_blob=true;size=0.0;resident_size=0.0;state=0.0", re.getString("/custom_properties/on_prop_blob_return"));
 
   // in error...
@@ -566,12 +566,12 @@ TEST(RackExtension, RealtimeController_Blob)
 
   re.setString("/custom_properties/prop_function", "noop");
   re.setString("/custom_properties/prop_function", "load_blob_data");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_blob_data -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(blobData.size(), re->fBlobInfo->fResidentSize);
   ASSERT_EQ(blobData.size(), re->fBlobInfo->fSize);
   ASSERT_EQ("Blob{.fSize=4,.fResidentSize=4,.fLoadStatus=resident,.fBlobPath=[/Private/blob.data]}", re->fBlobString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_blob=true;size=4.0;resident_size=4.0;state=2.0", re.getString("/custom_properties/on_prop_blob_return"));
 }
 
@@ -659,7 +659,7 @@ TEST(RackExtension, RealtimeController_Sample)
 
   // first frame (default to noop)
   ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(1, re->fDefaultSampleInfo.fChannels);
   ASSERT_EQ(44100, re->fDefaultSampleInfo.fSampleRate);
@@ -679,7 +679,7 @@ TEST(RackExtension, RealtimeController_Sample)
 
   // loading all prop_sample_default (should do nothing...)
   re.loadMoreSample("/custom_properties/prop_sample_default");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(1, re->fDefaultSampleInfo.fChannels);
   ASSERT_EQ(44100, re->fDefaultSampleInfo.fSampleRate);
   ASSERT_EQ(4, re->fDefaultSampleInfo.fResidentFrameCount);
@@ -689,7 +689,7 @@ TEST(RackExtension, RealtimeController_Sample)
 
   // load_mono_sample_data
   re.setString("/custom_properties/prop_function", "load_mono_sample_file");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_mono_sample_file -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(1, re->fSampleInfo->fChannels);
   ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
@@ -697,13 +697,13 @@ TEST(RackExtension, RealtimeController_Sample)
   ASSERT_EQ(100, re->fSampleInfo->fFrameCount);
   ASSERT_EQ("Sample{.fChannels=1,.fSampleRate=44100,.fFrameCount=100,.fResidentFrameCount=100,.fLoadStatus=resident,.fSamplePath=[/Private/mono_sample.file]}",
             re->fSampleString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_sample=true;frame_count=100.0;resident_count=100.0;channels=1.0;sample_rate=44100.0;state=2.0",
             re.getString("/custom_properties/on_prop_sample_return"));
 
   // load_stereo_sample_data (2 frames)
   re.setString("/custom_properties/prop_function", "load_stereo_sample_data");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_stereo_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(2, re->fSampleInfo->fChannels);
   ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
@@ -713,14 +713,14 @@ TEST(RackExtension, RealtimeController_Sample)
             std::vector<TJBox_AudioSample>(std::begin(re->fSampleData), std::end(re->fSampleData)));
   ASSERT_EQ("Sample{.fChannels=2,.fSampleRate=44100,.fFrameCount=5,.fResidentFrameCount=2,.fLoadStatus=partially_resident,.fSamplePath=[/Private/stereo_sample.data]}",
             re->fSampleString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_sample=true;frame_count=5.0;resident_count=2.0;channels=2.0;sample_rate=44100.0;state=1.0",
             re.getString("/custom_properties/on_prop_sample_return"));
 
   // load the rest
   re.loadMoreSample("/custom_properties/prop_sample");
   re->fSampleRange = std::make_pair(2, 3);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(2, re->fSampleInfo->fChannels);
   ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
   ASSERT_EQ(sampleStereoData.size() / 2, re->fSampleInfo->fResidentFrameCount);
@@ -736,7 +736,7 @@ TEST(RackExtension, RealtimeController_Sample)
 
   // nil_sample
   re.setString("/custom_properties/prop_function", "nil_sample");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("nil_sample -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(1, re->fSampleInfo->fChannels);
   ASSERT_EQ(1, re->fSampleInfo->fSampleRate);
@@ -744,7 +744,7 @@ TEST(RackExtension, RealtimeController_Sample)
   ASSERT_EQ(0, re->fSampleInfo->fFrameCount);
   ASSERT_EQ("Sample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=nil,.fSamplePath=[]}",
             re->fSampleString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_sample=true;frame_count=0.0;resident_count=0.0;channels=1.0;sample_rate=1.0;state=0.0",
             re.getString("/custom_properties/on_prop_sample_return"));
 
@@ -754,7 +754,7 @@ TEST(RackExtension, RealtimeController_Sample)
   // load_sample_data (missing)
   re.setString("/custom_properties/prop_function", "noop"); // to force a change
   re.setString("/custom_properties/prop_function", "load_stereo_sample_data");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_stereo_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(1, re->fSampleInfo->fChannels);
   ASSERT_EQ(1, re->fSampleInfo->fSampleRate);
@@ -762,7 +762,7 @@ TEST(RackExtension, RealtimeController_Sample)
   ASSERT_EQ(0, re->fSampleInfo->fFrameCount);
   ASSERT_EQ("Sample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=missing,.fSamplePath=[/Private/stereo_sample.data]}",
             re->fSampleString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_sample=true;frame_count=0.0;resident_count=0.0;channels=1.0;sample_rate=1.0;state=0.0",
             re.getString("/custom_properties/on_prop_sample_return"));
 
@@ -775,7 +775,7 @@ TEST(RackExtension, RealtimeController_Sample)
   // load_sample_data (missing)
   re.setString("/custom_properties/prop_function", "noop"); // to force a change
   re.setString("/custom_properties/prop_function", "load_stereo_sample_data");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_stereo_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(1, re->fSampleInfo->fChannels);
   ASSERT_EQ(1, re->fSampleInfo->fSampleRate);
@@ -783,7 +783,7 @@ TEST(RackExtension, RealtimeController_Sample)
   ASSERT_EQ(0, re->fSampleInfo->fFrameCount);
   ASSERT_EQ("Sample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=has_errors,.fSamplePath=[/Private/stereo_sample.data]}",
             re->fSampleString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_sample=true;frame_count=0.0;resident_count=0.0;channels=1.0;sample_rate=1.0;state=0.0",
             re.getString("/custom_properties/on_prop_sample_return"));
 
@@ -796,7 +796,7 @@ TEST(RackExtension, RealtimeController_Sample)
 
   re.setString("/custom_properties/prop_function", "noop"); // to force a change
   re.setString("/custom_properties/prop_function", "load_stereo_sample_data");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("load_stereo_sample_data -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(2, re->fSampleInfo->fChannels);
   ASSERT_EQ(44100, re->fSampleInfo->fSampleRate);
@@ -806,7 +806,7 @@ TEST(RackExtension, RealtimeController_Sample)
             std::vector<TJBox_AudioSample>(std::begin(re->fSampleData), std::end(re->fSampleData)));
   ASSERT_EQ("Sample{.fChannels=2,.fSampleRate=44100,.fFrameCount=5,.fResidentFrameCount=5,.fLoadStatus=resident,.fSamplePath=[/Private/stereo_sample.data]}",
             re->fSampleString);
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("is_sample=true;frame_count=5.0;resident_count=5.0;channels=2.0;sample_rate=44100.0;state=2.0",
             re.getString("/custom_properties/on_prop_sample_return"));
 }
@@ -972,7 +972,7 @@ TEST(RackExtension, RealtimeController_UserSample)
   auto re = rack.newDevice(c);
 
   // first frame
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ("i=0;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
             "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=nil;m.sn=[];"
@@ -999,7 +999,7 @@ TEST(RackExtension, RealtimeController_UserSample)
   // we load sample 0 (the "current" sample)
   re.loadCurrentUserSampleAsync("/Private/mono_sample.data");
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ("i=0;i.fc=6.0;i.rfc=6.0;i.ch=1.0;i.sr=44100.0;i.st=2.0;"
             "m.fc=6.0;m.rfc=6.0;m.ch=1.0;m.sr=44100.0;m.ls=resident;m.sn=[mono_sample.data];"
@@ -1017,7 +1017,7 @@ TEST(RackExtension, RealtimeController_UserSample)
   re.selectCurrentUserSample(1);
   re.loadCurrentUserSampleAsync("/Private/stereo_sample.data");
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ("i=1;i.fc=5.0;i.rfc=2.0;i.ch=2.0;i.sr=44100.0;i.st=1.0;"
             "m.fc=5.0;m.rfc=2.0;m.ch=2.0;m.sr=44100.0;m.ls=partially_resident;m.sn=[stereo_sample.data];"
@@ -1035,7 +1035,7 @@ TEST(RackExtension, RealtimeController_UserSample)
   re.loadMoreSample("/user_samples/1/item");
   re.setNum("/user_samples/1/tune_cents", 45);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ("i=1;i.fc=5.0;i.rfc=5.0;i.ch=2.0;i.sr=44100.0;i.st=2.0;"
             "m.fc=5.0;m.rfc=5.0;m.ch=2.0;m.sr=44100.0;m.ls=resident;m.sn=[stereo_sample.data];"
@@ -1052,7 +1052,7 @@ TEST(RackExtension, RealtimeController_UserSample)
   // we delete sample 1
   re.deleteUserSample(1);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ("i=1;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
             "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=nil;m.sn=[];"
@@ -1069,7 +1069,7 @@ TEST(RackExtension, RealtimeController_UserSample)
   // we load sample 1 again but with a missing item
   re.loadUserSampleAsync("/user_samples/1/item", "/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kMissing));
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ("i=1;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
             "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=missing;m.sn=[stereo_sample.data];"
@@ -1086,7 +1086,7 @@ TEST(RackExtension, RealtimeController_UserSample)
   // we load sample 1 again but with an error item
   re.loadUserSampleAsync("/user_samples/1/item", "/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kHasErrors));
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ("i=1;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"
             "m.fc=0.0;m.rfc=0.0;m.ch=1.0;m.sr=1.0;m.ls=has_errors;m.sn=[stereo_sample.data];"

@@ -293,7 +293,7 @@ public:
   void unwire(Extension::NoteOutSocket const &iOutSocket);
   void unwire(Extension::NoteInSocket const &iInSocket);
 
-  void nextFrame();
+  void nextBatch();
 
   int getSampleRate() const { return fSampleRate; }
   
@@ -341,8 +341,8 @@ protected:
   void copyAudioBuffers(Extension::AudioWire const &iWire);
   void copyCVValue(Extension::CVWire const &iWire);
   void copyNoteEvents(Extension::NoteWire const &iWire);
-  void nextFrame(ExtensionImpl &iExtension);
-  void nextFrame(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensions);
+  void nextBatch(ExtensionImpl &iExtension);
+  void nextBatch(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensions);
 
 protected:
 

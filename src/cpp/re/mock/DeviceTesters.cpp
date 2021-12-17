@@ -195,14 +195,14 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MNPDst> &iDst)
 }
 
 //------------------------------------------------------------------------
-// DeviceTester::nextFrames
+// DeviceTester::nextBatches
 //------------------------------------------------------------------------
-void DeviceTester::nextFrames(Duration::Type iDuration)
+void DeviceTester::nextBatches(Duration::Type iDuration)
 {
-  auto numFrames = Duration::toRackFrames(iDuration, fRack.getSampleRate());
+  auto numBatches = Duration::toBatches(iDuration, fRack.getSampleRate());
 
-  for(int i = 0; i < numFrames.fCount; i++)
-    fRack.nextFrame();
+  for(int i = 0; i < numBatches.fCount; i++)
+    fRack.nextBatch();
 }
 
 //------------------------------------------------------------------------
@@ -258,23 +258,23 @@ void ExtensionEffectTester::wireMainOut(std::optional<std::string> iLeftOutSocke
 
 
 //------------------------------------------------------------------------
-// ExtensionEffectTester::nextFrame
+// ExtensionEffectTester::nextBatch
 //------------------------------------------------------------------------
-MockAudioDevice::StereoBuffer ExtensionEffectTester::nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer)
+MockAudioDevice::StereoBuffer ExtensionEffectTester::nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer)
 {
   MockAudioDevice::StereoBuffer output{};
-  nextFrame(iInputBuffer, output);
+  nextBatch(iInputBuffer, output);
   return output;
 }
 
 //------------------------------------------------------------------------
-// ExtensionEffectTester::nextFrame
+// ExtensionEffectTester::nextBatch
 //------------------------------------------------------------------------
-void ExtensionEffectTester::nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer,
+void ExtensionEffectTester::nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer,
                                       MockAudioDevice::StereoBuffer &oOutputBuffer)
 {
   fSrc->fBuffer = iInputBuffer;
-  fRack.nextFrame();
+  fRack.nextBatch();
   oOutputBuffer = fDst->fBuffer;
 }
 
@@ -285,38 +285,38 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
                                                              optional_duration_t iTail,
                                                              before_frame_hook_t iBeforeFrameHook)
 {
-  size_t tailInSampleFrames = 0;
+  size_t tailInFrames = 0;
 
   if(iTail)
-    tailInSampleFrames = Duration::toSampleFrames(*iTail, fRack.getSampleRate()).fCount;
+    tailInFrames = Duration::toFrames(*iTail, fRack.getSampleRate()).fCount;
 
   MockAudioDevice::Sample res{};
   res.fChannels = iSample.fChannels;
   res.fSampleRate = fRack.getSampleRate();
-  res.fData.reserve(iSample.fData.size() + tailInSampleFrames);
+  res.fData.reserve(iSample.fData.size() + tailInFrames);
 
   MockAudioDevice::StereoBuffer input{};
   MockAudioDevice::StereoBuffer output{};
 
-  auto numSampleFramesToProcess = iSample.fData.size() / iSample.fChannels;
+  auto numFramesToProcess = iSample.fData.size() / iSample.fChannels;
 
-  auto totalNumSampleFrames = numSampleFramesToProcess + tailInSampleFrames;
+  auto totalNumFrames = numFramesToProcess + tailInFrames;
   auto ptr = iSample.fData.data();
 
   int frameCount = 0;
 
-  while(totalNumSampleFrames > 0)
+  while(totalNumFrames > 0)
   {
-    auto numSamplesInThisRackFrame = std::min<size_t>(totalNumSampleFrames, MockAudioDevice::NUM_SAMPLES_PER_FRAME);
-    auto numSamplesToProcessInThisRackFrame = std::min<size_t>(numSampleFramesToProcess, numSamplesInThisRackFrame);
+    auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, MockAudioDevice::NUM_SAMPLES_PER_BATCH);
+    auto numFramesToProcessInThisBatch = std::min<size_t>(numFramesToProcess, numFramesInThisBatch);
 
-    if(numSamplesToProcessInThisRackFrame > 0)
+    if(numFramesToProcessInThisBatch > 0)
     {
-      if(numSamplesToProcessInThisRackFrame < MockAudioDevice::NUM_SAMPLES_PER_FRAME)
+      if(numFramesToProcessInThisBatch < MockAudioDevice::NUM_SAMPLES_PER_BATCH)
         input.fill(0, 0);
 
       // fill the input buffer
-      for(size_t i = 0; i < numSamplesToProcessInThisRackFrame; i++)
+      for(size_t i = 0; i < numFramesToProcessInThisBatch; i++)
       {
         input.fLeft[i] = *ptr++;
         if(iSample.fChannels == 2)
@@ -326,23 +326,23 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
     else
       input.fill(0, 0);
 
-    // allow outside code to modify the device prior to invoking nextFrame
+    // allow outside code to modify the device prior to invoking nextBatch
     if(iBeforeFrameHook)
       iBeforeFrameHook(frameCount);
 
-    // process this rack frame
-    nextFrame(input, output);
+    // process this batch
+    nextBatch(input, output);
 
     // fill the output buffer
-    for(size_t i = 0; i < numSamplesInThisRackFrame; i++)
+    for(size_t i = 0; i < numFramesInThisBatch; i++)
     {
       res.fData.emplace_back(output.fLeft[i]);
       if(iSample.fChannels == 2)
         res.fData.emplace_back(output.fRight[i]);
     }
 
-    totalNumSampleFrames -= numSamplesInThisRackFrame;
-    numSampleFramesToProcess -= numSamplesToProcessInThisRackFrame;
+    totalNumFrames -= numFramesInThisBatch;
+    numFramesToProcess -= numFramesToProcessInThisBatch;
     frameCount++;
   }
 
@@ -379,31 +379,31 @@ ExtensionInstrumentTester & ExtensionInstrumentTester::setNoteEvents(MockDevice:
 
 
 //------------------------------------------------------------------------
-// ExtensionInstrumentTester::nextFrame
+// ExtensionInstrumentTester::nextBatch
 //------------------------------------------------------------------------
-void ExtensionInstrumentTester::nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer)
+void ExtensionInstrumentTester::nextBatch(MockAudioDevice::StereoBuffer &oOutputBuffer)
 {
-  nextFrame({}, oOutputBuffer);
+  nextBatch({}, oOutputBuffer);
 }
 
 //------------------------------------------------------------------------
-// ExtensionInstrumentTester::nextFrame
+// ExtensionInstrumentTester::nextBatch
 //------------------------------------------------------------------------
-MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents)
+MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextBatch(MockDevice::NoteEvents iNoteEvents)
 {
   MockAudioDevice::StereoBuffer output{};
-  nextFrame(iNoteEvents, output);
+  nextBatch(iNoteEvents, output);
   return output;
 }
 
 //------------------------------------------------------------------------
-// ExtensionInstrumentTester::nextFrame
+// ExtensionInstrumentTester::nextBatch
 //------------------------------------------------------------------------
-void ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents,
+void ExtensionInstrumentTester::nextBatch(MockDevice::NoteEvents iNoteEvents,
                                           MockAudioDevice::StereoBuffer &oOutputBuffer)
 {
   setNoteEvents(iNoteEvents);
-  fRack.nextFrame();
+  fRack.nextBatch();
   oOutputBuffer = fDst->fBuffer;
 }
 
@@ -412,28 +412,28 @@ void ExtensionInstrumentTester::nextFrame(MockDevice::NoteEvents iNoteEvents,
 //------------------------------------------------------------------------
 MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration::Type iDuration, before_frame_hook_t iBeforeFrameHook)
 {
-  auto totalNumSampleFrames = Duration::toSampleFrames(iDuration, fRack.getSampleRate()).fCount;
+  auto totalNumFrames = Duration::toFrames(iDuration, fRack.getSampleRate()).fCount;
 
   MockAudioDevice::Sample res{};
   res.fChannels = 2;
   res.fSampleRate = fRack.getSampleRate();
-  res.fData.reserve(totalNumSampleFrames);
+  res.fData.reserve(totalNumFrames);
 
   int frameCount = 0;
 
-  while(totalNumSampleFrames > 0)
+  while(totalNumFrames > 0)
   {
-    // allow outside code to modify the device prior to invoking nextFrame
+    // allow outside code to modify the device prior to invoking nextBatch
     if(iBeforeFrameHook)
       iBeforeFrameHook(frameCount);
 
-    fRack.nextFrame();
+    fRack.nextBatch();
 
-    auto numSamplesInThisRackFrame = std::min<size_t>(totalNumSampleFrames, MockAudioDevice::NUM_SAMPLES_PER_FRAME);
+    auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, MockAudioDevice::NUM_SAMPLES_PER_BATCH);
 
-    res.append(fDst->fBuffer, numSamplesInThisRackFrame);
+    res.append(fDst->fBuffer, numFramesInThisBatch);
 
-    totalNumSampleFrames -= numSamplesInThisRackFrame;
+    totalNumFrames -= numFramesInThisBatch;
     frameCount++;
   }
 
@@ -452,31 +452,31 @@ ExtensionNotePlayerTester::ExtensionNotePlayerTester(Config const &iDeviceConfig
 }
 
 //------------------------------------------------------------------------
-// ExtensionNotePlayerTester::nextFrame
+// ExtensionNotePlayerTester::nextBatch
 //------------------------------------------------------------------------
-MockDevice::NoteEvents ExtensionNotePlayerTester::nextFrame(MockDevice::NoteEvents iSourceEvents)
+MockDevice::NoteEvents ExtensionNotePlayerTester::nextBatch(MockDevice::NoteEvents iSourceEvents)
 {
   fSrc->fNoteEvents = std::move(iSourceEvents);
-  fRack.nextFrame();
+  fRack.nextBatch();
   return fDst->fNoteEvents;
 }
 
 //------------------------------------------------------------------------
 // Duration::toRackFrames
 //------------------------------------------------------------------------
-Duration::RackFrames Duration::toRackFrames(Duration::Type iType, int iSampleRate)
+Duration::Batches Duration::toBatches(Duration::Type iType, int iSampleRate)
 {
   struct visitor
   {
-    RackFrames operator()(Duration::RackFrames d) { return d; }
+    Batches operator()(Duration::Batches d) { return d; }
 
-    RackFrames operator()(Duration::Time d) {
-      auto frames = std::ceil(d.fMilliseconds * fSampleRate / 1000.0 / MockAudioDevice::NUM_SAMPLES_PER_FRAME);
-      return RackFrames { static_cast<long>(frames)};
+    Batches operator()(Duration::Time d) {
+      auto batches = std::ceil(d.fMilliseconds * fSampleRate / 1000.0 / MockAudioDevice::NUM_SAMPLES_PER_BATCH);
+      return Batches { static_cast<long>(batches)};
     }
 
-    RackFrames operator()(Duration::SampleFrames d) {
-      return RackFrames{ static_cast<long>(std::ceil(d.fCount / static_cast<double>(MockAudioDevice::NUM_SAMPLES_PER_FRAME))) };
+    Batches operator()(Duration::Frames d) {
+      return Batches{ static_cast<long>(std::ceil(d.fCount / static_cast<double>(MockAudioDevice::NUM_SAMPLES_PER_BATCH))) };
     }
 
     int fSampleRate;
@@ -488,18 +488,18 @@ Duration::RackFrames Duration::toRackFrames(Duration::Type iType, int iSampleRat
 //------------------------------------------------------------------------
 // Duration::toSampleFrames
 //------------------------------------------------------------------------
-Duration::SampleFrames Duration::toSampleFrames(Duration::Type iType, int iSampleRate)
+Duration::Frames Duration::toFrames(Duration::Type iType, int iSampleRate)
 {
   struct visitor
   {
-    SampleFrames operator()(Duration::RackFrames d) { return SampleFrames{d.fCount * MockAudioDevice::NUM_SAMPLES_PER_FRAME}; }
+    Frames operator()(Duration::Batches d) { return Frames{d.fCount * MockAudioDevice::NUM_SAMPLES_PER_BATCH}; }
 
-    SampleFrames operator()(Duration::Time d) {
+    Frames operator()(Duration::Time d) {
       auto frames = std::ceil(d.fMilliseconds * fSampleRate / 1000.0);
-      return SampleFrames { static_cast<long>(frames)};
+      return Frames { static_cast<long>(frames)};
     }
 
-    SampleFrames operator()(Duration::SampleFrames d) { return d; }
+    Frames operator()(Duration::Frames d) { return d; }
 
     int fSampleRate;
   };

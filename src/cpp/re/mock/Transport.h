@@ -37,7 +37,7 @@ public:
   void initMotherboard(Motherboard &iMotherboard) const;
   void updateMotherboard(Motherboard &iMotherboard) const;
 
-  void nextFrame();
+  void nextBatch();
 
   void start() { setPlaying(true);}
   void stop() { setPlaying(false);}

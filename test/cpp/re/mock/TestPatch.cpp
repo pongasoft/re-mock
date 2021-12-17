@@ -213,7 +213,7 @@ TEST(Patch, Load)
   auto re = rack.newDevice(c);
 
   // first frame: get default_value->patch_value
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(7, re->fDiffs.size());
 
   {
@@ -253,7 +253,7 @@ TEST(Patch, Load)
 )";
 
   re.loadPatch(ConfigString{patchString});
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(1, re->fDiffs.size());
 
   {
@@ -265,7 +265,7 @@ TEST(Patch, Load)
 
   // load a patch file (via absolute path) (2 changes)
   re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(4, re->fDiffs.size());
 
   {
@@ -281,12 +281,12 @@ TEST(Patch, Load)
 
   // load the same patch file (no change!)
   re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(0, re->fDiffs.size());
 
   // load another patch (via indirect mapping)
   re.loadPatch("/Public/patch1.repatch");
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ(4, re->fDiffs.size());
 
   {

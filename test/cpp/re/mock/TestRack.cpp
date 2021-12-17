@@ -64,7 +64,7 @@ TEST(Rack, AudioWiring) {
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(0, 0));
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(0, 0));
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
@@ -76,7 +76,7 @@ TEST(Rack, AudioWiring) {
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(0, 0));
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   src->fBuffer.fill(4.0, 5.0);
 
@@ -84,7 +84,7 @@ TEST(Rack, AudioWiring) {
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
@@ -95,7 +95,7 @@ TEST(Rack, AudioWiring) {
     pst->setBypassState(kJBox_EnabledOff);
   });
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   // dst should be 0
   ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
@@ -117,7 +117,7 @@ TEST(Rack, AudioUnwiring) {
 
   src->fBuffer.fill(2.0, 3.0);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(2.0, 3.0));
@@ -127,7 +127,7 @@ TEST(Rack, AudioUnwiring) {
 
   src->fBuffer.fill(4.0, 5.0);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 5.0));
@@ -138,7 +138,7 @@ TEST(Rack, AudioUnwiring) {
 
   src->fBuffer.fill(6.0, 7.0);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(src->fBuffer, MockAudioDevice::buffer(6.0, 7.0));
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(2.0, 5.0));
@@ -162,7 +162,7 @@ TEST(Rack, AudioWiring2) {
   ASSERT_EQ(dst->fBuffer, MockAudioDevice::buffer(0, 0));
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(0, 0));
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   src->fBuffer.fill(4.0, 5.0);
 
@@ -194,7 +194,7 @@ TEST(Rack, CVWiring) {
   ASSERT_FLOAT_EQ(0, dst->fValue);
   ASSERT_FLOAT_EQ(0, pst->fValue);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_FLOAT_EQ(0, src->fValue);
   ASSERT_FLOAT_EQ(0, dst->fValue);
@@ -206,7 +206,7 @@ TEST(Rack, CVWiring) {
   ASSERT_FLOAT_EQ(0, dst->fValue);
   ASSERT_FLOAT_EQ(0, pst->fValue);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   src->fValue = 4.0;
 
@@ -214,7 +214,7 @@ TEST(Rack, CVWiring) {
   ASSERT_FLOAT_EQ(2.0, dst->fValue);
   ASSERT_FLOAT_EQ(2.0, pst->fValue);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_FLOAT_EQ(4.0, src->fValue);
   ASSERT_FLOAT_EQ(4.0, dst->fValue);
@@ -233,7 +233,7 @@ TEST(Rack, CVUnWiring) {
 
   src->fValue = 2.0;
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_FLOAT_EQ(2.0, src->fValue);
   ASSERT_FLOAT_EQ(2.0, pst->fValue);
@@ -242,7 +242,7 @@ TEST(Rack, CVUnWiring) {
   rack.unwire(pst.getCVOutSocket(MCVDst::SOCKET));
   src->fValue = 4.0;
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_FLOAT_EQ(4.0, src->fValue);
   ASSERT_FLOAT_EQ(4.0, pst->fValue);
@@ -296,19 +296,19 @@ TEST(Rack, CircularWiring)
   rack.wire(ex2.getCVOutSocket(MAUDstCVSrc::SOCKET), ex1.getCVInSocket(MAUSrcCVDst::SOCKET));
 
   // we make sure that this does not introduce an infinite loop
-  rack.nextFrame();
+  rack.nextBatch();
 
   ex1->fBuffer.fill(2.0, 0);
   ex2->fValue = 3.0;
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   // due to circular dependency, and the fact that devices are processed in order of id, ex2 out will be processed
   // first so the CV dev->fValue will make in this frame while the audio buffer will make it in the next
   ASSERT_EQ(ex2->fBuffer, MockAudioDevice::buffer(0, 0));
   ASSERT_FLOAT_EQ(3.0, ex1->fValue);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   // now the audio buffer has caught up
   ASSERT_EQ(ex2->fBuffer, MockAudioDevice::buffer(2.0, 0));
@@ -346,15 +346,15 @@ TEST(Rack, SelfConnection)
 
   rack.wire(dev.getCVOutSocket("O"), dev.getCVInSocket("I"));
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_FLOAT_EQ(1.0, dev->fValue);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_FLOAT_EQ(2.0, dev->fValue);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_FLOAT_EQ(3.0, dev->fValue);
 }
@@ -486,7 +486,7 @@ TEST(Rack, Diff)
   rack.wire(src.getAudioOutSocket(MAUSrc::LEFT_SOCKET), re.getAudioInSocket("input"));
   re.setNoteInEvent(69, 100, 25);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   // there are 9 diffs because
   // 1. /audio_inputs/input/connected gets "initialized" with false then get updated with true when wiring happens => 2 updates
@@ -520,7 +520,7 @@ TEST(Rack, Diff)
   re.setNoteInEvent(69, 120, 5);
   re.setNoteInEvent(69, 90, 3);
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(4, re->fDiffs.size());
   re.use([&re] {
@@ -538,7 +538,7 @@ TEST(Rack, Diff)
   re.setNum("/custom_properties/prop_float", 0.9);
   re.setString("/custom_properties/prop_string", "efg");
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(3, re->fDiffs.size());
 
@@ -576,7 +576,7 @@ TEST(Rack, Diff)
 
   re.loadPatch(ConfigString{patchString});
 
-  rack.nextFrame();
+  rack.nextBatch();
 
   ASSERT_EQ(3, re->fDiffs.size());
 
@@ -685,8 +685,8 @@ TEST(Rack, Transport)
   rack.setTransportPlayPos(newPlayPos);
   ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", rack_transport());
 
-  // make sure that ALL extensions get updated (only propagated on nextFrame!)
-  rack.nextFrame();
+  // make sure that ALL extensions get updated (only propagated on nextBatch!)
+  rack.nextBatch();
   ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
   ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
 
@@ -697,23 +697,23 @@ TEST(Rack, Transport)
   // (64.0 / static_cast<TJBox_Float64>(44100)) * ((130 / 60.0) * Transport::kPPQResolution); => 48.3
   // the rack "advances" at the end of the batch
   ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", rack_transport());
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
   ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
 
   rack.setTransportLoopEnabled(true);
 
   ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
-  rack.nextFrame();
+  rack.nextBatch();
   ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
   ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
 
   // make sure that a new device gets the "latest" transport
   ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
   auto pst = rack.newDevice(MAUPst::CONFIG);
-  // inherit the "latest" transport (nextFrame has not been called yet)
+  // inherit the "latest" transport (nextBatch has not been called yet)
   ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
-  rack.nextFrame();
+  rack.nextBatch();
   // still gets the same value since it just processed the frame starting at 38644
   ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
 

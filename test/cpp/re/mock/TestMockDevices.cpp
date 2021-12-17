@@ -32,26 +32,26 @@ TEST(MockDevices, Sample)
 
   ASSERT_TRUE(s.isStereo());
   ASSERT_EQ(44100, s.getSampleRate());
-  ASSERT_FLOAT_EQ(MockAudioDevice::NUM_SAMPLES_PER_FRAME * 1000.0 / 44100.0, s.getDurationMilliseconds());
-  ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_FRAME, s.getFrameCount());
-  ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_FRAME * 2, s.getSampleCount());
+  ASSERT_FLOAT_EQ(MockAudioDevice::NUM_SAMPLES_PER_BATCH * 1000.0 / 44100.0, s.getDurationMilliseconds());
+  ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_BATCH, s.getFrameCount());
+  ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_BATCH * 2, s.getSampleCount());
 
   {
     auto channel = s.getLeftChannelSample();
     ASSERT_EQ(44100, channel.getSampleRate());
     ASSERT_TRUE(channel.isMono());
-    ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_FRAME, channel.getFrameCount());
-    ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_FRAME, channel.getSampleCount());
-    ASSERT_EQ(std::vector<TJBox_AudioSample>(MockAudioDevice::NUM_SAMPLES_PER_FRAME, 1.0), channel.getData());
+    ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_BATCH, channel.getFrameCount());
+    ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_BATCH, channel.getSampleCount());
+    ASSERT_EQ(std::vector<TJBox_AudioSample>(MockAudioDevice::NUM_SAMPLES_PER_BATCH, 1.0), channel.getData());
   }
 
   {
     auto channel = s.getRightChannelSample();
     ASSERT_EQ(44100, channel.getSampleRate());
     ASSERT_TRUE(channel.isMono());
-    ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_FRAME, channel.getFrameCount());
-    ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_FRAME, channel.getSampleCount());
-    ASSERT_EQ(std::vector<TJBox_AudioSample>(MockAudioDevice::NUM_SAMPLES_PER_FRAME, 2.0), channel.getData());
+    ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_BATCH, channel.getFrameCount());
+    ASSERT_EQ(MockAudioDevice::NUM_SAMPLES_PER_BATCH, channel.getSampleCount());
+    ASSERT_EQ(std::vector<TJBox_AudioSample>(MockAudioDevice::NUM_SAMPLES_PER_BATCH, 2.0), channel.getData());
   }
 
   s = MockAudioDevice::Sample{2, 44100};

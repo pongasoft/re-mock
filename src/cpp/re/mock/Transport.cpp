@@ -56,9 +56,9 @@ void Transport::updateMotherboard(Motherboard &iMotherboard) const
 }
 
 //------------------------------------------------------------------------
-// Transport::nextFrame
+// Transport::nextBatch
 //------------------------------------------------------------------------
-void Transport::nextFrame()
+void Transport::nextBatch()
 {
   fUpdates.clear();
 

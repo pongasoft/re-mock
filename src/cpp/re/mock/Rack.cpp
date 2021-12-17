@@ -61,24 +61,24 @@ Rack::Extension Rack::newExtension(Config const &iConfig)
 }
 
 //------------------------------------------------------------------------
-// Rack::nextFrame
+// Rack::nextBatch
 //------------------------------------------------------------------------
-void Rack::nextFrame()
+void Rack::nextBatch()
 {
   std::set<int> processedExtensions{};
 
   for(auto &extension: fExtensions)
   {
-    nextFrame(*extension.second, processedExtensions);
+    nextBatch(*extension.second, processedExtensions);
   }
 
-  fTransport.nextFrame();
+  fTransport.nextBatch();
 }
 
 //------------------------------------------------------------------------
-// Rack::nextFrame
+// Rack::nextBatch
 //------------------------------------------------------------------------
-void Rack::nextFrame(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensions)
+void Rack::nextBatch(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensions)
 {
   if(stl::contains(iProcessedExtensions, iExtension.fId))
     // already processed
@@ -90,21 +90,21 @@ void Rack::nextFrame(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensi
   // we process all dependent extensions first
   for(auto id: iExtension.getDependents())
   {
-    nextFrame(*fExtensions.get(id), iProcessedExtensions);
+    nextBatch(*fExtensions.get(id), iProcessedExtensions);
   }
 
   // we process the extension
-  nextFrame(iExtension);
+  nextBatch(iExtension);
 }
 
 //------------------------------------------------------------------------
-// Rack::nextFrame
+// Rack::nextBatch
 //------------------------------------------------------------------------
-void Rack::nextFrame(ExtensionImpl &iExtension)
+void Rack::nextBatch(ExtensionImpl &iExtension)
 {
   iExtension.use([this](Motherboard &m) {
     fTransport.updateMotherboard(m);
-    m.nextFrame();
+    m.nextBatch();
   });
 
   for(auto &wire: iExtension.fAudioOutWires)

@@ -28,13 +28,13 @@ namespace re::mock {
 struct Duration
 {
   struct Time { float fMilliseconds{}; };
-  struct SampleFrames { long fCount{}; };
-  struct RackFrames { long fCount{}; };
+  struct Frames { long fCount{}; };
+  struct Batches { long fCount{}; };
 
-  using Type = std::variant<Time, SampleFrames, RackFrames>;
+  using Type = std::variant<Time, Frames, Batches>;
 
-  static RackFrames toRackFrames(Type iType, int iSampleRate);
-  static SampleFrames toSampleFrames(Type iType, int iSampleRate);
+  static Batches toBatches(Type iType, int iSampleRate);
+  static Frames toFrames(Type iType, int iSampleRate);
 };
 
 /**
@@ -94,7 +94,7 @@ public:
 
   void unwire(Rack::ExtensionDevice<MNPDst> &iDst);
 
-  void nextFrames(Duration::Type iDuration);
+  void nextBatches(Duration::Type iDuration);
 
   MockAudioDevice::Sample loadSample(ConfigFile const &iSampleFile) const;
   MockAudioDevice::Sample loadSample(std::string const &iSampleResource) const;
@@ -128,7 +128,7 @@ public:
   inline Rack::ExtensionDevice<Helper> &device() { return fHelper; }
   inline Rack::ExtensionDevice<Helper> const &device() const { return fHelper; }
 
-  void nextFrame() { fRack.nextFrame(); }
+  void nextBatch() { fRack.nextBatch(); }
 
 protected:
   Rack::ExtensionDevice<Helper> fHelper;
@@ -146,8 +146,8 @@ public:
   void wireMainIn(std::optional<std::string> iLeftInSocketName, std::optional<std::string> iRightInSocketName);
   void wireMainOut(std::optional<std::string> iLeftOutSocketName, std::optional<std::string> iRightOutSocketName);
 
-  MockAudioDevice::StereoBuffer nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer);
-  void nextFrame(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
+  MockAudioDevice::StereoBuffer nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer);
+  void nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
 
   MockAudioDevice::Sample processSample(MockAudioDevice::Sample const &iSample,
                                         optional_duration_t iTail = std::nullopt,
@@ -226,9 +226,9 @@ public:
 
   ExtensionInstrumentTester &setNoteEvents(MockDevice::NoteEvents iNoteEvents);
 
-  MockAudioDevice::StereoBuffer nextFrame(MockDevice::NoteEvents iNoteEvents = {});
-  void nextFrame(MockDevice::NoteEvents iNoteEvents, MockAudioDevice::StereoBuffer &oOutputBuffer);
-  void nextFrame(MockAudioDevice::StereoBuffer &oOutputBuffer);
+  MockAudioDevice::StereoBuffer nextBatch(MockDevice::NoteEvents iNoteEvents = {});
+  void nextBatch(MockDevice::NoteEvents iNoteEvents, MockAudioDevice::StereoBuffer &oOutputBuffer);
+  void nextBatch(MockAudioDevice::StereoBuffer &oOutputBuffer);
 
   MockAudioDevice::Sample play(Duration::Type iDuration, before_frame_hook_t iBeforeFrameHook = {});
 
@@ -260,7 +260,7 @@ class ExtensionNotePlayerTester : public DeviceTester
 public:
   explicit ExtensionNotePlayerTester(Config const &iDeviceConfig, int iSampleRate);
 
-  MockDevice::NoteEvents nextFrame(MockDevice::NoteEvents iSourceEvents = {});
+  MockDevice::NoteEvents nextBatch(MockDevice::NoteEvents iSourceEvents = {});
 
   bool isBypassed() const { return fDevice.isNotePlayerBypassed(); }
   void setBypassed(bool iBypassed) { fDevice.setNotePlayerBypassed(iBypassed); }

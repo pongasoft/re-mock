@@ -6,16 +6,16 @@ All classes are under the `re::mock` namespace.
 ### The rack
 
 The main API/entry point of the framework is the `Rack`. You create a `Rack` on which you add and wire extensions.
-You then call `Rack::nextFrame()` which builds the dependency graph of the extensions and call the 
+You then call `Rack::nextBatch()` which builds the dependency graph of the extensions and call the 
 _render real time_ api accordingly (usually `JBox_Export_RenderRealtime` for the device under test) in the proper 
 order dictated by the dependency graph.
 
-Between each call to `Rack::nextFrame()` you are free to modify the properties of each device (simulating user action, 
+Between each call to `Rack::nextBatch()` you are free to modify the properties of each device (simulating user action, 
 automation, etc...), wiring, unwiring, devices and check expected values (for example, making sure that an LED light
 representing _sound on_ has been turned on).
 
 If the device under test uses realtime property change notification (`rt_input_setup / notify`), these changes are 
-automatically made available to the device via the `iPropertyDiffs` parameter whenever the `Rack::nextFrame()` call 
+automatically made available to the device via the `iPropertyDiffs` parameter whenever the `Rack::nextBatch()` call 
 is made.
 
 ### Testers
@@ -71,20 +71,36 @@ wire (mono device).
 
 The tester provides a shortcut to get (resp. set) the bypass state of the effect (`getBypassState` resp. `setBypassState`).
 
-The tester provides a convenient `nextFrame` api which automatically injects the audio stereo buffer (64 samples) in the 
+The tester provides a convenient `nextBatch` api which automatically injects the audio stereo buffer (64 samples) in the 
 input (main in) and returns the audio stereo buffer (64 samples) from the output (main out). In other words:
 
 ```c++
 auto inputBuffer = ...;
 
 // this convenient api
-auto outputBuffer = tester.nextFrame(inputBuffer);
+auto outputBuffer = tester.nextBatch(inputBuffer);
 
 // is 100% equivalent to:
 tester.src()->fBuffer = inputBuffer;
-tester.rack().nextFrame();
+tester.rack().nextBatch();
 auto outputBuffer = tester.dst()->fBuffer;
 ```
+
+The `nextBatch` api is very fine-grained since it deals with only 1 (rack) frame at a time (64 samples).
+This tester offers a higher level api which lets you deal with an entire sample (including adding an optional tail
+so that the device runs past the end of the sample).
+
+```c++
+auto sinePath = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "sine.wav");
+auto sine = tester.loadSample(ConfigFile{sinePath});
+auto processedSine = tester.processSample(ConfigFile{sinePath}); // you can optionally add a "tail" (check API)
+
+auto processedSinePath = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "processed_sine.wav");
+auto expectedProcessedSine = tester.loadSample(ConfigFile{processedSinePath});
+
+ASSERT_EQ(expectedProcessedSine, processedSine); // compare the 2 samples
+```
+
 
 #### InstrumentTester
 
@@ -100,19 +116,32 @@ nothing is connected).
 
 Note that the `wireMainOut` api uses `std::optional` in the event you only have one socket to wire (mono device).
 
-The tester provides a convenient `nextFrame` api which lets you provide note events and returns the audio 
+The tester provides a convenient `nextBatch` api which lets you provide note events and returns the audio 
 stereo buffer (64 samples) from the output (main out). In other words:
 
 ```c++
-auto noteEvents = MockNotePlayer::NoteEvents{}.noteOn(69);
+auto noteEvents = MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440);
 
 // this convenient api
-auto outputBuffer = tester.nextFrame(noteEvents);
+auto outputBuffer = tester.nextBatch(noteEvents);
 
 // is 100% equivalent to:
-tester.device().setNoteInEvents(noteEvents.events());
-tester.rack().nextFrame();
+tester.setNoteEvents(noteEvents);
+tester.rack().nextBatch();
 auto outputBuffer = tester.dst()->fBuffer;
+```
+
+The `nextBatch` api is very fine-grained since it deals with only 1 (rack) frame at a time (64 samples).
+This tester offers a higher level api which lets you "play" the instrument for a given duration and returns a sample.
+
+```c++
+auto noteEvents = MockNotePlayer::NoteEvents{}.noteOn(Midi::A(3));
+auto sample = tester.setNoteEvents(noteEvents).play(Duration::Time{1000}); // "play" for 1s while A3 is held
+
+auto path = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "instrument_A3_1s.wav");
+auto expectedSample = tester.loadSample(ConfigFile{path});
+
+ASSERT_EQ(expectedSample, sample); // compare the 2 samples
 ```
 
 #### NotePlayerTester
@@ -127,18 +156,18 @@ this tester automatically creates:
 
 The tester provides a shortcut to get (resp. set) the bypass state of the note player (`isBypassed` resp. `setBypassed`).
 
-The tester provides a convenient `nextFrame` api which lets you provide note events (from a potential previous 
+The tester provides a convenient `nextBatch` api which lets you provide note events (from a potential previous 
 note player) and returns the note events generated by the note player under test. In other words:
 
 ```c++
 auto noteEvents = MockNotePlayer::NoteEvents{}.noteOn(69);
 
 // this convenient api
-auto events = tester.nextFrame(noteEvents);
+auto events = tester.nextBatch(noteEvents);
 
 // is 100% equivalent to:
 tester.src()->fNoteEvents = noteEvents;
-tester.rack().nextFrame();
+tester.rack().nextBatch();
 auto events = tester.dst()->fNoteEvents;
 ```
 
@@ -189,24 +218,24 @@ In general, for each additional socket not handled by the given tester, you can 
 #### Testing a Stereo Audio Input socket
 
 You can use a `MAUSrc` mock device which is a source of stereo audio value (set `fBuffer` to the value you want 
-to be made available to your audio input prior to calling `nextFrame`).
+to be made available to your audio input prior to calling `nextBatch`).
 
 Example:
 ```c++
 // assuming the name of the input sockets are "aui_left" and "aui_right"
 auto auSrc = tester.wireNewAUSrc("aui_left", "aui_right");
 
-// set its buffer prior to calling nextFrame
+// set its buffer prior to calling nextBatch
 auSrc->fBuffer = MockAudioDevice::buffer(0.5, 0.6);
 
 // next frame => the device will "receive" the audio buffer on its "aui_left" and "aui_right" sockets
-tester.nextFrame(...);
+tester.nextBatch(...);
 ```
 
 #### Testing a Stereo Audio Output socket
 
 You can use a `MAUDst` mock device which is a destination of stereo audio value (its `fBuffer` is populated by whatever
-buffer it received during `nextFrame`).
+buffer it received during `nextBatch`).
 
 Example:
 ```c++
@@ -214,7 +243,7 @@ Example:
 auto auDst = tester.wireNewAUDst("auo_left", "auo_right");
 
 // next frame => the device generates the audio buffers on its "auo_left" and "auo_right" sockets
-tester.nextFrame(...);
+tester.nextBatch(...);
 
 // auDst has received the buffer that the device did output (this example assumes that the device has divided
 // the input by 2.0)
@@ -224,24 +253,24 @@ ASSERT_EQ(MockAudioDevice::buffer(0.5 / 2.0, 0.6 / 2.0), auDst->fBuffer);
 #### Testing a CV Input socket
 
 You can use a `MCVSrc` mock device which is a source of CV value (set `fValue` to the value you want to be made 
-available on your cv input prior to calling `nextFrame`).
+available on your cv input prior to calling `nextBatch`).
 
 Example:
 ```c++
 // assuming the name of the input socket is "cvi"
 auto cvSrc = tester.wireNewCVSrc("cvi");
 
-// set its value prior to calling nextFrame
+// set its value prior to calling nextBatch
 cvSrc->fValue = 1.0;
 
 // next frame => the device will "receive" the cv value on its "cvi" socket
-tester.nextFrame(...);
+tester.nextBatch(...);
 ```
 
 #### Testing a CV Output socket
 
 You can use a `MCVDst` mock device which is a destination of CV value (its `fValue` is populated by whatever
-value it received during `nextFrame`).
+value it received during `nextBatch`).
 
 Example:
 ```c++
@@ -249,7 +278,7 @@ Example:
 auto cvDst = tester.wireNewCVDst("cvo");
 
 // next frame => the device outputs the cv value on its "cvo" socket
-tester.nextFrame(...);
+tester.nextBatch(...);
 
 // cvDst has received the cv value that the device did output
 ASSERT_FLOAT_EQ(<expected value>, cvDst->fValue);

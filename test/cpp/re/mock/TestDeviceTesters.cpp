@@ -33,13 +33,13 @@ TEST(StudioEffectTester, Usage)
   ASSERT_EQ(kJBox_EnabledOn, tester.getBypassState());
 
   // device is not wired yet!
-  ASSERT_EQ(tester.nextFrame(MockAudioDevice::buffer(1.0, 2.0)), MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(tester.nextBatch(MockAudioDevice::buffer(1.0, 2.0)), MockAudioDevice::buffer(0, 0));
 
   // wire main inputs
   tester.wireMainIn(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
 
   // device not fully wired yet (only IN is wired)
-  ASSERT_EQ(tester.nextFrame(MockAudioDevice::buffer(3.0, 4.0)), MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(tester.nextBatch(MockAudioDevice::buffer(3.0, 4.0)), MockAudioDevice::buffer(0, 0));
 
   // that means the internal buffer of the effect gets the input, but does not send it to the output
   ASSERT_EQ(tester.device()->fBuffer, MockAudioDevice::buffer(3.0, 4.0));
@@ -48,7 +48,7 @@ TEST(StudioEffectTester, Usage)
   tester.wireMainOut(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
 
   // device is fully wired
-  ASSERT_EQ(tester.nextFrame(MockAudioDevice::buffer(5.0, 6.0)), MockAudioDevice::buffer(5.0, 6.0));
+  ASSERT_EQ(tester.nextBatch(MockAudioDevice::buffer(5.0, 6.0)), MockAudioDevice::buffer(5.0, 6.0));
 
   // change to off
   tester.setBypassState(kJBox_EnabledOff);
@@ -80,7 +80,7 @@ TEST(StudioEffectTester, Sample)
   }
 
   {
-    auto processedSine = tester.processSample("/re/mock/audio/sine.wav", Duration::SampleFrames{30});
+    auto processedSine = tester.processSample("/re/mock/audio/sine.wav", Duration::Frames{30});
     auto expectedSine = sine; // sine (100 samples) + tail of 30 samples
     for(int i = 0; i < 30; i++)
       expectedSine.fData.emplace_back(0);
@@ -106,15 +106,15 @@ TEST(StudioEffectTester, Sample)
 // Duration.Conversion
 TEST(Duration, Conversion)
 {
-  ASSERT_EQ(45, Duration::toSampleFrames(Duration::Time{1}, 44100).fCount);
-  ASSERT_EQ(4410, Duration::toSampleFrames(Duration::Time{100}, 44100).fCount);
-  ASSERT_EQ(100*64, Duration::toSampleFrames(Duration::RackFrames{100}, 44100).fCount);
-  ASSERT_EQ(100, Duration::toSampleFrames(Duration::SampleFrames{100}, 44100).fCount);
+  ASSERT_EQ(45, Duration::toFrames(Duration::Time{1}, 44100).fCount);
+  ASSERT_EQ(4410, Duration::toFrames(Duration::Time{100}, 44100).fCount);
+  ASSERT_EQ(100*64, Duration::toFrames(Duration::Batches{100}, 44100).fCount);
+  ASSERT_EQ(100, Duration::toFrames(Duration::Frames{100}, 44100).fCount);
 
-  ASSERT_EQ(1, Duration::toRackFrames(Duration::Time{1}, 44100).fCount);
-  ASSERT_EQ(69, Duration::toRackFrames(Duration::Time{100}, 44100).fCount);
-  ASSERT_EQ(100, Duration::toRackFrames(Duration::RackFrames{100}, 44100).fCount);
-  ASSERT_EQ(2, Duration::toRackFrames(Duration::SampleFrames{100}, 44100).fCount);
+  ASSERT_EQ(1, Duration::toBatches(Duration::Time{1}, 44100).fCount);
+  ASSERT_EQ(69, Duration::toBatches(Duration::Time{100}, 44100).fCount);
+  ASSERT_EQ(100, Duration::toBatches(Duration::Batches{100}, 44100).fCount);
+  ASSERT_EQ(2, Duration::toBatches(Duration::Frames{100}, 44100).fCount);
 }
 
 // InstrumentTester.Usage
@@ -128,7 +128,7 @@ TEST(InstrumentTester, Usage)
   tester.device()->fBuffer = MockAudioDevice::buffer(1.0, 2.0);
 
   // device is not wired yet!
-  ASSERT_EQ(tester.nextFrame(), MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(tester.nextBatch(), MockAudioDevice::buffer(0, 0));
 
   // wire main outputs
   tester.wireMainOut(MAUSrc::LEFT_SOCKET, MAUSrc::RIGHT_SOCKET);
@@ -136,12 +136,12 @@ TEST(InstrumentTester, Usage)
   tester.device()->fBuffer = MockAudioDevice::buffer(3.0, 4.0);
 
   // device is fully wired
-  ASSERT_EQ(tester.nextFrame(), MockAudioDevice::buffer(3.0, 4.0));
+  ASSERT_EQ(tester.nextBatch(), MockAudioDevice::buffer(3.0, 4.0));
 
   std::vector<int> frames{};
 
   ASSERT_EQ(MockAudioDevice::Sample::from(MockAudioDevice::buffer(3.0, 4.0), 44100),
-            tester.play(Duration::RackFrames{1},
+            tester.play(Duration::Batches{1},
                         [&frames](int f) { frames.emplace_back(f); }));
 
   ASSERT_EQ(std::vector<int>({0}), frames);
@@ -157,13 +157,13 @@ TEST(NotePlayerTester, Usage)
 
   ASSERT_EQ(MockDevice::NoteEvents{}, tester.device()->fNoteEvents);
 
-  ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.nextFrame());
+  ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.nextBatch());
   ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.device()->fNoteEvents);
 
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.nextBatch(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
   ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.device()->fNoteEvents);
 
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(Midi::A_440, 25), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOff(Midi::A_440, 25)));
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(Midi::A_440, 25), tester.nextBatch(MockNotePlayer::NoteEvents{}.noteOff(Midi::A_440, 25)));
   ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(Midi::A_440, 25), tester.device()->fNoteEvents);
 
   // simulating sequencer note
@@ -171,19 +171,19 @@ TEST(NotePlayerTester, Usage)
     m.setNoteInEvent(70, 120, 3);
   });
 
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(70, 120, 3), tester.nextFrame());
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(70, 120, 3), tester.nextBatch());
 
   // bypass note player (does not receive notes anymore)
   tester.setBypassed(true);
-  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
+  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextBatch(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
 
   // revert
   tester.setBypassed(false);
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.nextBatch(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
 
   // unwire src
   tester.unwire(tester.src());
-  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextFrame(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
+  ASSERT_EQ(MockDevice::NoteEvents{}, tester.nextBatch(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
 }
 
 // HelperTester.Usage
@@ -234,7 +234,7 @@ TEST(HelperTester, Usage)
   cvSrc->fValue = 1.0;
 
   // make sure it runs
-  tester.nextFrame();
+  tester.nextBatch();
 
   ASSERT_EQ(1, tester.device()->fFrameCount);
 

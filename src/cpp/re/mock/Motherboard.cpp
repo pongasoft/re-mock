@@ -787,9 +787,9 @@ impl::JboxObject *Motherboard::addObject(std::string const &iObjectPath)
 }
 
 //------------------------------------------------------------------------
-// Motherboard::nextFrame
+// Motherboard::nextBatch
 //------------------------------------------------------------------------
-void Motherboard::nextFrame()
+void Motherboard::nextBatch()
 {
   // clearing note out events
   fNoteOutEvents.clear();
