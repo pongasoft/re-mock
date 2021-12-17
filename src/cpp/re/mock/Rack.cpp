@@ -35,19 +35,8 @@ Motherboard &Rack::currentMotherboard()
 //------------------------------------------------------------------------
 // Rack::Rack
 //------------------------------------------------------------------------
-Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}
+Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}, fTransport{iSampleRate}
 {
-  fTransport[kJBox_TransportPlaying] = JBox_MakeBoolean(false);
-  fTransport[kJBox_TransportPlayPos] = JBox_MakeNumber(0);
-  fTransport[kJBox_TransportTempo] = JBox_MakeNumber(120);
-  fTransport[kJBox_TransportFilteredTempo] = JBox_MakeNumber(120);
-  fTransport[kJBox_TransportTempoAutomation] = JBox_MakeBoolean(false);
-  fTransport[kJBox_TransportTimeSignatureNumerator] = JBox_MakeNumber(4);
-  fTransport[kJBox_TransportTimeSignatureDenominator] = JBox_MakeNumber(4);
-  fTransport[kJBox_TransportLoopEnabled] = JBox_MakeBoolean(false);
-  fTransport[kJBox_TransportLoopStartPos] = JBox_MakeNumber(0);
-  fTransport[kJBox_TransportLoopEndPos] = JBox_MakeNumber(0);
-  fTransport[kJBox_TransportBarStartPos] = JBox_MakeNumber(0);
 }
 
 //------------------------------------------------------------------------
@@ -62,11 +51,8 @@ Rack::Extension Rack::newExtension(Config const &iConfig)
 
   auto res = fExtensions.get(id);
   res->use([this](Motherboard &m) {
-
     // populate the transport object
-    auto ref = m.getObjectRef("/transport");
-    for(auto &[tag, value]: fTransport)
-      m.storeProperty(ref, tag, value);
+    fTransport.initMotherboard(m);
 
     // initializes the motherboard
     m.init();
@@ -85,6 +71,8 @@ void Rack::nextFrame()
   {
     nextFrame(*extension.second, processedExtensions);
   }
+
+  fTransport.nextFrame();
 }
 
 //------------------------------------------------------------------------
@@ -114,7 +102,10 @@ void Rack::nextFrame(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensi
 //------------------------------------------------------------------------
 void Rack::nextFrame(ExtensionImpl &iExtension)
 {
-  iExtension.use([](Motherboard &m) { m.nextFrame(); });
+  iExtension.use([this](Motherboard &m) {
+    fTransport.updateMotherboard(m);
+    m.nextFrame();
+  });
 
   for(auto &wire: iExtension.fAudioOutWires)
     copyAudioBuffers(wire);
@@ -309,26 +300,6 @@ void Rack::unwire(Extension::NoteInSocket const &iInSocket)
   auto wire = ext->findWire(iInSocket);
   if(wire)
     unwire(wire->fFromSocket);
-}
-
-//------------------------------------------------------------------------
-// Rack::setTransportValue
-//------------------------------------------------------------------------
-void Rack::setTransportValue(TJBox_TransportTag iTag, TJBox_Value const &iValue)
-{
-  RE_MOCK_ASSERT(fTransport.find(iTag) != fTransport.end(), "Invalid transport tag %d", iTag);
-
-  // 1. we store it
-  fTransport[iTag] = iValue;
-
-  // 2. we set the similar property for every extension registered with this rack
-  for(auto &[id, extension]: fExtensions)
-  {
-    extension->use([iTag, &iValue](Motherboard &m) {
-      auto ref = m.getObjectRef("/transport");
-      m.storeProperty(ref, iTag, iValue);
-    });
-  }
 }
 
 //------------------------------------------------------------------------

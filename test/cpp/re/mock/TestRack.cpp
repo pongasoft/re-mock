@@ -627,7 +627,7 @@ TEST(Rack, Transport)
   Rack rack{};
 
   auto rack_transport = [&rack]() {
-    return fmt::printf("p=%s,pp=%.0f,t=%.0f,ft=%.0f,ta=%s,tsn=%.0f,tsd=%.0f,le=%s,lsp=%.0f,lep=%.0f,bsp=%.0f",
+    return fmt::printf("p=%s,pp=%d,t=%.0f,ft=%.0f,ta=%s,tsn=%d,tsd=%d,le=%s,lsp=%d,lep=%d,bsp=%d",
                        rack.getTransportPlaying() ? "true": "false",
                        rack.getTransportPlayPos(),
                        rack.getTransportTempo(),
@@ -676,28 +676,46 @@ TEST(Rack, Transport)
   rack.setTransportTimeSignatureDenominator(8);
   rack.setTransportLoopStartPos(3);
   rack.setTransportLoopEndPos(9);
-  rack.setTransportBarStartPos(17);
 
-  // make sure that ALL extensions get updated
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", rack_transport());
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", dst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=0", rack_transport());
 
+  // check that bar transport loop is updated properly
+  constexpr auto oneBarPPQ = 4.0 * Transport::kPPQResolution * 5 / 8;
+  auto newPlayPos = oneBarPPQ + 100; // 38400 (bar boundary) + 100
+  rack.setTransportPlayPos(newPlayPos);
+  ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", rack_transport());
+
+  // make sure that ALL extensions get updated (only propagated on nextFrame!)
+  rack.nextFrame();
+  ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
+
+  // change tempo automation
   rack.setTransportTempoAutomation(true);
 
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", rack_transport());
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=17", dst.use<std::string>(re_transport));
+  // because transport is playing, pp will change!
+  // (64.0 / static_cast<TJBox_Float64>(44100)) * ((130 / 60.0) * Transport::kPPQResolution); => 48.3
+  // the rack "advances" at the end of the batch
+  ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", rack_transport());
+  rack.nextFrame();
+  ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
 
   rack.setTransportLoopEnabled(true);
 
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=17", rack_transport());
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=17", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=17", dst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
+  rack.nextFrame();
+  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
 
   // make sure that a new device gets the "latest" transport
+  ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
   auto pst = rack.newDevice(MAUPst::CONFIG);
-  ASSERT_EQ("p=true,pp=2,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=17", pst.use<std::string>(re_transport));
+  // inherit the "latest" transport (nextFrame has not been called yet)
+  ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
+  rack.nextFrame();
+  // still gets the same value since it just processed the frame starting at 38644
+  ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
 
 }
 
