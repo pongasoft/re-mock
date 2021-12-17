@@ -501,11 +501,6 @@ TEST(RackExtension, RealtimeController_Blob)
   rack.nextBatch();
   ASSERT_EQ("is_blob=true;size=13600.0;resident_size=100.0;state=1.0", re.getString("/custom_properties/on_prop_blob_return"));
 
-  // checking is_blob
-  re.setString("/custom_properties/prop_function", "is_blob");
-  rack.nextBatch();
-  ASSERT_EQ("is_blob -> true", re.getString("/custom_properties/prop_function_return"));
-
   // load the rest
   re.loadMoreBlob("/custom_properties/prop_blob");
   re->fBlobRange = std::make_pair(1000, 1010);
@@ -573,6 +568,10 @@ TEST(RackExtension, RealtimeController_Blob)
   ASSERT_EQ("Blob{.fSize=4,.fResidentSize=4,.fLoadStatus=resident,.fBlobPath=[/Private/blob.data]}", re->fBlobString);
   rack.nextBatch();
   ASSERT_EQ("is_blob=true;size=4.0;resident_size=4.0;state=2.0", re.getString("/custom_properties/on_prop_blob_return"));
+
+  // this will throw an exception because /custom_properties/prop_blob is not a source for the binding /global_rtc/on_prop_function
+  re.setString("/custom_properties/prop_function", "is_blob");
+  ASSERT_THROW(rack.nextBatch(), Exception);
 }
 
 // RackExtension.RealtimeController_Sample

@@ -194,8 +194,11 @@ int RealtimeController::luaLoadProperty()
 {
   luaL_checktype(L, 1, LUA_TSTRING);
   auto const propertyPath = lua_tostring(L, 1);
-  RE_MOCK_ASSERT(stl::contains_key(getBindings(), propertyPath),
-                 "Load property '%s' failed. Can only read this property in rtc_bindings function with this property as source.", propertyPath);
+
+  RE_MOCK_ASSERT(stl::contains_key(fReverseBindings.at(fCurrentBindingName), propertyPath),
+                 "Load property failed while executing binding [/global_rtc/%s]. Can only read property [%s] in rtc_bindings function with this property as source.",
+                 propertyPath, fCurrentBindingName);
+
   auto value = getCurrentMotherboard()->getJboxValue(propertyPath);
   pushJBoxValue(value);
   return 1;
@@ -421,9 +424,14 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
                                        std::string const &iSourcePropertyPath,
                                        std::shared_ptr<const JboxValue> const &iNewValue)
 {
-  RE_MOCK_ASSERT(fMotherboard == nullptr, "calling binding from a binding");
-  RE_MOCK_ASSERT(stl::contains_key(getBindings(), iSourcePropertyPath));
+  RE_MOCK_ASSERT(fMotherboard == nullptr, "calling binding from a binding"); // sanity check
+
+  RE_MOCK_ASSERT(stl::contains_key(getBindings(), iSourcePropertyPath), "No rtc binding found for property [%s]", iSourcePropertyPath);
+  RE_MOCK_ASSERT(stl::contains_key(fReverseBindings, iBindingName), "No rtc binding named [%s] found", iBindingName);
+  RE_MOCK_ASSERT(stl::contains_key(fReverseBindings.at(iBindingName), iSourcePropertyPath), "Property [%s] is not a source for rtc binding [%s]", iSourcePropertyPath, iBindingName);
+
   fMotherboard = iMotherboard;
+  fCurrentBindingName = iBindingName;
   putBindingOnTopOfStack(iBindingName);
   lua_pushstring(L, iSourcePropertyPath.c_str());
   pushJBoxValue(iNewValue);
@@ -438,6 +446,7 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
                    fMotherboard->toString(*iNewValue).c_str(),
                    errorMsg.c_str());
   }
+  fCurrentBindingName = "";
   fMotherboard = nullptr;
   fJboxValues.reset();
 }
@@ -465,6 +474,12 @@ std::map<std::string, std::string> const &RealtimeController::getBindings()
         putBindingOnTopOfStack(dest); // this will check that the binding exists
         lua_pop(L, 1);
         bindings[source] = dest;
+
+        // also add it to reverse bindings
+        if(!stl::contains_key(fReverseBindings, dest))
+          fReverseBindings[dest] = {};
+        fReverseBindings[dest].emplace(source);
+
         lua_pop(L, 1);
       }
     }
@@ -570,7 +585,5 @@ void RealtimeController::pushJBoxValue(std::shared_ptr<const JboxValue> iJBoxVal
       break;
   }
 }
-
-
 
 }

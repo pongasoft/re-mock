@@ -78,8 +78,10 @@ protected:
 
 private:
   Motherboard *fMotherboard{};
+  std::string fCurrentBindingName{};
   ObjectManager<std::shared_ptr<const JboxValue>> fJboxValues{};
   std::optional<std::map<std::string, std::string>> fBindings{};
+  std::map<std::string, std::set<std::string>> fReverseBindings{};
 };
 
 }
