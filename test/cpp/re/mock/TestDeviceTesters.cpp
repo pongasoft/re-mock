@@ -238,10 +238,10 @@ TEST(HelperTester, Usage)
 
     void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
     {
-      fFrameCount++;
+      fBatchCount++;
     }
 
-    int fFrameCount{};
+    int fBatchCount{};
   };
 
   auto c = DeviceConfig<Device>::fromSkeleton()
@@ -271,7 +271,7 @@ TEST(HelperTester, Usage)
   ASSERT_TRUE(tester.device().getBool("/cv_inputs/cvi/connected"));
   ASSERT_TRUE(tester.device().getBool("/cv_outputs/cvo/connected"));
 
-  ASSERT_EQ(0, tester.device()->fFrameCount);
+  ASSERT_EQ(0, tester.device()->fBatchCount);
 
   audioSrc->fBuffer = MockAudioDevice::buffer(0.5, 0.6);
   cvSrc->fValue = 1.0;
@@ -279,7 +279,7 @@ TEST(HelperTester, Usage)
   // make sure it runs
   tester.nextBatch();
 
-  ASSERT_EQ(1, tester.device()->fFrameCount);
+  ASSERT_EQ(1, tester.device()->fBatchCount);
 
   // unchanged
   ASSERT_EQ(MockAudioDevice::StereoBuffer{}, audioDst->fBuffer);
@@ -345,7 +345,7 @@ TEST(Timeline, Usage)
       auto const transport = JBox_GetMotherboardObjectRef("/transport");
       fTransportPlaying = JBox_GetBoolean(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlaying));
       fTransportPlayPos = JBox_GetNumber(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlayPos));
-      fFrameCount++;
+      fBatchCount++;
       fNoteEvents.clear();
 
       auto noteStates = JBox_GetMotherboardObjectRef("/note_states");
@@ -357,7 +357,7 @@ TEST(Timeline, Usage)
       }
     }
 
-    int fFrameCount{};
+    int fBatchCount{};
     bool fTransportPlaying{};
     int fTransportPlayPos{};
     std::vector<TJBox_NoteEvent> fNoteEvents{};
@@ -370,13 +370,13 @@ TEST(Timeline, Usage)
 
   auto tester = HelperTester<Device>(c);
 
-  ASSERT_EQ(0, tester.device()->fFrameCount);
+  ASSERT_EQ(0, tester.device()->fBatchCount);
   ASSERT_FALSE(tester.device()->fTransportPlaying);
 
   // empty timeline
   tester.newTimeline().execute();
 
-  ASSERT_EQ(0, tester.device()->fFrameCount);
+  ASSERT_EQ(0, tester.device()->fBatchCount);
   ASSERT_FALSE(tester.device()->fTransportPlaying);
 
   long expectedBatch = 0;
@@ -389,22 +389,22 @@ TEST(Timeline, Usage)
   tester.newTimeline()
     .onEveryBatch(checkEveryBatch)
     .event([&checkBatch](long iAtBatch) { checkBatch(0, iAtBatch); return true; })
-    .event([&tester]() { ASSERT_EQ(0, tester.device()->fFrameCount); })
+    .event([&tester]() { ASSERT_EQ(0, tester.device()->fBatchCount); })
     .nextBatch()
     .event([&checkBatch](long iAtBatch) { checkBatch(1, iAtBatch); return true; })
-    .event([&tester]() { ASSERT_EQ(1, tester.device()->fFrameCount); })
+    .event([&tester]() { ASSERT_EQ(1, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_EQ(128, tester.device()->fNoteEvents.size()); }) // initial setup
     .after(sequencer::Duration::k1Beat) // 344 batches (see Duration.Conversion test)
     .event([&checkBatch](long iAtBatch) { checkBatch(346, iAtBatch); return true; })
-    .event([&tester]() { ASSERT_EQ(346, tester.device()->fFrameCount); })
+    .event([&tester]() { ASSERT_EQ(346, tester.device()->fBatchCount); })
     .execute();
 
-  ASSERT_EQ(347, tester.device()->fFrameCount);
+  ASSERT_EQ(347, tester.device()->fBatchCount);
   ASSERT_FALSE(tester.device()->fTransportPlaying);
   ASSERT_EQ(0, tester.device()->fNoteEvents.size());
 
   // reset frame count
-  tester.device()->fFrameCount = 0;
+  tester.device()->fBatchCount = 0;
   expectedBatch = 0;
 
   // test note on/off
@@ -415,7 +415,7 @@ TEST(Timeline, Usage)
 
     .nextBatch() // 1
     .event([&checkBatch](long iAtBatch) { checkBatch(1, iAtBatch); return true; })
-    .event([&tester]() { ASSERT_EQ(1, tester.device()->fFrameCount); })
+    .event([&tester]() { ASSERT_EQ(1, tester.device()->fBatchCount); })
     .event([&tester]() {
       ASSERT_EQ(1, tester.device()->fNoteEvents.size());
       ASSERT_EQ(Midi::A_440, tester.device()->fNoteEvents[0].fNoteNumber);
@@ -425,17 +425,17 @@ TEST(Timeline, Usage)
 
     .nextBatch() // 2
     .event([&checkBatch](long iAtBatch) { checkBatch(2, iAtBatch); return true; })
-    .event([&tester]() { ASSERT_EQ(2, tester.device()->fFrameCount); })
+    .event([&tester]() { ASSERT_EQ(2, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_EQ(0, tester.device()->fNoteEvents.size()); })
 
     .after(rack::Duration{343}) // 2 + 343 = 345
     .event([&checkBatch](long iAtBatch) { checkBatch(345, iAtBatch); return true; })
-    .event([&tester]() { ASSERT_EQ(345, tester.device()->fFrameCount); })
+    .event([&tester]() { ASSERT_EQ(345, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_EQ(0, tester.device()->fNoteEvents.size()); })
 
     .nextBatch() // 346
     .event([&checkBatch](long iAtBatch) { checkBatch(346, iAtBatch); return true; })
-    .event([&tester]() { ASSERT_EQ(346, tester.device()->fFrameCount); })
+    .event([&tester]() { ASSERT_EQ(346, tester.device()->fBatchCount); })
     .event([&tester]() {
       ASSERT_EQ(1, tester.device()->fNoteEvents.size());
       ASSERT_EQ(Midi::A_440, tester.device()->fNoteEvents[0].fNoteNumber);
@@ -446,7 +446,7 @@ TEST(Timeline, Usage)
     .execute();
 
   // reset frame count
-  tester.device()->fFrameCount = 0;
+  tester.device()->fBatchCount = 0;
 
   ASSERT_FALSE(tester.device()->fTransportPlaying);
 
@@ -457,7 +457,7 @@ TEST(Timeline, Usage)
     .event([&checkBatch](long iAtBatch) { checkBatch(0, iAtBatch); return true; })
     .nextBatch()
     .event([&checkBatch](long iAtBatch) { checkBatch(1, iAtBatch); return true; })
-    .event([&tester]() { ASSERT_EQ(1, tester.device()->fFrameCount); })
+    .event([&tester]() { ASSERT_EQ(1, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_TRUE(tester.device()->fTransportPlaying); })
     .event([&tester]() { ASSERT_EQ(0, tester.device()->fTransportPlayPos); })
     .nextBatch()

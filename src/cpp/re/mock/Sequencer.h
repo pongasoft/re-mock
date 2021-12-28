@@ -168,14 +168,13 @@ public:
   }
 
   Track &event(Time iAt, Event iEvent) { return event(iAt.toPPQ(fTimeSignature) , std::move(iEvent)); };
-
   Track &event(Time iAt, SimpleEvent iEvent) { return event(iAt, wrap(std::move(iEvent))); }
 
   Track &event(Event iEvent) { return event(fCurrentTime, std::move(iEvent)); }
-
   Track &event(SimpleEvent iEvent) { return event(wrap(std::move(iEvent))); }
 
   inline Track &event(PPQ iAt, Event iEvent) { return event(iAt.fCount, std::move(iEvent)); }
+  inline Track &event(PPQ iAt, SimpleEvent iEvent) { return event(iAt.fCount, wrap(std::move(iEvent))); }
 
   Track &onEveryBatch(Event iEvent);
   Track &onEveryBatch(SimpleEvent iEvent) { return onEveryBatch(wrap(iEvent)); }
