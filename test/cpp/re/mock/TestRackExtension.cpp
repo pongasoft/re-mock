@@ -348,7 +348,7 @@ TEST(RackExtension, RealtimeController_NativeObject)
 
     auto re = rack.newDevice(c);
 
-    // first frame (default to noop)
+    // first batch (default to noop)
     ASSERT_EQ(0, Gain::fCount);
     ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
     rack.nextBatch();
@@ -458,7 +458,7 @@ TEST(RackExtension, RealtimeController_Blob)
 
   auto re = rack.newDevice(c);
 
-  // first frame (default to noop)
+  // first batch (default to noop)
   ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
   rack.nextBatch();
 
@@ -656,7 +656,7 @@ TEST(RackExtension, RealtimeController_Sample)
 
   auto re = rack.newDevice(c);
 
-  // first frame (default to noop)
+  // first batch (default to noop)
   ASSERT_EQ("noop -> void", re.getString("/custom_properties/prop_function_return"));
   rack.nextBatch();
 
@@ -970,7 +970,7 @@ TEST(RackExtension, RealtimeController_UserSample)
 
   auto re = rack.newDevice(c);
 
-  // first frame
+  // first batch
   rack.nextBatch();
 
   ASSERT_EQ("i=0;i.fc=0.0;i.rfc=0.0;i.ch=1.0;i.sr=1.0;i.st=0.0;"

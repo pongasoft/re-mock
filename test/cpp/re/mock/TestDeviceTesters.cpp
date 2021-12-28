@@ -88,11 +88,11 @@ TEST(StudioEffectTester, Sample)
   }
 
   {
-    std::vector<int> frames{};
+    std::vector<int> batches{};
 
     auto processedSine = tester.processSample(ConfigFile{sinePath},
                                               time::Duration{1},
-                                              tester.newTimeline().onEveryBatch([&frames](long f) { frames.emplace_back(f); return true; }));
+                                              tester.newTimeline().onEveryBatch([&batches](long f) { batches.emplace_back(f); return true; }));
 
     // 1ms at 44100 is 44.1 samples => 45 samples
     auto expectedSine = sine; // sine (100 samples) + tail of 45 samples
@@ -100,7 +100,7 @@ TEST(StudioEffectTester, Sample)
       expectedSine.fData.emplace_back(0);
 
     ASSERT_EQ(expectedSine, processedSine);
-    ASSERT_EQ(std::vector<int>({0, 1, 2}), frames); // 145 samples = 3 rack frames
+    ASSERT_EQ(std::vector<int>({0, 1, 2}), batches); // 145 samples = 3 batches
   }
 }
 
@@ -403,7 +403,7 @@ TEST(Timeline, Usage)
   ASSERT_FALSE(tester.device()->fTransportPlaying);
   ASSERT_EQ(0, tester.device()->fNoteEvents.size());
 
-  // reset frame count
+  // reset batch count
   tester.device()->fBatchCount = 0;
   expectedBatch = 0;
 
@@ -445,7 +445,7 @@ TEST(Timeline, Usage)
 
     .execute();
 
-  // reset frame count
+  // reset batch count
   tester.device()->fBatchCount = 0;
 
   ASSERT_FALSE(tester.device()->fTransportPlaying);

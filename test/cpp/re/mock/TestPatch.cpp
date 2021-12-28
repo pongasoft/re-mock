@@ -212,7 +212,7 @@ TEST(Patch, Load)
 
   auto re = rack.newDevice(c);
 
-  // first frame: get default_value->patch_value
+  // first batch: get default_value->patch_value
   rack.nextBatch();
   ASSERT_EQ(7, re->fDiffs.size());
 

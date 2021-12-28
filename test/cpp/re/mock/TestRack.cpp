@@ -304,7 +304,7 @@ TEST(Rack, CircularWiring)
   rack.nextBatch();
 
   // due to circular dependency, and the fact that devices are processed in order of id, ex2 out will be processed
-  // first so the CV dev->fValue will make in this frame while the audio buffer will make it in the next
+  // first so the CV dev->fValue will make in this batch while the audio buffer will make it in the next
   ASSERT_EQ(ex2->fBuffer, MockAudioDevice::buffer(0, 0));
   ASSERT_FLOAT_EQ(3.0, ex1->fValue);
 
@@ -812,7 +812,7 @@ TEST(Rack, Transport)
   // inherit the "latest" transport (nextBatch has not been called yet)
   ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
   rack.nextBatch();
-  // still gets the same value since it just processed the frame starting at 38645
+  // still gets the same value since it just processed the batch starting at 38645
   ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
 
 }

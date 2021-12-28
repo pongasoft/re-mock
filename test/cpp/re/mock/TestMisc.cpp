@@ -65,19 +65,19 @@ TEST(Misc, RequestReset)
 
   auto tester = HelperTester<Device>(c);
 
-  // first frame
+  // first batch
   tester.nextBatch();
 
   // store values for requestResetAudio and requestResetStop
   auto requestResetAudio = tester.device()->fRequestResetAudio;
   auto requestResetStop = tester.device()->fRequestStop;
 
-  // next frame => nothing should have changed
+  // next batch => nothing should have changed
   tester.nextBatch();
   ASSERT_EQ(requestResetAudio, tester.device()->fRequestResetAudio);
   ASSERT_EQ(requestResetStop, tester.device()->fRequestStop);
 
-  // requestResetAudio / next frame => requestResetAudio should have changed
+  // requestResetAudio / next batch => requestResetAudio should have changed
   tester.device().requestResetAudio();
   tester.nextBatch();
 
@@ -86,7 +86,7 @@ TEST(Misc, RequestReset)
 
   requestResetAudio = tester.device()->fRequestResetAudio;
 
-  // requestStop / next frame => requestStop should have changed
+  // requestStop / next batch => requestStop should have changed
   tester.device().requestStop();
   tester.nextBatch();
   ASSERT_EQ(requestResetAudio, tester.device()->fRequestResetAudio);
@@ -94,7 +94,7 @@ TEST(Misc, RequestReset)
 
   requestResetStop = tester.device()->fRequestStop;
 
-  // next frame => nothing should have changed
+  // next batch => nothing should have changed
   tester.nextBatch();
   ASSERT_EQ(requestResetAudio, tester.device()->fRequestResetAudio);
   ASSERT_EQ(requestResetStop, tester.device()->fRequestStop);
