@@ -21,10 +21,41 @@
 
 #include <JukeboxTypes.h>
 #include <map>
+#include <cmath>
 
 namespace re::mock {
 
 class Motherboard;
+
+class PPQAccumulator
+{
+public:
+  explicit PPQAccumulator(TJBox_Float64 iBatchLengthPPQ, TJBox_Float64 iCurrentPlayPos = 0.0)
+    : fBatchLengthPPQ{iBatchLengthPPQ},
+      fInitialPlayPos{iCurrentPlayPos}
+  {}
+
+  TJBox_Float64 getCurrentPlayPos() const { return fInitialPlayPos + fCurrentDelta; }
+
+  TJBox_Float64 peekNext(size_t iCount = 1) const
+  {
+    return fInitialPlayPos + std::round((fCurrentBatch + iCount) * fBatchLengthPPQ);
+  }
+
+  TJBox_Int64 next(size_t iCount = 1)
+  {
+    fCurrentDelta = std::round((fCurrentBatch + iCount) * fBatchLengthPPQ);
+    fCurrentBatch += iCount;
+    return getCurrentPlayPos();
+  }
+
+private:
+  TJBox_Float64 fBatchLengthPPQ;
+  TJBox_Float64 fInitialPlayPos;
+
+  size_t fCurrentBatch{};
+  TJBox_Float64 fCurrentDelta{};
+};
 
 class Transport
 {
@@ -39,8 +70,7 @@ public:
 
   void nextBatch();
 
-  void start() { setPlaying(true);}
-  void stop() { setPlaying(false);}
+  int getSampleRate() const { return fSampleRate; }
 
   bool getPlaying() const { return fPlaying; }
   void setPlaying(bool iPlaying);
@@ -74,6 +104,13 @@ public:
 
   TJBox_UInt64 getBarStartPos() const { return fBarStartPos; }
 
+  TJBox_Int64 getPlayBatchEndPos() const { return getBatchPPQAccumulator().peekNext(); }
+
+  TJBox_UInt64 getSongEndPos() const { return fSongEndPos; }
+  void setSongEndPos(TJBox_UInt64 iSongEndPos) { fSongEndPos = iSongEndPos; }
+
+  TJBox_UInt64 computeNumBatches(TJBox_Float64 iDurationPPQ) const;
+
 protected:
   TJBox_Float64 getBatchLengthPPQ() const;
   TJBox_Float64 getBarLengthPPQ() const;
@@ -85,8 +122,13 @@ protected:
 
   bool setBooleanValue(bool &oCurrentValue, bool iNewValue, TJBox_TransportTag iTag);
 
+public:
+
+  PPQAccumulator &getBatchPPQAccumulator() const;
+
 private:
   int fSampleRate;
+
   bool fPlaying{};
   TJBox_Int64 fPlayPos{}; // can be negative
   TJBox_Float64 fTempo{120}; // [1.0, 999.999]
@@ -99,6 +141,9 @@ private:
   TJBox_UInt64 fLoopEndPos{}; // **is** allowed to be less than fLoopStartPos
   TJBox_UInt64 fBarStartPos{};
 
+  TJBox_UInt64 fSongEndPos{};
+
+  mutable std::optional<PPQAccumulator> fBatchPPQAccumulator{};
   mutable std::optional<TJBox_Float64> fBatchLengthPPQ{};
   mutable std::optional<TJBox_Float64> fBarLengthPPQ{};
 

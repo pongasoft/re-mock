@@ -34,46 +34,57 @@ MockAudioDevice::MockAudioDevice(int iSampleRate) : MockDevice{iSampleRate} {}
 //------------------------------------------------------------------------
 // MockAudioDevice::copyBuffer
 //------------------------------------------------------------------------
-void MockAudioDevice::copyBuffer(MockAudioDevice::StereoSocket const &iFromSocket,
+bool MockAudioDevice::copyBuffer(MockAudioDevice::StereoSocket const &iFromSocket,
                                  MockAudioDevice::StereoBuffer &iToBuffer)
 {
-  copyBuffer(iFromSocket.fLeft, iToBuffer.fLeft);
-  copyBuffer(iFromSocket.fRight, iToBuffer.fRight);
+  auto res = false;
+
+  res |= copyBuffer(iFromSocket.fLeft, iToBuffer.fLeft);
+  res |= copyBuffer(iFromSocket.fRight, iToBuffer.fRight);
+
+  return res;
 }
 
 //------------------------------------------------------------------------
 // MockAudioDevice::copyBuffer
 //------------------------------------------------------------------------
-void MockAudioDevice::copyBuffer(MockAudioDevice::StereoBuffer const &iFromBuffer,
+bool MockAudioDevice::copyBuffer(MockAudioDevice::StereoBuffer const &iFromBuffer,
                                  MockAudioDevice::StereoSocket const &iToSocket)
 {
-  copyBuffer(iFromBuffer.fLeft, iToSocket.fLeft);
-  copyBuffer(iFromBuffer.fRight, iToSocket.fRight);
+  auto res = false;
 
+  res |= copyBuffer(iFromBuffer.fLeft, iToSocket.fLeft);
+  res |= copyBuffer(iFromBuffer.fRight, iToSocket.fRight);
+
+  return res;
 }
 
 //------------------------------------------------------------------------
 // MockAudioDevice::copyBuffer
 //------------------------------------------------------------------------
-void MockAudioDevice::copyBuffer(TJBox_ObjectRef const &iFromSocket, MockAudioDevice::buffer_type &iToBuffer)
+bool MockAudioDevice::copyBuffer(TJBox_ObjectRef const &iFromSocket, MockAudioDevice::buffer_type &iToBuffer)
 {
   if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "connected"))))
   {
     auto dspFromBuffer = JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "buffer"));
     JBox_GetDSPBufferData(dspFromBuffer, 0, iToBuffer.size(), iToBuffer.data());
+    return true;
   }
+  return false;
 }
 
 //------------------------------------------------------------------------
 // MockAudioDevice::copyBuffer
 //------------------------------------------------------------------------
-void MockAudioDevice::copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket)
+bool MockAudioDevice::copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket)
 {
   if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "connected"))))
   {
     auto dspToBuffer = JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "buffer"));
     JBox_SetDSPBufferData(dspToBuffer, 0, iFromBuffer.size(), iFromBuffer.data());
+    return true;
   }
+  return false;
 }
 
 //------------------------------------------------------------------------
@@ -271,6 +282,7 @@ const DeviceConfig<MAUDst> MAUDst::CONFIG =
 MAUDst::MAUDst(int iSampleRate) :
   MockAudioDevice(iSampleRate), fInSocket{StereoSocket::input()}
 {
+  fSample.stereo().sample_rate(fSampleRate);
 }
 
 //------------------------------------------------------------------------
@@ -278,7 +290,10 @@ MAUDst::MAUDst(int iSampleRate) :
 //------------------------------------------------------------------------
 void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 {
-  copyBuffer(fInSocket, fBuffer);
+  fBuffer.fill(0, 0);
+
+  if(copyBuffer(fInSocket, fBuffer))
+    fSample.append(fBuffer);
 }
 
 //------------------------------------------------------------------------
@@ -335,35 +350,44 @@ MockCVDevice::MockCVDevice(int iSampleRate) : MockDevice{iSampleRate} {}
 //------------------------------------------------------------------------
 // MockCVDevice::loadValue
 //------------------------------------------------------------------------
-void MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket, TJBox_Float64 &oValue)
+bool MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket, TJBox_Float64 &oValue)
 {
   if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "connected"))))
+  {
     oValue = JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "value")));
+    return true;
+  }
+
+  return false;
 }
 
 //------------------------------------------------------------------------
 // MockCVDevice::storeValue
 //------------------------------------------------------------------------
-void MockCVDevice::storeValue(TJBox_Float64 iValue, TJBox_ObjectRef const &iToSocket)
+bool MockCVDevice::storeValue(TJBox_Float64 iValue, TJBox_ObjectRef const &iToSocket)
 {
   if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "connected"))))
+  {
     JBox_StoreMOMProperty(JBox_MakePropertyRef(iToSocket, "value"), JBox_MakeNumber(iValue));
+    return true;
+  }
+  return false;
 }
 
 //------------------------------------------------------------------------
 // MockCVDevice::loadValue
 //------------------------------------------------------------------------
-void MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket)
+bool MockCVDevice::loadValue(TJBox_ObjectRef const &iFromSocket)
 {
-  loadValue(iFromSocket, fValue);
+  return loadValue(iFromSocket, fValue);
 }
 
 //------------------------------------------------------------------------
 // MockCVDevice::storeValue
 //------------------------------------------------------------------------
-void MockCVDevice::storeValue(TJBox_ObjectRef const &iToSocket)
+bool MockCVDevice::storeValue(TJBox_ObjectRef const &iToSocket)
 {
-  storeValue(fValue, iToSocket);
+  return storeValue(fValue, iToSocket);
 }
 
 //------------------------------------------------------------------------
@@ -415,7 +439,8 @@ MCVDst::MCVDst(int iSampleRate) :
 //------------------------------------------------------------------------
 void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 {
-  loadValue(fInSocket);
+  if(loadValue(fInSocket))
+    fValues.emplace_back(fValue);
 }
 
 //------------------------------------------------------------------------
@@ -633,6 +658,34 @@ MockDevice::NoteEvents &MockDevice::NoteEvents::clear()
 }
 
 //------------------------------------------------------------------------
+// MockDevice::Sample::toString
+//------------------------------------------------------------------------
+std::string MockAudioDevice::Sample::toString(size_t iFrameCount) const
+{
+  auto sampleCount = std::min<size_t>(iFrameCount, getFrameCount()) * fChannels;
+
+  std::ostringstream os{};
+
+  if(fData.size() < sampleCount)
+  {
+    os << "{.fChannels=" << fChannels
+       << ",.fSampleRate=" << fSampleRate
+       << ",.fData[" << fData.size() << "]{" << stl::Join(fData, ", ") << "}}";
+  }
+  else
+  {
+    os << "{.fChannels=" << fChannels
+       << ",.fSampleRate=" << fSampleRate
+       << ",.fData[" << fData.size() << "]{";
+    stl::join(std::begin(fData), std::begin(fData) + sampleCount, os, ",");
+    os << ", ... }}";
+  }
+
+  return os.str();
+}
+
+
+//------------------------------------------------------------------------
 // MockDevice::Sample::operator<<
 //------------------------------------------------------------------------
 std::ostream &operator<<(std::ostream &os, MockAudioDevice::Sample const &iBuffer)
@@ -820,13 +873,27 @@ MockAudioDevice::Sample &MockAudioDevice::Sample::applyGain(TJBox_Float32 iGain)
 //------------------------------------------------------------------------
 MockAudioDevice::Sample MockAudioDevice::Sample::subSample(size_t iFromFrame, size_t iFrameCount) const
 {
-  auto sampleCount = std::min<size_t>(iFrameCount, getFrameCount()) * fChannels;
+  auto sampleCount = std::min<size_t>(iFrameCount, getFrameCount() - iFromFrame) * fChannels;
   auto startSample = static_cast<ptrdiff_t>(iFromFrame * fChannels);
   auto endSample = static_cast<ptrdiff_t>(startSample + sampleCount);
+  RE_MOCK_ASSERT(startSample >= 0 && startSample < fData.size());
+  RE_MOCK_ASSERT(endSample >= startSample && endSample <= fData.size());
   Sample res{fChannels, fSampleRate};
   res.fData.reserve(sampleCount);
   std::copy(std::begin(fData) + startSample, std::begin(fData) + endSample, std::back_inserter(res.fData));
   return res;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::trimLeft
+//------------------------------------------------------------------------
+MockAudioDevice::Sample MockAudioDevice::Sample::trimLeft() const
+{
+  auto iter = std::find_if(fData.begin(), fData.end(), [](auto s) { return !isSilent(s); });
+  if(iter != fData.end())
+    return subSample((iter - fData.begin()) / fChannels);
+  else
+    return clone();
 }
 
 namespace impl {

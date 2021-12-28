@@ -31,6 +31,13 @@ class FileManager
 public:
   static std::optional<Resource::Blob> loadBlob(ConfigFile const &iFile);
   static std::optional<Resource::Sample> loadSample(ConfigFile const &iFile);
+  static void saveSample(Resource::Sample const &iSample, ConfigFile const &iToFile) {
+    saveSample(iSample.fChannels, iSample.fSampleRate, iSample.fData, iToFile);
+  }
+  static void saveSample(TJBox_UInt32 iChannels,
+                         TJBox_UInt32 iSampleRate,
+                         std::vector<TJBox_AudioSample> const &iData,
+                         ConfigFile const &iToFile);
 
   static std::ifstream::pos_type fileSize(ConfigFile const &iFile);
   static bool fileExists(ConfigFile const &iFile);

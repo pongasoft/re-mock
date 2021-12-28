@@ -621,6 +621,105 @@ rtc_bindings = {
   ASSERT_EQ(re.getInstanceId(), re->fInstanceID);
 }
 
+// PPQAccumulator.next
+TEST(PPQAccumulator, next)
+{
+  // 44100
+  {
+    Transport transport{44100};
+    auto acc = transport.getBatchPPQAccumulator();
+
+    std::vector<int> expected = {
+      0,     // 0 | 0.000
+      45,    // 1 | 44.582
+      89,    // 2 | 89.165
+      134,   // 3 | 133.747
+      178,   // 4 | 178.329
+      223,   // 5 | 222.912
+      267,   // 6 | 267.494
+      312,   // 7 | 312.076
+      357,   // 8 | 356.659
+      401,   // 9 | 401.241
+      446,   // 10 | 445.823
+      4458,  // 100 | 4458.231
+      44582, // 1000 | 44582.313
+      445823 // 10000 | 445823.129
+    };
+
+    std::vector<int> v = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 1000, 10000};
+
+    std::vector<int> computed{};
+
+    for(auto i: v)
+      computed.emplace_back(static_cast<int>(acc.peekNext(i)));
+
+    ASSERT_EQ(expected, computed);
+
+    auto expectedValue = acc.peekNext(100);
+
+    for(int i = 0; i < 100; i++)
+      acc.next();
+
+    ASSERT_FLOAT_EQ(expectedValue, acc.getCurrentPlayPos());
+  }
+
+  // 48000
+  {
+    std::vector<int> expected = {
+      0,      // 0 | 0.000
+      41,     // 1 | 40.960
+      82,     // 2 | 81.920
+      123,    // 3 | 122.880
+      164,    // 4 | 163.840
+      205,    // 5 | 204.800
+      246,    // 6 | 245.760
+      287,    // 7 | 286.720
+      328,    // 8 | 327.680
+      369,    // 9 | 368.640
+      410,    // 10 | 409.600
+      4096,   // 100 | 4096.000
+      40960,  // 1000 | 40960.000
+      409600, // 10000 | 409600.000
+    };
+    Transport transport{48000};
+    auto acc = transport.getBatchPPQAccumulator();
+
+    std::vector<int> v = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 1000, 10000};
+
+    std::vector<int> computed{};
+
+    for(auto i: v)
+      computed.emplace_back(static_cast<int>(acc.peekNext(i)));
+
+    ASSERT_EQ(expected, computed);
+
+    auto expectedValue = acc.peekNext(100);
+
+    for(int i = 0; i < 100; i++)
+      acc.next();
+
+    ASSERT_FLOAT_EQ(expectedValue, acc.getCurrentPlayPos());
+
+    // make sure it still works if play pos is not 0!
+    transport.setPlayPos(5000);
+
+    acc = transport.getBatchPPQAccumulator();
+    stl::for_each(expected, [](auto &v) { v += 5000;});
+    computed.clear();
+    for(auto i: v)
+      computed.emplace_back(static_cast<int>(acc.peekNext(i)));
+
+    ASSERT_EQ(expected, computed);
+
+    expectedValue = acc.peekNext(100);
+
+    for(int i = 0; i < 100; i++)
+      acc.next();
+
+    ASSERT_FLOAT_EQ(expectedValue, acc.getCurrentPlayPos());
+  }
+}
+
 // Rack.Transport
 TEST(Rack, Transport)
 {
@@ -633,8 +732,8 @@ TEST(Rack, Transport)
                        rack.getTransportTempo(),
                        rack.getTransportFilteredTempo(),
                        rack.getTransportTempoAutomation() ? "true": "false",
-                       rack.getTransportTimeSignatureNumerator(),
-                       rack.getTransportTimeSignatureDenominator(),
+                       rack.getTransportTimeSignature().numerator(),
+                       rack.getTransportTimeSignature().denominator(),
                        rack.getTransportLoopEnabled() ? "true": "false",
                        rack.getTransportLoopStartPos(),
                        rack.getTransportLoopEndPos(),
@@ -672,8 +771,7 @@ TEST(Rack, Transport)
   rack.setTransportPlayPos(2);
   rack.setTransportTempo(130);
   rack.setTransportFilteredTempo(121);
-  rack.setTransportTimeSignatureNumerator(5);
-  rack.setTransportTimeSignatureDenominator(8);
+  rack.setTransportTimeSignature(sequencer::TimeSignature(5, 8));
   rack.setTransportLoopStartPos(3);
   rack.setTransportLoopEndPos(9);
 
@@ -703,19 +801,19 @@ TEST(Rack, Transport)
 
   rack.setTransportLoopEnabled(true);
 
-  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
+  ASSERT_EQ("p=true,pp=38597,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
   rack.nextBatch();
-  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38597,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38597,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
 
   // make sure that a new device gets the "latest" transport
-  ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
+  ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
   auto pst = rack.newDevice(MAUPst::CONFIG);
   // inherit the "latest" transport (nextBatch has not been called yet)
-  ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
   rack.nextBatch();
-  // still gets the same value since it just processed the frame starting at 38644
-  ASSERT_EQ("p=true,pp=38644,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
+  // still gets the same value since it just processed the frame starting at 38645
+  ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
 
 }
 

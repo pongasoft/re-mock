@@ -64,10 +64,22 @@ void Transport::nextBatch()
 
   if(fPlaying)
   {
-    auto newPlayPos = static_cast<TJBox_Int64>(std::round(fPlayPos + getBatchLengthPPQ()));
+    auto newPlayPos = getBatchPPQAccumulator().next();
+
+    // account for looping
     if(fLoopEnabled && fPlayPos <= fLoopEndPos && newPlayPos > fLoopEndPos)
       newPlayPos = fLoopStartPos;
-    setPlayPos(newPlayPos);
+
+    if(newPlayPos >= fSongEndPos)
+    {
+      // we are done (reached the end of the song)
+      setPlaying(false);
+    }
+    else
+    {
+      // we move the play position
+      setPlayPos(newPlayPos);
+    }
   }
 }
 
@@ -81,6 +93,30 @@ TJBox_Float64 Transport::getBatchLengthPPQ() const
     fBatchLengthPPQ = (kBatchSize / static_cast<TJBox_Float64>(fSampleRate)) * ((fTempo / 60.0) * kPPQResolution);
   }
   return *fBatchLengthPPQ;
+}
+
+//------------------------------------------------------------------------
+// Transport::getBatchPPQAccumulator
+//------------------------------------------------------------------------
+PPQAccumulator &Transport::getBatchPPQAccumulator() const
+{
+  if(!fBatchPPQAccumulator)
+  {
+    fBatchPPQAccumulator = PPQAccumulator(getBatchLengthPPQ(), static_cast<TJBox_Float64>(fPlayPos));
+  }
+  return *fBatchPPQAccumulator;
+}
+
+//------------------------------------------------------------------------
+// Transport::computeNumBatches
+//------------------------------------------------------------------------
+TJBox_UInt64 Transport::computeNumBatches(TJBox_Float64 iDurationPPQ) const
+{
+  PPQAccumulator acc{getBatchLengthPPQ()};
+
+  auto numBatches = static_cast<size_t>(iDurationPPQ / getBatchLengthPPQ());
+
+  return acc.peekNext(numBatches) < iDurationPPQ ? numBatches + 1 : numBatches;
 }
 
 //------------------------------------------------------------------------
@@ -141,6 +177,8 @@ void Transport::setPlayPos(TJBox_Int64 iPos)
   {
     // recomputes the bar start pos
     recomputeBarStartPos();
+    if(fBatchPPQAccumulator && fBatchPPQAccumulator->getCurrentPlayPos() != iPos)
+      fBatchPPQAccumulator = std::nullopt;
   }
 }
 
@@ -161,7 +199,10 @@ void Transport::recomputeBarStartPos()
 void Transport::setTempo(TJBox_Float64 iTempo)
 {
   if(setNumberValue(fTempo, iTempo, kJBox_TransportTempo))
+  {
     fBatchLengthPPQ = std::nullopt;
+    fBatchPPQAccumulator = std::nullopt;
+  }
 }
 
 //------------------------------------------------------------------------
@@ -221,6 +262,5 @@ void Transport::setLoopEndPos(TJBox_UInt64 iLoopEndPos)
 {
   setNumberValue(fLoopEndPos, iLoopEndPos, kJBox_TransportLoopEndPos);
 }
-
 
 }

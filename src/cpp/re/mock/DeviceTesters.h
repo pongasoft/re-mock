@@ -17,25 +17,84 @@
  */
 
 #pragma once
-#ifndef __Pongasoft_re_mock_effect_tester_h__
-#define __Pongasoft_re_mock_effect_tester_h__
+#ifndef __Pongasoft_re_mock_device_testers_h__
+#define __Pongasoft_re_mock_device_testers_h__
 
 #include "Rack.h"
 #include "MockDevices.h"
+#include <limits>
 
 namespace re::mock {
 
-struct Duration
+class DeviceTester;
+class ExtensionEffectTester;
+
+namespace tester {
+
+class Timeline
 {
-  struct Time { float fMilliseconds{}; };
-  struct Frames { long fCount{}; };
-  struct Batches { long fCount{}; };
+public:
+  using SimpleEvent = std::function<void()>;
+  using Event = std::function<bool(long iAtBatch)>;
 
-  using Type = std::variant<Time, Frames, Batches>;
+  static const Event kNoOp;
+  static const Event kEnd;
 
-  static Batches toBatches(Type iType, int iSampleRate);
-  static Frames toFrames(Type iType, int iSampleRate);
+  static Event wrap(SimpleEvent iEvent);
+
+public:
+  Timeline &after(Duration iDuration);
+
+  Timeline &nextBatch() { return after(rack::Duration{1}); }
+
+  Timeline &event(Event iEvent) { return event(fCurrentBath, std::move(iEvent)); }
+  Timeline &event(SimpleEvent iEvent) { return event(fCurrentBath, std::move(iEvent)); }
+
+  Timeline &onEveryBatch(Event iEvent);
+  Timeline &onEveryBatch(SimpleEvent iEvent) { return onEveryBatch(wrap(iEvent)); }
+
+  Timeline &transportStart();
+  Timeline &transportStop();
+
+  Timeline &end() { return event(kEnd); }
+
+  Timeline &notes(MockDevice::NoteEvents iNoteEvents);
+  Timeline &note(TJBox_UInt8 iNoteNumber, Duration iDuration, TJBox_UInt8 iNoteVelocity = 100);
+
+  void execute(std::optional<Duration> iDuration = std::nullopt) const;
+  void play(std::optional<Duration> iDuration = std::nullopt) const;
+
+  friend class re::mock::DeviceTester;
+
+private:
+  Timeline(DeviceTester *iTester) : fTester{iTester} {}
+
+  Timeline &event(long iAtBatch, Event iEvent);
+  inline Timeline &event(long iAtBatch, SimpleEvent iEvent) { return event(iAtBatch, wrap(std::move(iEvent))); }
+
+private:
+  struct EventImpl
+  {
+    int fId;
+    long fAtBatch;
+    Event fEvent;
+  };
+
+protected:
+  void ensureSorted() const;
+
+  std::vector<EventImpl> const &getEvents() const { ensureSorted(); return fEvents; }
+
+private:
+  DeviceTester *fTester;
+  long fCurrentBath{};
+  std::vector<EventImpl> fEvents{};
+  mutable bool fSorted{true};
+  int fLastEventId{};
+  std::vector<Event> fOnEveryBatchEvents{};
 };
+
+}
 
 /**
  * This class represents the base class for all the testers provided by this framework:
@@ -94,10 +153,20 @@ public:
 
   void unwire(Rack::ExtensionDevice<MNPDst> &iDst);
 
-  void nextBatches(Duration::Type iDuration);
+  inline void transportStart() { fRack.transportStart(); }
+  inline void transportStop() { fRack.transportStop(); }
+
+  sequencer::Track &getSequencerTrack() const { return fDevice.getSequencerTrack(); }
+
+  tester::Timeline newTimeline() { return tester::Timeline(this); }
+
+  void nextBatches(Duration iDuration);
 
   MockAudioDevice::Sample loadSample(ConfigFile const &iSampleFile) const;
   MockAudioDevice::Sample loadSample(std::string const &iSampleResource) const;
+  void saveSample(MockAudioDevice::Sample const &iSample, ConfigFile const &iToFile) const;
+
+  friend class re::mock::tester::Timeline;
 
 protected:
   template<typename Device>
@@ -137,7 +206,7 @@ protected:
 class ExtensionEffectTester : public DeviceTester
 {
 public:
-  using optional_duration_t = std::optional<Duration::Type>;
+  using optional_duration_t = std::optional<Duration>;
   using before_frame_hook_t = std::function<void(int)>;
 
 public:
@@ -150,18 +219,18 @@ public:
   void nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
 
   MockAudioDevice::Sample processSample(MockAudioDevice::Sample const &iSample,
-                                        optional_duration_t iTail = std::nullopt,
-                                        before_frame_hook_t iBeforeFrameHook = {});
+                                        std::optional<Duration> iTail = std::nullopt,
+                                        std::optional<tester::Timeline> iTimeline = std::nullopt);
 
   MockAudioDevice::Sample processSample(ConfigFile const &iSampleFile,
-                                        optional_duration_t iTail = std::nullopt,
-                                        before_frame_hook_t iBeforeFrameHook = {}) {
-    return processSample(loadSample(iSampleFile), iTail, std::move(iBeforeFrameHook));
+                                        std::optional<Duration> iTail = std::nullopt,
+                                        std::optional<tester::Timeline> iTimeline = std::nullopt) {
+    return processSample(loadSample(iSampleFile), iTail, std::move(iTimeline));
   }
   MockAudioDevice::Sample processSample(std::string const &iSampleResource,
                                         optional_duration_t iTail = std::nullopt,
-                                        before_frame_hook_t iBeforeFrameHook = {}) {
-    return processSample(loadSample(iSampleResource), iTail, std::move(iBeforeFrameHook));
+                                        std::optional<tester::Timeline> iTimeline = std::nullopt) {
+    return processSample(loadSample(iSampleResource), iTail, std::move(iTimeline));
   }
 
   TJBox_OnOffBypassStates getBypassState() const { return fDevice.getEffectBypassState(); }
@@ -217,9 +286,6 @@ protected:
 class ExtensionInstrumentTester : public DeviceTester
 {
 public:
-  using before_frame_hook_t = std::function<void(int)>;
-
-public:
   explicit ExtensionInstrumentTester(Config const &iDeviceConfig, int iSampleRate);
 
   void wireMainOut(std::optional<std::string> iLeftOutSocketName, std::optional<std::string> iRightOutSocketName);
@@ -227,10 +293,6 @@ public:
   ExtensionInstrumentTester &setNoteEvents(MockDevice::NoteEvents iNoteEvents);
 
   MockAudioDevice::StereoBuffer nextBatch(MockDevice::NoteEvents iNoteEvents = {});
-  void nextBatch(MockDevice::NoteEvents iNoteEvents, MockAudioDevice::StereoBuffer &oOutputBuffer);
-  void nextBatch(MockAudioDevice::StereoBuffer &oOutputBuffer);
-
-  MockAudioDevice::Sample play(Duration::Type iDuration, before_frame_hook_t iBeforeFrameHook = {});
 
   inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
   inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }
@@ -250,6 +312,8 @@ public:
 
   inline Rack::ExtensionDevice<Instrument> &device() { return fInstrument; }
   inline Rack::ExtensionDevice<Instrument> const &device() const { return fInstrument; }
+
+  MockAudioDevice::Sample play(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
 
 protected:
   Rack::ExtensionDevice<Instrument> fInstrument;
@@ -301,7 +365,22 @@ Rack::ExtensionDevice<Device> DeviceTester::getExtensionDevice()
   return fRack.getDevice<Device>(fDevice.getInstanceId());
 }
 
+//------------------------------------------------------------------------
+// InstrumentTester<Instrument>::play
+//------------------------------------------------------------------------
+template<typename Instrument>
+MockAudioDevice::Sample InstrumentTester<Instrument>::play(Duration iDuration, std::optional<tester::Timeline> iTimeline)
+{
+  fDst->fSample.clear();
+  if(iTimeline)
+    iTimeline->play(iDuration);
+  else
+    newTimeline().play(iDuration);
+  return fDst->fSample;
+}
+
+
 
 }
 
-#endif //__Pongasoft_re_mock_effect_tester_h__
+#endif //__Pongasoft_re_mock_device_testers_h__

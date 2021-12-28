@@ -90,7 +90,9 @@ class MockAudioDevice : public MockDevice
 public:
   constexpr static auto LEFT_SOCKET = "L";
   constexpr static auto RIGHT_SOCKET = "R";
-  constexpr static auto NUM_SAMPLES_PER_BATCH = 64;
+  constexpr static auto NUM_SAMPLES_PER_BATCH = Transport::kBatchSize;
+  constexpr static TJBox_Float32 kJBox_SilentThreshold = 2.0e-8f;
+
 
   using buffer_type = std::array<TJBox_AudioSample, NUM_SAMPLES_PER_BATCH>;
 
@@ -128,6 +130,7 @@ public:
     Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
 
     Sample clone() const { return *this; }
+    void clear() { fData.clear(); }
 
     Sample &append(StereoBuffer const &iAudioBuffer, size_t iFrameCount = -1);
     Sample &append(Sample const &iOtherSample, size_t iFrameCount = -1);
@@ -154,6 +157,10 @@ public:
     Sample getLeftChannelSample() const;
     Sample getRightChannelSample() const;
 
+    Sample trimLeft() const;
+
+    std::string toString(size_t iFrameCount = -1) const;
+
     static Sample from(Resource::Sample iSample);
     static Sample from(StereoBuffer const &iStereoBuffer, TJBox_UInt32 iSampleRate);
 
@@ -176,12 +183,20 @@ public:
   static bool eqWithPrecision(TJBox_AudioSample iPrecision, StereoBuffer const &iBuffer1, StereoBuffer const &iBuffer2);
   static bool eqWithPrecision(TJBox_AudioSample iPrecision, buffer_type const &iBuffer1, buffer_type const &iBuffer2);
 
+  static constexpr bool isSilent(TJBox_AudioSample iSample) {
+    if(iSample < kJBox_SilentThreshold)
+      iSample = -iSample;
+    else
+      return false;
+    return iSample < kJBox_SilentThreshold;
+  }
+
 public:
   explicit MockAudioDevice(int iSampleRate);
-  static void copyBuffer(StereoSocket const &iFromSocket, StereoBuffer &iToBuffer);
-  static void copyBuffer(StereoBuffer const &iFromBuffer, StereoSocket const &iToSocket);
-  static void copyBuffer(TJBox_ObjectRef const &iFromSocket, buffer_type &iToBuffer);
-  static void copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket);
+  static bool copyBuffer(StereoSocket const &iFromSocket, StereoBuffer &iToBuffer);
+  static bool copyBuffer(StereoBuffer const &iFromBuffer, StereoSocket const &iToSocket);
+  static bool copyBuffer(TJBox_ObjectRef const &iFromSocket, buffer_type &iToBuffer);
+  static bool copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef const &iToSocket);
   static void copyBuffer(StereoBuffer const &iFromBuffer, StereoBuffer &iToBuffer);
   static void copyBuffer(buffer_type const &iFromBuffer, buffer_type &iToBuffer);
 
@@ -211,7 +226,7 @@ protected:
 };
 
 /**
- * Audio destination mock device. Copy input to `fBuffer`. */
+ * Audio destination mock device. Copy input to `fBuffer` and append to `fSample`. */
 class MAUDst : public MockAudioDevice
 {
 public:
@@ -219,6 +234,9 @@ public:
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const DeviceConfig<MAUDst> CONFIG;
+
+public:
+  Sample fSample{};
 
 protected:
   StereoSocket fInSocket{};
@@ -256,10 +274,10 @@ public:
 
 public:
   explicit MockCVDevice(int iSampleRate);
-  static void loadValue(TJBox_ObjectRef const &iFromSocket, TJBox_Float64 &oValue);
-  static void storeValue(TJBox_Float64 iValue, TJBox_ObjectRef const &iToSocket);
-  void loadValue(TJBox_ObjectRef const &iFromSocket);
-  void storeValue(TJBox_ObjectRef const &iToSocket);
+  static bool loadValue(TJBox_ObjectRef const &iFromSocket, TJBox_Float64 &oValue);
+  static bool storeValue(TJBox_Float64 iValue, TJBox_ObjectRef const &iToSocket);
+  bool loadValue(TJBox_ObjectRef const &iFromSocket);
+  bool storeValue(TJBox_ObjectRef const &iToSocket);
 
   template<typename From, typename To>
   static void wire(Rack &iRack, Rack::ExtensionDevice<From> const &iFromExtension, Rack::ExtensionDevice<To> const &iToExtension);
@@ -298,6 +316,9 @@ public:
   void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override;
 
   static const DeviceConfig<MCVDst> CONFIG;
+
+public:
+  std::vector<TJBox_Float64> fValues{};
 
 protected:
   TJBox_ObjectRef fInSocket{};

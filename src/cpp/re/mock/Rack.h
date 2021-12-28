@@ -24,8 +24,23 @@
 #include "Motherboard.h"
 #include "ObjectManager.hpp"
 #include "Transport.h"
+#include "Sequencer.h"
 
 namespace re::mock {
+
+namespace time {
+struct Duration { float fMilliseconds{}; };
+}
+
+namespace sample {
+struct Duration { long fFrames{}; };
+}
+
+namespace rack {
+struct Duration { long fBatches{}; };
+}
+
+using Duration = std::variant<time::Duration, sample::Duration, rack::Duration, sequencer::Duration>;
 
 class Rack
 {
@@ -94,6 +109,7 @@ public:
     CVInSocket getCVInSocket(std::string const &iSocketName) const;
     NoteOutSocket getNoteOutSocket() const;
     NoteInSocket getNoteInSocket() const;
+    sequencer::Track &getSequencerTrack() const { return fImpl->fSequencerTrack; }
 
     inline TJBox_Value getValue(std::string const &iPropertyPath) const { return motherboard().getValue(iPropertyPath); }
     inline void setValue(std::string const &iPropertyPath, TJBox_Value const &iValue) { motherboard().setValue(iPropertyPath, iValue); }
@@ -137,6 +153,7 @@ public:
     inline void setDSPBuffer(AudioSocket const &iSocket, Motherboard::DSPBuffer iBuffer) { motherboard().setDSPBuffer(iSocket.fSocketRef, std::move(iBuffer)); }
 
     inline void requestResetAudio() { motherboard().requestResetAudio(); }
+    inline void requestRun() { motherboard().requestRun(); }
     inline void requestStop() { motherboard().requestStop(); }
 
     template<typename T>
@@ -243,7 +260,7 @@ protected:
 
   private:
     ExtensionImpl(int id, Rack *iRack, std::unique_ptr<Motherboard> iMotherboard) :
-      fId{id}, fRack{iRack}, fMotherboard{std::move(iMotherboard)} {};
+      fId{id}, fRack{iRack}, fMotherboard{std::move(iMotherboard)}, fSequencerTrack{iRack->getTransportTimeSignature()} {};
 
     void wire(Extension::AudioOutSocket const &iOutSocket, Extension::AudioInSocket const &iInSocket);
     void wire(Extension::CVOutSocket const &iOutSocket, Extension::CVInSocket const &iInSocket);
@@ -264,6 +281,7 @@ protected:
     int fId;
     [[maybe_unused]] Rack *fRack; // unused at this time...
     std::unique_ptr<Motherboard> fMotherboard;
+    sequencer::Track fSequencerTrack;
     std::vector<Extension::AudioWire> fAudioOutWires{};
     std::vector<Extension::AudioWire> fAudioInWires{};
     std::vector<Extension::CVWire> fCVOutWires{};
@@ -274,6 +292,8 @@ protected:
   };
 
 public:
+  constexpr static auto kNumSamplesPerBatch = 64;
+
   Rack(int iSampleRate = 44100);
 
   Extension newExtension(Config const &iConfig);
@@ -296,15 +316,21 @@ public:
   void nextBatch();
 
   int getSampleRate() const { return fSampleRate; }
-  
-  bool getTransportPlaying() const { return fTransport.getPlaying(); }
-  void setTransportPlaying(bool iPlaying) { fTransport.setPlaying(iPlaying); }
+  rack::Duration toRackDuration(Duration iDuration);
+  sample::Duration toSampleDuration(Duration iDuration);
 
-  void transportStart() { fTransport.start(); }
-  void transportStop() { fTransport.stop(); }
+  void requestResetAudio();
+
+  bool getTransportPlaying() const { return fTransport.getPlaying(); }
+  void setTransportPlaying(bool iPlaying);
+
+  void transportStart() { setTransportPlaying(true); }
+  void transportStop() { setTransportPlaying(false); }
 
   TJBox_Int64 getTransportPlayPos() const { return fTransport.getPlayPos(); }
   void setTransportPlayPos(TJBox_Int64 iPos) { fTransport.setPlayPos(iPos); }
+  void setTransportPlayPos(sequencer::Time iTime) { setTransportPlayPos(iTime.toPPQ(getTransportTimeSignature()).fCount); }
+  void resetTransportPlayPos() { setTransportPlayPos(0); }
 
   TJBox_Float64 getTransportTempo() const { return fTransport.getTempo(); }
   void setTransportTempo(TJBox_Float64 iTempo) { fTransport.setTempo(iTempo); }
@@ -315,11 +341,11 @@ public:
   bool getTransportTempoAutomation() const { return fTransport.getTempoAutomation(); }
   void setTransportTempoAutomation(bool iTempoAutomation) { fTransport.setTempoAutomation(iTempoAutomation); }
 
-  int getTransportTimeSignatureNumerator() const { return fTransport.getTimeSignatureNumerator(); }
-  void setTransportTimeSignatureNumerator(int iNumerator) { fTransport.setTimeSignatureNumerator(iNumerator); }
+  void setTransportTimeSignature(sequencer::TimeSignature iTimeSignature);
 
-  int getTransportTimeSignatureDenominator() const { return fTransport.getTimeSignatureDenominator(); }
-  void setTransportTimeSignatureDenominator(int iDenominator) { fTransport.setTimeSignatureDenominator(iDenominator); }
+  sequencer::TimeSignature getTransportTimeSignature() const {
+    return sequencer::TimeSignature(fTransport.getTimeSignatureNumerator(), fTransport.getTimeSignatureDenominator());
+  }
 
   bool getTransportLoopEnabled() const { return fTransport.getLoopEnabled(); }
   void setTransportLoopEnabled(bool iLoopEnabled) { fTransport.setLoopEnabled(iLoopEnabled); }
@@ -331,6 +357,9 @@ public:
   void setTransportLoopEndPos(TJBox_UInt64 iLoopEndPos) { fTransport.setLoopEndPos(iLoopEndPos); }
 
   TJBox_UInt64 getTransportBarStartPos() const { return fTransport.getBarStartPos(); }
+
+  sequencer::Time getSongEnd() const { return fSongEnd; }
+  void setSongEnd(sequencer::Time iSongEnd);
 
   static Motherboard &currentMotherboard();
 
@@ -349,6 +378,7 @@ protected:
 protected:
   int fSampleRate;
   Transport fTransport;
+  sequencer::Time fSongEnd{101,1,1,0}; // same default as Reason, not exported to device
   ObjectManager<std::shared_ptr<ExtensionImpl>> fExtensions{};
 };
 

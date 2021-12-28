@@ -197,11 +197,11 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MNPDst> &iDst)
 //------------------------------------------------------------------------
 // DeviceTester::nextBatches
 //------------------------------------------------------------------------
-void DeviceTester::nextBatches(Duration::Type iDuration)
+void DeviceTester::nextBatches(Duration iDuration)
 {
-  auto numBatches = Duration::toBatches(iDuration, fRack.getSampleRate());
+  auto duration = fRack.toRackDuration(iDuration);
 
-  for(int i = 0; i < numBatches.fCount; i++)
+  for(int i = 0; i < duration.fBatches; i++)
     fRack.nextBatch();
 }
 
@@ -223,6 +223,14 @@ MockAudioDevice::Sample DeviceTester::loadSample(std::string const &iSampleResou
   auto sample = fDeviceConfig.findSampleResource(iSampleResource);
   RE_MOCK_ASSERT(sample != std::nullopt, "Could not load sample resource [%s]", iSampleResource);
   return MockAudioDevice::Sample::from(*sample);
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::saveSample
+//------------------------------------------------------------------------
+void DeviceTester::saveSample(MockAudioDevice::Sample const &iSample, ConfigFile const &iToFile) const
+{
+  FileManager::saveSample(iSample.fChannels, iSample.fSampleRate, iSample.fData, iToFile);
 }
 
 //------------------------------------------------------------------------
@@ -283,12 +291,15 @@ void ExtensionEffectTester::nextBatch(MockAudioDevice::StereoBuffer const &iInpu
 //------------------------------------------------------------------------
 MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sample const &iSample,
                                                              optional_duration_t iTail,
-                                                             before_frame_hook_t iBeforeFrameHook)
+                                                             std::optional<tester::Timeline> iTimeline)
 {
   size_t tailInFrames = 0;
 
   if(iTail)
-    tailInFrames = Duration::toFrames(*iTail, fRack.getSampleRate()).fCount;
+    tailInFrames = fRack.toSampleDuration(*iTail).fFrames;
+
+  if(!iTimeline)
+    iTimeline = newTimeline();
 
   MockAudioDevice::Sample res{};
   res.fChannels = iSample.fChannels;
@@ -303,10 +314,7 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
   auto totalNumFrames = numFramesToProcess + tailInFrames;
   auto ptr = iSample.fData.data();
 
-  int frameCount = 0;
-
-  while(totalNumFrames > 0)
-  {
+  iTimeline->onEveryBatch([this, &totalNumFrames, &numFramesToProcess, &input, &output, &ptr, stereo = iSample.isStereo(), &res]() {
     auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, MockAudioDevice::NUM_SAMPLES_PER_BATCH);
     auto numFramesToProcessInThisBatch = std::min<size_t>(numFramesToProcess, numFramesInThisBatch);
 
@@ -319,16 +327,12 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
       for(size_t i = 0; i < numFramesToProcessInThisBatch; i++)
       {
         input.fLeft[i] = *ptr++;
-        if(iSample.fChannels == 2)
+        if(stereo)
           input.fRight[i] = *ptr++;
       }
     }
     else
       input.fill(0, 0);
-
-    // allow outside code to modify the device prior to invoking nextBatch
-    if(iBeforeFrameHook)
-      iBeforeFrameHook(frameCount);
 
     // process this batch
     nextBatch(input, output);
@@ -337,14 +341,15 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
     for(size_t i = 0; i < numFramesInThisBatch; i++)
     {
       res.fData.emplace_back(output.fLeft[i]);
-      if(iSample.fChannels == 2)
+      if(stereo)
         res.fData.emplace_back(output.fRight[i]);
     }
 
     totalNumFrames -= numFramesInThisBatch;
     numFramesToProcess -= numFramesToProcessInThisBatch;
-    frameCount++;
-  }
+  });
+
+  iTimeline->execute(sample::Duration{static_cast<long>(totalNumFrames)});
 
   return res;
 }
@@ -381,63 +386,11 @@ ExtensionInstrumentTester & ExtensionInstrumentTester::setNoteEvents(MockDevice:
 //------------------------------------------------------------------------
 // ExtensionInstrumentTester::nextBatch
 //------------------------------------------------------------------------
-void ExtensionInstrumentTester::nextBatch(MockAudioDevice::StereoBuffer &oOutputBuffer)
-{
-  nextBatch({}, oOutputBuffer);
-}
-
-//------------------------------------------------------------------------
-// ExtensionInstrumentTester::nextBatch
-//------------------------------------------------------------------------
 MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextBatch(MockDevice::NoteEvents iNoteEvents)
-{
-  MockAudioDevice::StereoBuffer output{};
-  nextBatch(iNoteEvents, output);
-  return output;
-}
-
-//------------------------------------------------------------------------
-// ExtensionInstrumentTester::nextBatch
-//------------------------------------------------------------------------
-void ExtensionInstrumentTester::nextBatch(MockDevice::NoteEvents iNoteEvents,
-                                          MockAudioDevice::StereoBuffer &oOutputBuffer)
 {
   setNoteEvents(iNoteEvents);
   fRack.nextBatch();
-  oOutputBuffer = fDst->fBuffer;
-}
-
-//------------------------------------------------------------------------
-// ExtensionInstrumentTester::play
-//------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration::Type iDuration, before_frame_hook_t iBeforeFrameHook)
-{
-  auto totalNumFrames = Duration::toFrames(iDuration, fRack.getSampleRate()).fCount;
-
-  MockAudioDevice::Sample res{};
-  res.fChannels = 2;
-  res.fSampleRate = fRack.getSampleRate();
-  res.fData.reserve(totalNumFrames);
-
-  int frameCount = 0;
-
-  while(totalNumFrames > 0)
-  {
-    // allow outside code to modify the device prior to invoking nextBatch
-    if(iBeforeFrameHook)
-      iBeforeFrameHook(frameCount);
-
-    fRack.nextBatch();
-
-    auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, MockAudioDevice::NUM_SAMPLES_PER_BATCH);
-
-    res.append(fDst->fBuffer, numFramesInThisBatch);
-
-    totalNumFrames -= numFramesInThisBatch;
-    frameCount++;
-  }
-
-  return res;
+  return fDst->fBuffer;
 }
 
 //------------------------------------------------------------------------
@@ -461,50 +414,177 @@ MockDevice::NoteEvents ExtensionNotePlayerTester::nextBatch(MockDevice::NoteEven
   return fDst->fNoteEvents;
 }
 
+namespace tester {
+
+const Timeline::Event Timeline::kNoOp = [](long iAtBatch) { return true; };
+const Timeline::Event Timeline::kEnd  = [](long iAtBatch) { return false; };
+
 //------------------------------------------------------------------------
-// Duration::toRackFrames
+// Timeline::wrap
 //------------------------------------------------------------------------
-Duration::Batches Duration::toBatches(Duration::Type iType, int iSampleRate)
+Timeline::Event Timeline::wrap(tester::Timeline::SimpleEvent iEvent)
 {
-  struct visitor
-  {
-    Batches operator()(Duration::Batches d) { return d; }
-
-    Batches operator()(Duration::Time d) {
-      auto batches = std::ceil(d.fMilliseconds * fSampleRate / 1000.0 / MockAudioDevice::NUM_SAMPLES_PER_BATCH);
-      return Batches { static_cast<long>(batches)};
-    }
-
-    Batches operator()(Duration::Frames d) {
-      return Batches{ static_cast<long>(std::ceil(d.fCount / static_cast<double>(MockAudioDevice::NUM_SAMPLES_PER_BATCH))) };
-    }
-
-    int fSampleRate;
-  };
-
-  return std::visit(visitor{iSampleRate}, iType);
+  if(iEvent)
+    return [event = std::move(iEvent)](long iAtBatch) {
+      event();
+      return true;
+    };
+  else
+    return kNoOp;
 }
 
 //------------------------------------------------------------------------
-// Duration::toSampleFrames
+// Timeline::after
 //------------------------------------------------------------------------
-Duration::Frames Duration::toFrames(Duration::Type iType, int iSampleRate)
+Timeline &Timeline::after(Duration iDuration)
 {
-  struct visitor
-  {
-    Frames operator()(Duration::Batches d) { return Frames{d.fCount * MockAudioDevice::NUM_SAMPLES_PER_BATCH}; }
+  fCurrentBath += fTester->rack().toRackDuration(iDuration).fBatches;
+  return *this;
+}
 
-    Frames operator()(Duration::Time d) {
-      auto frames = std::ceil(d.fMilliseconds * fSampleRate / 1000.0);
-      return Frames { static_cast<long>(frames)};
+//------------------------------------------------------------------------
+// Timeline::transportStart
+//------------------------------------------------------------------------
+Timeline &Timeline::transportStart()
+{
+  event([this]() { fTester->transportStart(); });
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// Timeline::transportStop
+//------------------------------------------------------------------------
+Timeline &Timeline::transportStop()
+{
+  event([this]() { fTester->transportStop(); });
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// Timeline::event
+//------------------------------------------------------------------------
+Timeline &Timeline::event(long iAtBatch, Timeline::Event iEvent)
+{
+  if(!iEvent)
+    iEvent = kNoOp;
+
+  auto id = fLastEventId++;
+
+  if(fSorted && !fEvents.empty())
+    fSorted = fEvents[fEvents.size() - 1].fAtBatch <= iAtBatch;
+
+  fEvents.emplace_back(EventImpl{id, iAtBatch, std::move(iEvent)});
+
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// Timeline::ensureSorted
+//------------------------------------------------------------------------
+void Timeline::ensureSorted() const
+{
+  if(!fSorted)
+  {
+    // Implementation note: technically the fEvents vector should be sorted all the time, but it is more
+    // efficient to keep a flag (fSorted) which remains true for as long as events are added in order
+    // and only sort once when required. This is why we have to remove const here: from the outside the
+    // events are sorted
+    auto nonConstThis = const_cast<Timeline *>(this);
+
+    // we sort the timeline so that events are in the proper fAtBatch
+    std::sort(nonConstThis->fEvents.begin(), nonConstThis->fEvents.end(),
+              [](EventImpl const &l, EventImpl const &r) {
+                if(l.fAtBatch == r.fAtBatch)
+                  return l.fId < r.fId;
+                else
+                  return l.fAtBatch < r.fAtBatch;
+              });
+  }
+
+  fSorted = true;
+}
+
+//------------------------------------------------------------------------
+// Timeline::execute
+//------------------------------------------------------------------------
+void Timeline::execute(std::optional<Duration> iDuration) const
+{
+  auto &rack = fTester->rack();
+
+  auto batches = iDuration ? rack.toRackDuration(*iDuration).fBatches : (fEvents.size() > 0 ? fCurrentBath + 1 : fCurrentBath);
+
+  auto const &events = getEvents();
+
+  auto sortedEvents = events.begin();
+
+  for(int batch = 0; batch < batches; batch++)
+  {
+    for(auto &event: fOnEveryBatchEvents)
+    {
+      if(!event(batch))
+        return; // terminate execution if returns false
     }
 
-    Frames operator()(Duration::Frames d) { return d; }
+    while(sortedEvents != events.end() && sortedEvents->fAtBatch == batch)
+    {
+      if(!sortedEvents->fEvent(batch))
+        return; // terminate execution if event returns false
 
-    int fSampleRate;
-  };
+      sortedEvents++;
+    }
 
-  return std::visit(visitor{iSampleRate}, iType);
+    rack.nextBatch();
+  }
+
 }
+
+//------------------------------------------------------------------------
+// Timeline::play
+//------------------------------------------------------------------------
+void Timeline::play(std::optional<Duration> iDuration) const
+{
+  fTester->transportStart();
+  execute(iDuration);
+  fTester->transportStop();
+}
+
+//------------------------------------------------------------------------
+// Timeline::notes
+//------------------------------------------------------------------------
+Timeline &Timeline::notes(MockDevice::NoteEvents iNoteEvents)
+{
+  event([this, iNoteEvents]() { fTester->fDevice.setNoteInEvents(iNoteEvents.events());} );
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// Timeline::note
+//------------------------------------------------------------------------
+Timeline &Timeline::note(TJBox_UInt8 iNoteNumber,
+                                         Duration iDuration,
+                                         TJBox_UInt8 iNoteVelocity)
+{
+  // note on
+  event([this, iNoteNumber, iNoteVelocity]() { fTester->fDevice.setNoteInEvent(iNoteNumber, iNoteVelocity);} );
+
+  // note off after duration
+  event(fCurrentBath + fTester->rack().toRackDuration(iDuration).fBatches,
+        [this, iNoteNumber]() { fTester->fDevice.setNoteInEvent(iNoteNumber, 0); } );
+
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// Timeline::onEveryBatch
+//------------------------------------------------------------------------
+Timeline &Timeline::onEveryBatch(Timeline::Event iEvent)
+{
+  fOnEveryBatchEvents.emplace_back(std::move(iEvent));
+  return *this;
+}
+
+}
+
+
 
 }

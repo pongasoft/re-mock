@@ -37,6 +37,7 @@ Motherboard &Rack::currentMotherboard()
 //------------------------------------------------------------------------
 Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}, fTransport{iSampleRate}
 {
+  setSongEnd(sequencer::Time(101,1,1,0)); // same default as Reason
 }
 
 //------------------------------------------------------------------------
@@ -102,8 +103,20 @@ void Rack::nextBatch(ExtensionImpl &iExtension, std::set<int> &iProcessedExtensi
 //------------------------------------------------------------------------
 void Rack::nextBatch(ExtensionImpl &iExtension)
 {
-  iExtension.use([this](Motherboard &m) {
+  iExtension.use([&iExtension, this](Motherboard &m) {
+
+    // update transport for motherboard
     fTransport.updateMotherboard(m);
+
+    // if we are playing then execute the events happening in the frame
+    if(fTransport.getPlaying())
+    {
+      iExtension.fSequencerTrack.executeEvents(m,
+                                               fTransport.getPlayPos(),
+                                               fTransport.getPlayBatchEndPos());
+    }
+
+    // finally, call nextBatch which will call the proper RenderRealtime API
     m.nextBatch();
   });
 
@@ -300,6 +313,112 @@ void Rack::unwire(Extension::NoteInSocket const &iInSocket)
   auto wire = ext->findWire(iInSocket);
   if(wire)
     unwire(wire->fFromSocket);
+}
+
+//------------------------------------------------------------------------
+// Rack::toRackDuration
+//------------------------------------------------------------------------
+rack::Duration Rack::toRackDuration(Duration iDuration)
+{
+  struct visitor
+  {
+    rack::Duration operator()(rack::Duration d) { return d; }
+
+    rack::Duration operator()(time::Duration d) {
+      auto batches = std::ceil(d.fMilliseconds * fTransport->getSampleRate() / 1000.0 / kNumSamplesPerBatch);
+      return rack::Duration { static_cast<long>(batches)};
+    }
+
+    rack::Duration operator()(sample::Duration d) {
+      return rack::Duration{ static_cast<long>(std::ceil(d.fFrames / static_cast<double>(kNumSamplesPerBatch))) };
+    }
+
+    rack::Duration operator()(sequencer::Duration d) {
+      auto ppq = d.toPPQ(sequencer::TimeSignature{fTransport->getTimeSignatureNumerator(),
+                                                  fTransport->getTimeSignatureDenominator()});
+      return rack::Duration { static_cast<long>(fTransport->computeNumBatches(ppq.fCount))};
+    }
+
+    Transport *fTransport;
+  };
+
+  return std::visit(visitor{&fTransport}, iDuration);
+}
+
+//------------------------------------------------------------------------
+// Rack::toSampleDuration
+//------------------------------------------------------------------------
+sample::Duration Rack::toSampleDuration(Duration iDuration)
+{
+  struct visitor
+  {
+    sample::Duration operator()(rack::Duration d) { return sample::Duration{d.fBatches * Transport::kBatchSize}; }
+
+    sample::Duration operator()(time::Duration d) {
+      auto frames = std::ceil(d.fMilliseconds * fTransport->getSampleRate() / 1000.0);
+      return sample::Duration{ static_cast<long>(frames)};
+    }
+
+    sample::Duration operator()(sample::Duration d) { return d; }
+
+    sample::Duration operator()(sequencer::Duration d) {
+      return sample::Duration { fRack->toRackDuration(d).fBatches * Transport::kBatchSize};
+    }
+
+    Rack *fRack;
+    Transport *fTransport;
+  };
+
+  return std::visit(visitor{this, &fTransport}, iDuration);
+}
+
+//------------------------------------------------------------------------
+// Rack::setTransportTimeSignature
+//------------------------------------------------------------------------
+void Rack::setTransportTimeSignature(sequencer::TimeSignature iTimeSignature)
+{
+  fTransport.setTimeSignatureNumerator(iTimeSignature.numerator());
+  fTransport.setTimeSignatureDenominator(iTimeSignature.denominator());
+
+  for(auto &extension: fExtensions)
+  {
+    extension.second->fSequencerTrack.setTimeSignature(iTimeSignature);
+  }
+}
+
+//------------------------------------------------------------------------
+// Rack::requestResetAudio
+//------------------------------------------------------------------------
+void Rack::requestResetAudio()
+{
+  for(auto &extension: fExtensions)
+  {
+    extension.second->fMotherboard->requestResetAudio();
+  }
+}
+
+//------------------------------------------------------------------------
+// Rack::setTransportPlaying
+//------------------------------------------------------------------------
+void Rack::setTransportPlaying(bool iPlaying)
+{
+  fTransport.setPlaying(iPlaying);
+  if(!iPlaying)
+  {
+    for(auto &extension: fExtensions)
+    {
+      extension.second->fMotherboard->stopAllNotes();
+    }
+  }
+}
+
+//------------------------------------------------------------------------
+// Rack::setSongEnd
+//------------------------------------------------------------------------
+void Rack::setSongEnd(sequencer::Time iSongEnd)
+{
+  fSongEnd = iSongEnd;
+  fTransport.setSongEndPos(iSongEnd.toPPQ(getTransportTimeSignature()).fCount);
 }
 
 //------------------------------------------------------------------------

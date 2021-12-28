@@ -69,6 +69,7 @@ set(re-mock_BUILD_HEADERS
     ${re-mock_CPP_SRC_DIR}/re/mock/PatchParser.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Transport.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Rack.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Sequencer.h
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.h
     ${re-mock_CPP_SRC_DIR}/re/mock/stl.h
     ${re-mock_CPP_SRC_DIR}/re/mock/lua/InfoLua.h
@@ -88,6 +89,7 @@ set(re-mock_BUILD_SOURCES
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/PatchParser.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Rack.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/Sequencer.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Transport.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/fft.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.cpp
@@ -154,6 +156,7 @@ if(re-mock_DEV_BUILD)
       "${re-mock_CPP_TST_DIR}/re/mock/TestPatch.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRack.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestSequencer.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestStl.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestInfoLua.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"

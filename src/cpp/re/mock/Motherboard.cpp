@@ -1421,6 +1421,18 @@ void Motherboard::outputNoteEvent(TJBox_NoteEvent const &iNoteEvent)
 }
 
 //------------------------------------------------------------------------
+// Motherboard::stopAllNotes
+//------------------------------------------------------------------------
+void Motherboard::stopAllNotes()
+{
+  if(fNoteStatesRef > 0)
+  {
+    for(int i = FIRST_MIDI_NOTE; i <= LAST_MIDI_NOTE; i++)
+      storeProperty(fNoteStatesRef, static_cast<TJBox_Tag>(i), makeNumber(0));
+  }
+}
+
+//------------------------------------------------------------------------
 // Motherboard::addPropertyDiff
 //------------------------------------------------------------------------
 void Motherboard::addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff)
