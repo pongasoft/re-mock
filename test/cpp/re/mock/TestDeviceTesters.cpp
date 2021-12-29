@@ -461,10 +461,10 @@ TEST(Timeline, Usage)
     .event([&tester]() { ASSERT_TRUE(tester.device()->fTransportPlaying); })
     .event([&tester]() { ASSERT_EQ(0, tester.device()->fTransportPlayPos); })
     .nextBatch()
-    .event([&tester]() { ASSERT_EQ(45, tester.device()->fTransportPlayPos); })
+    .event([&tester]() { ASSERT_EQ(44, tester.device()->fTransportPlayPos); })
     .play();
 
-  // see PPQAccumulator.next test for values: 0 / 45 / 89 / 134
+  // see PPQAccumulator.next test for values: 0 / 44 / 89 / 134
   // only propagated to device on nextBatch
   ASSERT_EQ(89, tester.device()->fTransportPlayPos);
   ASSERT_TRUE(tester.device()->fTransportPlaying);

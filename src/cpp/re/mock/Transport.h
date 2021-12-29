@@ -30,31 +30,33 @@ class Motherboard;
 class PPQAccumulator
 {
 public:
-  explicit PPQAccumulator(TJBox_Float64 iBatchLengthPPQ, TJBox_Float64 iCurrentPlayPos = 0.0)
+  explicit PPQAccumulator(TJBox_Float64 iBatchLengthPPQ, TJBox_Int64 iCurrentPlayPos = 0.0)
     : fBatchLengthPPQ{iBatchLengthPPQ},
       fInitialPlayPos{iCurrentPlayPos}
   {}
 
-  TJBox_Float64 getCurrentPlayPos() const { return fInitialPlayPos + fCurrentDelta; }
+  constexpr TJBox_Int64 getCurrentPlayPos() const { return fInitialPlayPos + fCurrentDelta; }
 
-  TJBox_Float64 peekNext(size_t iCount = 1) const
-  {
-    return fInitialPlayPos + std::round((fCurrentBatch + iCount) * fBatchLengthPPQ);
-  }
+  constexpr TJBox_Int64 peekNext(size_t iCount = 1) const { return fInitialPlayPos + computeDelta(iCount); }
 
   TJBox_Int64 next(size_t iCount = 1)
   {
-    fCurrentDelta = std::round((fCurrentBatch + iCount) * fBatchLengthPPQ);
+    fCurrentDelta = computeDelta(iCount);
     fCurrentBatch += iCount;
     return getCurrentPlayPos();
   }
 
 private:
+  constexpr TJBox_Int64 computeDelta(size_t iCount) const {
+    return static_cast<TJBox_Int64>((fCurrentBatch + iCount) * fBatchLengthPPQ + 0.3);
+  }
+
+private:
   TJBox_Float64 fBatchLengthPPQ;
-  TJBox_Float64 fInitialPlayPos;
+  TJBox_Int64 fInitialPlayPos;
 
   size_t fCurrentBatch{};
-  TJBox_Float64 fCurrentDelta{};
+  TJBox_Int64 fCurrentDelta{};
 };
 
 class Transport

@@ -631,14 +631,14 @@ TEST(PPQAccumulator, next)
 
     std::vector<int> expected = {
       0,     // 0 | 0.000
-      45,    // 1 | 44.582
+      44,    // 1 | 44.582
       89,    // 2 | 89.165
       134,   // 3 | 133.747
       178,   // 4 | 178.329
       223,   // 5 | 222.912
       267,   // 6 | 267.494
       312,   // 7 | 312.076
-      357,   // 8 | 356.659
+      356,   // 8 | 356.659
       401,   // 9 | 401.241
       446,   // 10 | 445.823
       4458,  // 100 | 4458.231
@@ -674,9 +674,9 @@ TEST(PPQAccumulator, next)
       205,    // 5 | 204.800
       246,    // 6 | 245.760
       287,    // 7 | 286.720
-      328,    // 8 | 327.680
-      369,    // 9 | 368.640
-      410,    // 10 | 409.600
+      327,    // 8 | 327.680
+      368,    // 9 | 368.640
+      409,    // 10 | 409.600
       4096,   // 100 | 4096.000
       40960,  // 1000 | 40960.000
       409600, // 10000 | 409600.000
@@ -801,10 +801,10 @@ TEST(Rack, Transport)
 
   rack.setTransportLoopEnabled(true);
 
-  ASSERT_EQ("p=true,pp=38597,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
+  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
   rack.nextBatch();
-  ASSERT_EQ("p=true,pp=38597,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=true,pp=38597,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
 
   // make sure that a new device gets the "latest" transport
   ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
