@@ -145,11 +145,8 @@ TEST(Track, executeEvents)
         if(diff.fPropertyRef.fObject == noteStates)
         {
           auto note = JBox_AsNoteEvent(diff);
-          if(fBatchCount > 1)
-          {
-            fOutput += fmt::printf("batch=%d,pos=%d,note=%d,vel=%d,idx=%d\n", fBatchCount, fTransportPlayPos,
-                                   note.fNoteNumber, note.fVelocity, note.fAtFrameIndex);
-          }
+          fOutput += fmt::printf("batch=%d,pos=%d,note=%d,vel=%d,idx=%d\n", fBatchCount, fTransportPlayPos,
+                                 note.fNoteNumber, note.fVelocity, note.fAtFrameIndex);
         }
       }
 
@@ -171,6 +168,12 @@ TEST(Track, executeEvents)
 
   TJBox_Int64 expectedPlayBatchStartPos = 0;
   TJBox_Int64 checkEveryBatchCount = 0;
+
+  tester.nextBatch(); // initializes the device
+
+  // reset the device
+  tester.device()->fOutput = "";
+  tester.device()->fBatchCount = 0;
 
   auto checkEveryBatch = [&expectedPlayBatchStartPos, &checkEveryBatchCount](Motherboard &, TJBox_Int64 iPlayBatchStartPos, TJBox_Int64 iPlayBatchEndPos, TJBox_UInt16 iAtFrameIndex) {
     ASSERT_EQ(expectedPlayBatchStartPos, iPlayBatchStartPos);

@@ -140,7 +140,7 @@ Track &Track::note(Note const &iNote)
   // note off
   event((iNote.fTime + iNote.fDuration).toPPQ(fTimeSignature),
         [iNote](Motherboard &iMotherboard, TJBox_Int64 iPlayBatchStartPos, TJBox_Int64 iPlayBatchEndPos, TJBox_UInt16 iAtFrameIndex) {
-          iMotherboard.setNoteInEvent(iNote.fNumber, 0, iAtFrameIndex);
+          iMotherboard.setNoteInEvent(iNote.fNumber, 0, 0); // note off ignores offset
         });
 
   return *this;
