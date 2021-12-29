@@ -224,9 +224,9 @@ TEST(Track, executeEvents)
   ASSERT_EQ("batch=17,pos=758,note=61,vel=102,idx=61\n"
             "batch=35,pos=1560,note=60,vel=101,idx=56\n"
             "batch=35,pos=1560,note=62,vel=103,idx=56\n"
-            "batch=89,pos=3968,note=61,vel=0,idx=46\n"
-            "batch=107,pos=4770,note=62,vel=0,idx=42\n"
-            "batch=122,pos=5439,note=60,vel=0,idx=1\n", tester.device()->fOutput);
+            "batch=89,pos=3968,note=61,vel=0,idx=0\n"
+            "batch=107,pos=4770,note=62,vel=0,idx=0\n"
+            "batch=122,pos=5439,note=60,vel=0,idx=0\n", tester.device()->fOutput);
 }
 
 }
