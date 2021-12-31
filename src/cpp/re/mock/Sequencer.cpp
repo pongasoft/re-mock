@@ -27,10 +27,10 @@ namespace re::mock::sequencer {
 //------------------------------------------------------------------------
 Time &Time::normalize(TimeSignature iTimeSignature)
 {
-  while(fTicks >= kNumTicksPer16th)
+  while(fTicks >= constants::kNumTicksPer16th)
   {
     f16th++;
-    fTicks -= kNumTicksPer16th;
+    fTicks -= constants::kNumTicksPer16th;
   }
 
   auto max16th = 16 / iTimeSignature.denominator();
@@ -56,12 +56,12 @@ Time &Time::normalize(TimeSignature iTimeSignature)
 PPQ Time::toPPQ(TimeSignature iTimeSignature) const
 {
   auto ppBarResolution =
-    static_cast<TJBox_Float64>(4.0 * kPPQResolution * iTimeSignature.numerator() / iTimeSignature.denominator());
+    static_cast<TJBox_Float64>(4.0 * constants::kPPQResolution * iTimeSignature.numerator() / iTimeSignature.denominator());
 
   return (fBars - 1) * ppBarResolution
          + (fBeats - 1) * ppBarResolution / iTimeSignature.numerator()
-         + (f16th - 1) * kPPT16thResolution
-         + (fTicks) * kPPTickResolution
+         + (f16th - 1) * constants::kPPT16thResolution
+         + (fTicks) * constants::kPPTickResolution
     ;
 }
 
@@ -90,12 +90,12 @@ Time operator+(Time const &iTime, Duration const &iDuration)
 PPQ Duration::toPPQ(TimeSignature iTimeSignature) const
 {
   auto ppBarResolution =
-    static_cast<TJBox_Float64>(4.0 * kPPQResolution * iTimeSignature.numerator() / iTimeSignature.denominator());
+    static_cast<TJBox_Float64>(4.0 * constants::kPPQResolution * iTimeSignature.numerator() / iTimeSignature.denominator());
 
   return fBars * ppBarResolution
          + fBeats * ppBarResolution / iTimeSignature.numerator()
-         + f16th * kPPT16thResolution
-         + fTicks * kPPTickResolution
+         + f16th * constants::kPPT16thResolution
+         + fTicks * constants::kPPTickResolution
     ;
 
 }
@@ -133,14 +133,16 @@ Track &Track::note(Note const &iNote)
 {
   // note on
   event(iNote.fTime.toPPQ(fTimeSignature),
-        [iNote](Motherboard &iMotherboard, TJBox_Int64 iPlayBatchStartPos, TJBox_Int64 iPlayBatchEndPos, TJBox_UInt16 iAtFrameIndex) {
-          iMotherboard.setNoteInEvent(iNote.fNumber, iNote.fVelocity, iAtFrameIndex);
+        [iNote](Motherboard &iMotherboard, Batch const &iBatch) {
+          // we don't start a note that will be turned off anyway
+          if(iBatch.fType != Batch::Type::kLoopingStart)
+            iMotherboard.setNoteInEvent(iNote.fNumber, iNote.fVelocity, iBatch.fAtFrameIndex);
         });
 
   // note off
   event((iNote.fTime + iNote.fDuration).toPPQ(fTimeSignature),
-        [iNote](Motherboard &iMotherboard, TJBox_Int64 iPlayBatchStartPos, TJBox_Int64 iPlayBatchEndPos, TJBox_UInt16 iAtFrameIndex) {
-          iMotherboard.setNoteInEvent(iNote.fNumber, 0, 0); // note off ignores offset
+        [iNote](Motherboard &iMotherboard, Batch const &iBatch) {
+          iMotherboard.stopNoteIfOn(iNote.fNumber);
         });
 
   return *this;
@@ -148,16 +150,22 @@ Track &Track::note(Note const &iNote)
 
 const Duration Duration::k1Bar(1,0,0,0);
 const Duration Duration::k1Beat(0,1,0,0);
+const Duration Duration::k1Sixteenth(0,0,1,0);
 
 //------------------------------------------------------------------------
 // Track::executeEvents
 //------------------------------------------------------------------------
 void Track::executeEvents(Motherboard &iMotherboard,
                           TJBox_Int64 iPlayBatchStartPos,
-                          TJBox_Int64 iPlayBatchEndPos) const
+                          TJBox_Int64 iPlayBatchEndPos,
+                          Batch::Type iBatchType,
+                          int iAtFrameIndex,
+                          int iBatchSize) const
 {
+  Batch batch{iPlayBatchStartPos, iPlayBatchEndPos, iBatchType, static_cast<TJBox_UInt16>(iAtFrameIndex)};
+
   for(auto &event: fOnEveryBatchEvents)
-    event(iMotherboard, iPlayBatchStartPos, iPlayBatchEndPos, 0);
+    event(iMotherboard, batch);
 
   auto const &events = getEvents(); // events are sorted by fAtPPQ!
 
@@ -169,8 +177,9 @@ void Track::executeEvents(Motherboard &iMotherboard,
 
   while(event != events.end() && event->fAtPPQ < iPlayBatchEndPos)
   {
-    auto frameIndex = kBatchSize * (event->fAtPPQ - iPlayBatchStartPos) / (iPlayBatchEndPos - iPlayBatchStartPos);
-    event->fEvent(iMotherboard, iPlayBatchStartPos, iPlayBatchEndPos, static_cast<TJBox_UInt16>(frameIndex));
+    batch.fAtFrameIndex = iAtFrameIndex + iBatchSize * (event->fAtPPQ - iPlayBatchStartPos) / (iPlayBatchEndPos - iPlayBatchStartPos);
+    RE_MOCK_INTERNAL_ASSERT(batch.fAtFrameIndex >= 0 && batch.fAtFrameIndex < constants::kBatchSize);
+    event->fEvent(iMotherboard, batch);
     event++;
   }
 }
@@ -178,7 +187,7 @@ void Track::executeEvents(Motherboard &iMotherboard,
 //------------------------------------------------------------------------
 // Track::kNoOp
 //------------------------------------------------------------------------
-const Track::Event Track::kNoOp = [](Motherboard &, TJBox_Int64, TJBox_Int64, TJBox_UInt16) { };
+const Track::Event Track::kNoOp = [](Motherboard &, Batch const &) { };
 
 //------------------------------------------------------------------------
 // Track::wrap
@@ -186,7 +195,7 @@ const Track::Event Track::kNoOp = [](Motherboard &, TJBox_Int64, TJBox_Int64, TJ
 Track::Event Track::wrap(Track::SimpleEvent iEvent)
 {
   if(iEvent)
-    return [event = std::move(iEvent)](Motherboard &, TJBox_Int64, TJBox_Int64, TJBox_UInt16) {
+    return [event = std::move(iEvent)](Motherboard &, Batch const &) {
       event();
     };
   else

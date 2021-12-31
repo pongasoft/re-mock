@@ -20,52 +20,73 @@
 #define RE_MOCK_TRANSPORT_H
 
 #include <JukeboxTypes.h>
+#include "Constants.h"
 #include <map>
 #include <cmath>
 
 namespace re::mock {
 
 class Motherboard;
+class Rack;
 
-class PPQAccumulator
+class BatchPlayPos
 {
 public:
-  explicit PPQAccumulator(TJBox_Float64 iBatchLengthPPQ, TJBox_Int64 iCurrentPlayPos = 0.0)
-    : fBatchLengthPPQ{iBatchLengthPPQ},
-      fInitialPlayPos{iCurrentPlayPos}
-  {}
+  void reset(TJBox_Float64 iBatchLengthPPQ, TJBox_Int64 iCurrentPlayPos = 0.0)
+  {
+    fBatchLengthPPQ = iBatchLengthPPQ;
+    fFactor = 1.0 - fBatchLengthPPQ / constants::kBatchSize;
+    fInitialPlayPos = iCurrentPlayPos;
+    fCurrentPlayPos = iCurrentPlayPos;
+    fCurrentBatch = 0;
+    computeNextPlayPos();
+  }
 
-  constexpr TJBox_Int64 getCurrentPlayPos() const { return fInitialPlayPos + fCurrentDelta; }
+  void nextBatch();
 
   constexpr TJBox_Int64 peekNext(size_t iCount = 1) const { return fInitialPlayPos + computeDelta(iCount); }
 
-  TJBox_Int64 next(size_t iCount = 1)
-  {
-    fCurrentDelta = computeDelta(iCount);
-    fCurrentBatch += iCount;
-    return getCurrentPlayPos();
-  }
+  constexpr TJBox_Int64 getCurrentPlayPos() const { return fCurrentPlayPos; }
+  constexpr TJBox_Int64 getNextPlayPos() const { return fNextPlayPos; }
+  constexpr TJBox_Int64 getLoopStartPos() const { return fLoopStartPos; }
+  constexpr TJBox_Int64 getLoopPlayPos() const { return fLoopPlayPos; }
+  int getLoopPlaySampleCount() const { return fLoopPlaySampleCount; }
+
+  bool isLooping() const { return fLoopPlayPos > 0; }
+
+  void setLooping(bool iLoopingEnabled, TJBox_Float64 iLoopStartPos, TJBox_Float64 iLoopEndPos);
 
 private:
   constexpr TJBox_Int64 computeDelta(size_t iCount) const {
-    return static_cast<TJBox_Int64>((fCurrentBatch + iCount) * fBatchLengthPPQ + 0.3);
+    return static_cast<TJBox_Int64>((fCurrentBatch + iCount) * fBatchLengthPPQ + fFactor);
   }
 
+  void computeNextPlayPos();
+
 private:
-  TJBox_Float64 fBatchLengthPPQ;
-  TJBox_Int64 fInitialPlayPos;
+  TJBox_Float64 fBatchLengthPPQ{};
+  TJBox_Float64 fFactor{};
+  TJBox_Int64 fInitialPlayPos{};
+
+  TJBox_Int64 fCurrentPlayPos{};
+  TJBox_Int64 fNextPlayPos{-1};
+
+  bool fLoopingEnabled{};
+  TJBox_Int64 fLoopStartPos{};
+  TJBox_Int64 fLoopEndPos{};
+
+  TJBox_Int64 fLoopPlayPos{-1};
+  int fLoopPlaySampleCount{-1};
 
   size_t fCurrentBatch{};
-  TJBox_Int64 fCurrentDelta{};
 };
 
 class Transport
 {
 public:
-  constexpr static TJBox_UInt64 kPPQResolution = 15360;
-  constexpr static auto kBatchSize = 64;
-
-  explicit Transport(int iSampleRate) : fSampleRate{iSampleRate} {}
+  explicit Transport(int iSampleRate) : fSampleRate{iSampleRate} {
+    fBatchPlayPos.reset(getBatchLengthPPQ(), getPlayPos());
+  }
 
   void initMotherboard(Motherboard &iMotherboard) const;
   void updateMotherboard(Motherboard &iMotherboard) const;
@@ -106,12 +127,14 @@ public:
 
   TJBox_UInt64 getBarStartPos() const { return fBarStartPos; }
 
-  TJBox_Int64 getPlayBatchEndPos() const { return getBatchPPQAccumulator().peekNext(); }
+  TJBox_Int64 getPlayBatchEndPos() const { return fBatchPlayPos.getNextPlayPos(); }
 
   TJBox_UInt64 getSongEndPos() const { return fSongEndPos; }
   void setSongEndPos(TJBox_UInt64 iSongEndPos) { fSongEndPos = iSongEndPos; }
 
   TJBox_UInt64 computeNumBatches(TJBox_Float64 iDurationPPQ) const;
+
+  friend class Rack;
 
 protected:
   TJBox_Float64 getBatchLengthPPQ() const;
@@ -124,9 +147,9 @@ protected:
 
   bool setBooleanValue(bool &oCurrentValue, bool iNewValue, TJBox_TransportTag iTag);
 
-public:
+protected:
 
-  PPQAccumulator &getBatchPPQAccumulator() const;
+  BatchPlayPos const &getBatchPlayPos() const { return fBatchPlayPos; }
 
 private:
   int fSampleRate;
@@ -145,7 +168,7 @@ private:
 
   TJBox_UInt64 fSongEndPos{};
 
-  mutable std::optional<PPQAccumulator> fBatchPPQAccumulator{};
+  BatchPlayPos fBatchPlayPos{};
   mutable std::optional<TJBox_Float64> fBatchLengthPPQ{};
   mutable std::optional<TJBox_Float64> fBarLengthPPQ{};
 

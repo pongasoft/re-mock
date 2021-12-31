@@ -30,12 +30,6 @@ class Motherboard;
 
 namespace re::mock::sequencer {
 
-constexpr TJBox_UInt64 kNumTicksPer16th = 240;
-constexpr TJBox_UInt64 kPPQResolution = 15360;
-constexpr TJBox_UInt64 kPPT16thResolution = kPPQResolution / 4;
-constexpr TJBox_UInt64 kPPTickResolution = kPPT16thResolution / kNumTicksPer16th;
-constexpr auto kBatchSize = 64;
-
 struct PPQ {
   PPQ(TJBox_Float64 iCount = 0) : fCount{iCount} {}
   TJBox_Float64 fCount{};
@@ -117,6 +111,7 @@ public:
 
   static const Duration k1Bar;
   static const Duration k1Beat;
+  static const Duration k1Sixteenth;
 
 private:
   TJBox_UInt32 fBars;
@@ -145,8 +140,18 @@ struct Note
 class Track
 {
 public:
+  struct Batch
+  {
+    enum class Type { kFull, kLoopingStart, kLoopingEnd };
+
+    TJBox_Int64 fPlayBatchStartPos{};
+    TJBox_Int64 fPlayBatchEndPos{};
+    Type fType{};
+    TJBox_UInt16 fAtFrameIndex{};
+  };
+
   using SimpleEvent = std::function<void()>;
-  using Event = std::function<void(Motherboard &, TJBox_Int64 iPlayBatchStartPos, TJBox_Int64 iPlayBatchEndPos, TJBox_UInt16 iAtFrameIndex)>;
+  using Event = std::function<void(Motherboard &, Batch const &)>;
 
   static const Event kNoOp;
 
@@ -183,7 +188,12 @@ public:
 
   void setTimeSignature(TimeSignature iTimeSignature) { fTimeSignature = iTimeSignature; }
 
-  void executeEvents(Motherboard &iMotherboard, TJBox_Int64 iPlayBatchStartPos, TJBox_Int64 iPlayBatchEndPos) const;
+  void executeEvents(Motherboard &iMotherboard,
+                     TJBox_Int64 iPlayBatchStartPos,
+                     TJBox_Int64 iPlayBatchEndPos,
+                     Batch::Type iBatchType,
+                     int iAtFrameIndex,
+                     int iBatchSize) const;
 
 private:
   struct EventImpl

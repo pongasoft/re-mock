@@ -356,6 +356,15 @@ public:
   TJBox_UInt64 getTransportLoopEndPos() const { return fTransport.getLoopEndPos(); }
   void setTransportLoopEndPos(TJBox_UInt64 iLoopEndPos) { fTransport.setLoopEndPos(iLoopEndPos); }
 
+  void setTransportLoop(sequencer::Time iStart, sequencer::Time iEnd) {
+    setTransportLoopStartPos(iStart.toPPQ(getTransportTimeSignature()).fCount);
+    setTransportLoopEndPos(iEnd.toPPQ(getTransportTimeSignature()).fCount);
+  }
+
+  void setTransportLoop(sequencer::Time iStart, sequencer::Duration iDuration) {
+    setTransportLoop(iStart, iStart + iDuration);
+  }
+
   TJBox_UInt64 getTransportBarStartPos() const { return fTransport.getBarStartPos(); }
 
   sequencer::Time getSongEnd() const { return fSongEnd; }

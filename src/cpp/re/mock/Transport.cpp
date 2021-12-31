@@ -64,21 +64,16 @@ void Transport::nextBatch()
 
   if(fPlaying)
   {
-    auto newPlayPos = getBatchPPQAccumulator().next();
+    fBatchPlayPos.nextBatch();
 
-    // account for looping
-    if(fLoopEnabled && fPlayPos <= fLoopEndPos && newPlayPos > fLoopEndPos)
-      newPlayPos = fLoopStartPos;
-
-    if(newPlayPos >= fSongEndPos)
+    if(fBatchPlayPos.getCurrentPlayPos() >= fSongEndPos)
     {
       // we are done (reached the end of the song)
       setPlaying(false);
     }
     else
     {
-      // we move the play position
-      setPlayPos(newPlayPos);
+      setPlayPos(fBatchPlayPos.getCurrentPlayPos());
     }
   }
 }
@@ -90,21 +85,9 @@ TJBox_Float64 Transport::getBatchLengthPPQ() const
 {
   if(!fBatchLengthPPQ)
   {
-    fBatchLengthPPQ = (kBatchSize / static_cast<TJBox_Float64>(fSampleRate)) * ((fTempo / 60.0) * kPPQResolution);
+    fBatchLengthPPQ = (constants::kBatchSize / static_cast<TJBox_Float64>(fSampleRate)) * ((fTempo / 60.0) * constants::kPPQResolution);
   }
   return *fBatchLengthPPQ;
-}
-
-//------------------------------------------------------------------------
-// Transport::getBatchPPQAccumulator
-//------------------------------------------------------------------------
-PPQAccumulator &Transport::getBatchPPQAccumulator() const
-{
-  if(!fBatchPPQAccumulator)
-  {
-    fBatchPPQAccumulator = PPQAccumulator(getBatchLengthPPQ(), static_cast<TJBox_Float64>(fPlayPos));
-  }
-  return *fBatchPPQAccumulator;
 }
 
 //------------------------------------------------------------------------
@@ -112,7 +95,8 @@ PPQAccumulator &Transport::getBatchPPQAccumulator() const
 //------------------------------------------------------------------------
 TJBox_UInt64 Transport::computeNumBatches(TJBox_Float64 iDurationPPQ) const
 {
-  PPQAccumulator acc{getBatchLengthPPQ()};
+  BatchPlayPos acc{};
+  acc.reset(getBatchLengthPPQ());
 
   auto numBatches = static_cast<size_t>(iDurationPPQ / getBatchLengthPPQ());
 
@@ -126,7 +110,7 @@ TJBox_Float64 Transport::getBarLengthPPQ() const
 {
   if(!fBarLengthPPQ)
   {
-    fBarLengthPPQ = 4.0 * kPPQResolution * fTimeSignatureNumerator / fTimeSignatureDenominator;
+    fBarLengthPPQ = 4.0 * constants::kPPQResolution * fTimeSignatureNumerator / fTimeSignatureDenominator;
   }
   return *fBarLengthPPQ;
 }
@@ -175,10 +159,11 @@ void Transport::setPlayPos(TJBox_Int64 iPos)
 {
   if(setNumberValue(fPlayPos, iPos, kJBox_TransportPlayPos))
   {
+    if(fBatchPlayPos.getCurrentPlayPos() != iPos)
+      fBatchPlayPos.reset(getBatchLengthPPQ(), iPos);
+
     // recomputes the bar start pos
     recomputeBarStartPos();
-    if(fBatchPPQAccumulator && fBatchPPQAccumulator->getCurrentPlayPos() != iPos)
-      fBatchPPQAccumulator = std::nullopt;
   }
 }
 
@@ -201,7 +186,7 @@ void Transport::setTempo(TJBox_Float64 iTempo)
   if(setNumberValue(fTempo, iTempo, kJBox_TransportTempo))
   {
     fBatchLengthPPQ = std::nullopt;
-    fBatchPPQAccumulator = std::nullopt;
+    fBatchPlayPos.reset(getBatchLengthPPQ(), fPlayPos);
   }
 }
 
@@ -245,6 +230,7 @@ void Transport::setTimeSignatureDenominator(int iDenominator)
 void Transport::setLoopEnabled(bool iLoopEnabled)
 {
   setBooleanValue(fLoopEnabled, iLoopEnabled, kJBox_TransportLoopEnabled);
+  fBatchPlayPos.setLooping(fLoopEnabled, fLoopStartPos, fLoopEndPos);
 }
 
 //------------------------------------------------------------------------
@@ -253,6 +239,7 @@ void Transport::setLoopEnabled(bool iLoopEnabled)
 void Transport::setLoopStartPos(TJBox_UInt64 iLoopStartPos)
 {
   setNumberValue(fLoopStartPos, iLoopStartPos, kJBox_TransportLoopStartPos);
+  fBatchPlayPos.setLooping(fLoopEnabled, fLoopStartPos, fLoopEndPos);
 }
 
 //------------------------------------------------------------------------
@@ -261,6 +248,50 @@ void Transport::setLoopStartPos(TJBox_UInt64 iLoopStartPos)
 void Transport::setLoopEndPos(TJBox_UInt64 iLoopEndPos)
 {
   setNumberValue(fLoopEndPos, iLoopEndPos, kJBox_TransportLoopEndPos);
+  fBatchPlayPos.setLooping(fLoopEnabled, fLoopStartPos, fLoopEndPos);
+}
+
+//------------------------------------------------------------------------
+// PlayPos::nextBatch
+//------------------------------------------------------------------------
+void BatchPlayPos::nextBatch()
+{
+  fCurrentPlayPos = fNextPlayPos;
+  fCurrentBatch++;
+  computeNextPlayPos();
+}
+
+//------------------------------------------------------------------------
+// BatchPlayPos::computeNextPlayPos
+//------------------------------------------------------------------------
+void BatchPlayPos::computeNextPlayPos()
+{
+  fNextPlayPos = fInitialPlayPos + computeDelta(1);
+  if(fLoopingEnabled && fCurrentPlayPos <= fLoopEndPos && fNextPlayPos > fLoopEndPos)
+  {
+    fLoopPlayPos = fLoopEndPos;
+    fLoopPlaySampleCount = static_cast<int>(constants::kBatchSize * (fLoopEndPos - fInitialPlayPos - (fCurrentBatch * fBatchLengthPPQ)) / fBatchLengthPPQ);
+    fNextPlayPos = fLoopStartPos + (constants::kBatchSize - fLoopPlaySampleCount) * fBatchLengthPPQ / constants::kBatchSize;
+    fInitialPlayPos = fNextPlayPos;
+    fCurrentBatch = 0;
+  }
+  else
+  {
+    fLoopPlayPos = -1;
+    fLoopPlaySampleCount = -1;
+  }
+}
+
+//------------------------------------------------------------------------
+// BatchPlayPos::setLooping
+//------------------------------------------------------------------------
+void BatchPlayPos::setLooping(bool iLoopingEnabled, TJBox_Float64 iLoopStartPos, TJBox_Float64 iLoopEndPos)
+{
+  fLoopingEnabled = iLoopingEnabled;
+  fLoopStartPos = iLoopStartPos;
+  fLoopEndPos = iLoopEndPos;
+
+  computeNextPlayPos();
 }
 
 }

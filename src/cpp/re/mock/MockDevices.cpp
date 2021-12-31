@@ -154,7 +154,7 @@ bool MockAudioDevice::eq(TJBox_AudioSample iSample1, TJBox_AudioSample iSample2)
 //------------------------------------------------------------------------
 bool MockAudioDevice::eq(buffer_type const &iBuffer1, buffer_type const &iBuffer2)
 {
-  for(int i = 0; i < NUM_SAMPLES_PER_BATCH; i++)
+  for(int i = 0; i < constants::kBatchSize; i++)
   {
     if(!eq(iBuffer1[i], iBuffer2[i]))
       return false;
@@ -189,7 +189,7 @@ bool MockAudioDevice::eqWithPrecision(TJBox_AudioSample iPrecision,
                                       buffer_type const &iBuffer1,
                                       buffer_type const &iBuffer2)
 {
-  for(int i = 0; i < NUM_SAMPLES_PER_BATCH; i++)
+  for(int i = 0; i < constants::kBatchSize; i++)
   {
     if(!eqWithPrecision(iPrecision, iBuffer1[i], iBuffer2[i]))
       return false;
@@ -749,8 +749,8 @@ MockAudioDevice::Sample MockAudioDevice::Sample::from(Resource::Sample iSample)
 MockAudioDevice::Sample MockAudioDevice::Sample::from(StereoBuffer const &iStereoBuffer, TJBox_UInt32 iSampleRate)
 {
   MockAudioDevice::Sample res{2, iSampleRate};
-  res.fData.reserve(NUM_SAMPLES_PER_BATCH * 2);
-  for(int i = 0; i < NUM_SAMPLES_PER_BATCH; i++)
+  res.fData.reserve(constants::kBatchSize * 2);
+  for(int i = 0; i < constants::kBatchSize; i++)
   {
     res.fData.emplace_back(iStereoBuffer.fLeft[i]);
     res.fData.emplace_back(iStereoBuffer.fRight[i]);
@@ -815,7 +815,7 @@ MockAudioDevice::Sample &MockAudioDevice::Sample::append(StereoBuffer const &iAu
 {
   RE_MOCK_ASSERT(isStereo());
 
-  auto size = std::min<size_t>(iFrameCount, NUM_SAMPLES_PER_BATCH);
+  auto size = std::min<size_t>(iFrameCount, constants::kBatchSize);
   fData.reserve(fData.size() + size);
 
   for(size_t i = 0; i < size; i++)

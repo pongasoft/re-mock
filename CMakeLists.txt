@@ -60,6 +60,7 @@ set(re-mock_CPP_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/src/cpp")
 # Defines the headers if you want to include them in your project (optional)
 set(re-mock_BUILD_HEADERS
     ${re-mock_CPP_SRC_DIR}/re/mock/Config.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Constants.h
     ${re-mock_CPP_SRC_DIR}/re/mock/DeviceTesters.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Errors.h
     ${re-mock_CPP_SRC_DIR}/re/mock/FileManager.h

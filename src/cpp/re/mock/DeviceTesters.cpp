@@ -315,12 +315,12 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
   auto ptr = iSample.fData.data();
 
   iTimeline->onEveryBatch([this, &totalNumFrames, &numFramesToProcess, &input, &output, &ptr, stereo = iSample.isStereo(), &res]() {
-    auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, MockAudioDevice::NUM_SAMPLES_PER_BATCH);
+    auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, constants::kBatchSize);
     auto numFramesToProcessInThisBatch = std::min<size_t>(numFramesToProcess, numFramesInThisBatch);
 
     if(numFramesToProcessInThisBatch > 0)
     {
-      if(numFramesToProcessInThisBatch < MockAudioDevice::NUM_SAMPLES_PER_BATCH)
+      if(numFramesToProcessInThisBatch < constants::kBatchSize)
         input.fill(0, 0);
 
       // fill the input buffer
@@ -561,8 +561,8 @@ Timeline &Timeline::notes(MockDevice::NoteEvents iNoteEvents)
 // Timeline::note
 //------------------------------------------------------------------------
 Timeline &Timeline::note(TJBox_UInt8 iNoteNumber,
-                                         Duration iDuration,
-                                         TJBox_UInt8 iNoteVelocity)
+                         Duration iDuration,
+                         TJBox_UInt8 iNoteVelocity)
 {
   // note on
   event([this, iNoteNumber, iNoteVelocity]() { fTester->fDevice.setNoteInEvent(iNoteNumber, iNoteVelocity);} );

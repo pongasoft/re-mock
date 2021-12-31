@@ -111,9 +111,36 @@ void Rack::nextBatch(ExtensionImpl &iExtension)
     // if we are playing then execute the events happening in the frame
     if(fTransport.getPlaying())
     {
-      iExtension.fSequencerTrack.executeEvents(m,
-                                               fTransport.getPlayPos(),
-                                               fTransport.getPlayBatchEndPos());
+      if(fTransport.getBatchPlayPos().isLooping())
+      {
+        m.stopAllNotesOn();
+
+        auto const &pos = fTransport.getBatchPlayPos();
+
+        // [LoopStartPos..NextPlayPos) ........ [CurrentPlayPos, LoopPlayPos)
+        iExtension.fSequencerTrack.executeEvents(m,
+                                                 pos.getCurrentPlayPos(),
+                                                 pos.getLoopPlayPos(),
+                                                 sequencer::Track::Batch::Type::kLoopingStart,
+                                                 0,
+                                                 pos.getLoopPlaySampleCount());
+
+        iExtension.fSequencerTrack.executeEvents(m,
+                                                 pos.getLoopStartPos(),
+                                                 pos.getNextPlayPos(),
+                                                 sequencer::Track::Batch::Type::kLoopingEnd,
+                                                 pos.getLoopPlaySampleCount(),
+                                                 constants::kBatchSize - pos.getLoopPlaySampleCount());
+      }
+      else
+      {
+        iExtension.fSequencerTrack.executeEvents(m,
+                                                 fTransport.getPlayPos(),
+                                                 fTransport.getPlayBatchEndPos(),
+                                                 sequencer::Track::Batch::Type::kFull,
+                                                 0,
+                                                 constants::kBatchSize);
+      }
     }
 
     // finally, call nextBatch which will call the proper RenderRealtime API
@@ -352,7 +379,7 @@ sample::Duration Rack::toSampleDuration(Duration iDuration)
 {
   struct visitor
   {
-    sample::Duration operator()(rack::Duration d) { return sample::Duration{d.fBatches * Transport::kBatchSize}; }
+    sample::Duration operator()(rack::Duration d) { return sample::Duration{d.fBatches * constants::kBatchSize}; }
 
     sample::Duration operator()(time::Duration d) {
       auto frames = std::ceil(d.fMilliseconds * fTransport->getSampleRate() / 1000.0);
@@ -362,7 +389,7 @@ sample::Duration Rack::toSampleDuration(Duration iDuration)
     sample::Duration operator()(sample::Duration d) { return d; }
 
     sample::Duration operator()(sequencer::Duration d) {
-      return sample::Duration { fRack->toRackDuration(d).fBatches * Transport::kBatchSize};
+      return sample::Duration { fRack->toRackDuration(d).fBatches * constants::kBatchSize};
     }
 
     Rack *fRack;

@@ -1433,6 +1433,37 @@ void Motherboard::stopAllNotes()
 }
 
 //------------------------------------------------------------------------
+// Motherboard::stopAllNotesOn
+//------------------------------------------------------------------------
+void Motherboard::stopAllNotesOn()
+{
+  if(fNoteStatesRef > 0)
+  {
+    auto notes = getObject(fNoteStatesRef);
+    for(int i = FIRST_MIDI_NOTE; i <= LAST_MIDI_NOTE; i++)
+    {
+      auto value = notes->loadValue(static_cast<TJBox_Tag>(i));
+      if(value->getNumber() != 0)
+        storeProperty(fNoteStatesRef, static_cast<TJBox_Tag>(i), makeNumber(0));
+    }
+  }
+}
+
+//------------------------------------------------------------------------
+// Motherboard::stopNoteIfOn
+//------------------------------------------------------------------------
+void Motherboard::stopNoteIfOn(TJBox_UInt8 iNoteNumber)
+{
+  if(fNoteStatesRef > 0)
+  {
+    auto value = getObject(fNoteStatesRef)->loadValue(static_cast<TJBox_Tag>(iNoteNumber));
+    if(value->getNumber() != 0)
+      storeProperty(fNoteStatesRef, static_cast<TJBox_Tag>(iNoteNumber), makeNumber(0));
+  }
+}
+
+
+//------------------------------------------------------------------------
 // Motherboard::addPropertyDiff
 //------------------------------------------------------------------------
 void Motherboard::addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff)

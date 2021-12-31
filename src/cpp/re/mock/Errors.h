@@ -69,6 +69,7 @@ struct Exception : public std::logic_error {
 };
 
 #define RE_MOCK_ASSERT(test, ...) (test) == true ? (void)0 : re::mock::Exception::throwException("CHECK FAILED: \"" #test "\"", __FILE__, __LINE__, ##__VA_ARGS__)
+#define RE_MOCK_INTERNAL_ASSERT(test, ...) (test) == true ? (void)0 : re::mock::Exception::throwException("INTERNAL CHECK FAILED: \"" #test "\"", __FILE__, __LINE__, ##__VA_ARGS__)
 
 #define RE_MOCK_LOG_INFO(...) re::mock::log_info(__FILE__, __LINE__, __VA_ARGS__)
 #define RE_MOCK_LOG_ERROR(...) re::mock::log_error(__FILE__, __LINE__, __VA_ARGS__)

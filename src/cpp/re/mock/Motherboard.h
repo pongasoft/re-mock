@@ -31,6 +31,7 @@
 #include <array>
 #include <ostream>
 #include "fmt.h"
+#include "Constants.h"
 #include "Config.h"
 #include "ObjectManager.hpp"
 #include "MotherboardImpl.h"
@@ -51,7 +52,7 @@ namespace re::mock {
 class Motherboard
 {
 public:
-  constexpr static size_t DSP_BUFFER_SIZE = 64;
+  constexpr static size_t DSP_BUFFER_SIZE = constants::kBatchSize;
   constexpr static int FIRST_MIDI_NOTE = 0;
   constexpr static int LAST_MIDI_NOTE = 127;
   using DSPBuffer = std::array<TJBox_AudioSample, DSP_BUFFER_SIZE>;
@@ -116,6 +117,9 @@ public: // used by regular code
   void requestStop() { setNum("/transport/request_stop", getNum("/transport/request_stop") + 1); }
 
   void stopAllNotes();
+  void stopAllNotesOn();
+
+  void stopNoteIfOn(TJBox_UInt8 iNoteNumber);
 
   template<typename T>
   inline T *getNativeObjectRW(std::string const &iPropertyPath) const {

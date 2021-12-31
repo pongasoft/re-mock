@@ -20,6 +20,7 @@
 #ifndef __Pongasoft_re_mock_mock_devices_h__
 #define __Pongasoft_re_mock_mock_devices_h__
 
+#include "Constants.h"
 #include "Rack.h"
 #include <array>
 #include <ostream>
@@ -90,11 +91,8 @@ class MockAudioDevice : public MockDevice
 public:
   constexpr static auto LEFT_SOCKET = "L";
   constexpr static auto RIGHT_SOCKET = "R";
-  constexpr static auto NUM_SAMPLES_PER_BATCH = Transport::kBatchSize;
-  constexpr static TJBox_Float32 kJBox_SilentThreshold = 2.0e-8f;
 
-
-  using buffer_type = std::array<TJBox_AudioSample, NUM_SAMPLES_PER_BATCH>;
+  using buffer_type = std::array<TJBox_AudioSample, constants::kBatchSize>;
 
   struct StereoBuffer
   {
@@ -184,11 +182,11 @@ public:
   static bool eqWithPrecision(TJBox_AudioSample iPrecision, buffer_type const &iBuffer1, buffer_type const &iBuffer2);
 
   static constexpr bool isSilent(TJBox_AudioSample iSample) {
-    if(iSample < kJBox_SilentThreshold)
+    if(iSample < constants::kSilentThreshold)
       iSample = -iSample;
     else
       return false;
-    return iSample < kJBox_SilentThreshold;
+    return iSample < constants::kSilentThreshold;
   }
 
 public:

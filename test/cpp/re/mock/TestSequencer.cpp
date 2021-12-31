@@ -175,10 +175,10 @@ TEST(Track, executeEvents)
   tester.device()->fOutput = "";
   tester.device()->fBatchCount = 0;
 
-  auto checkEveryBatch = [&expectedPlayBatchStartPos, &checkEveryBatchCount](Motherboard &, TJBox_Int64 iPlayBatchStartPos, TJBox_Int64 iPlayBatchEndPos, TJBox_UInt16 iAtFrameIndex) {
-    ASSERT_EQ(expectedPlayBatchStartPos, iPlayBatchStartPos);
-    ASSERT_EQ(0, iAtFrameIndex);
-    expectedPlayBatchStartPos = iPlayBatchEndPos;
+  auto checkEveryBatch = [&expectedPlayBatchStartPos, &checkEveryBatchCount](Motherboard &, Track::Batch const &iBatch) {
+    ASSERT_EQ(expectedPlayBatchStartPos, iBatch.fPlayBatchStartPos);
+    ASSERT_EQ(0, iBatch.fAtFrameIndex);
+    expectedPlayBatchStartPos = iBatch.fPlayBatchEndPos;
     checkEveryBatchCount++;
   };
 
