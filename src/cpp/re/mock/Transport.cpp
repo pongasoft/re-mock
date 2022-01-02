@@ -256,30 +256,35 @@ void Transport::setLoopEndPos(TJBox_UInt64 iLoopEndPos)
 //------------------------------------------------------------------------
 void BatchPlayPos::nextBatch()
 {
-  fCurrentPlayPos = fNextPlayPos;
-  fCurrentBatch++;
-  computeNextPlayPos();
+  fCurrentPlayPos = fNextBatch.fCurrentPlayPos;
+  fInitialPlayPos = fNextBatch.fInitialPlayPos;
+  fCurrentBatch = fNextBatch.fCurrentBatch;
+  fNextBatch = computeNextBatch();
 }
 
 //------------------------------------------------------------------------
-// BatchPlayPos::computeNextPlayPos
+// BatchPlayPos::computeNextBatch
 //------------------------------------------------------------------------
-void BatchPlayPos::computeNextPlayPos()
+BatchPlayPos::NextBatch BatchPlayPos::computeNextBatch() const
 {
-  fNextPlayPos = fInitialPlayPos + computeDelta(1);
-  if(fLoopingEnabled && fCurrentPlayPos <= fLoopEndPos && fNextPlayPos > fLoopEndPos)
+  NextBatch batch{fInitialPlayPos,
+                  peekNext(fInitialPlayPos, 1),
+                  fCurrentBatch + 1};
+  if(fLoopingEnabled && fLoopStartPos != fLoopEndPos && fCurrentPlayPos <= fLoopEndPos && batch.fCurrentPlayPos > fLoopEndPos)
   {
-    fLoopPlayPos = fLoopEndPos;
-    fLoopPlaySampleCount = static_cast<int>(constants::kBatchSize * (fLoopEndPos - fInitialPlayPos - (fCurrentBatch * fBatchLengthPPQ)) / fBatchLengthPPQ);
-    fNextPlayPos = fLoopStartPos + (constants::kBatchSize - fLoopPlaySampleCount) * fBatchLengthPPQ / constants::kBatchSize;
-    fInitialPlayPos = fNextPlayPos;
-    fCurrentBatch = 0;
+    batch.fLoopPlayPos = fLoopEndPos;
+
+    auto oneSamplePPQ = fBatchLengthPPQ / constants::kBatchSize;
+    auto ppqBeforeLooping = fLoopEndPos - fInitialPlayPos - (fCurrentBatch * fBatchLengthPPQ);
+    if(ppqBeforeLooping < oneSamplePPQ)
+      ppqBeforeLooping = oneSamplePPQ; // ensures there is at least 1 sample
+
+    batch.fLoopPlaySampleCount = static_cast<int>((constants::kBatchSize * ppqBeforeLooping) / fBatchLengthPPQ);
+    batch.fInitialPlayPos = fLoopStartPos - ppqBeforeLooping;
+    batch.fCurrentPlayPos = static_cast<TJBox_Int64>(batch.fInitialPlayPos + fBatchLengthPPQ + fFactor);
+    batch.fCurrentBatch = 1;
   }
-  else
-  {
-    fLoopPlayPos = -1;
-    fLoopPlaySampleCount = -1;
-  }
+  return batch;
 }
 
 //------------------------------------------------------------------------
@@ -290,8 +295,22 @@ void BatchPlayPos::setLooping(bool iLoopingEnabled, TJBox_Float64 iLoopStartPos,
   fLoopingEnabled = iLoopingEnabled;
   fLoopStartPos = iLoopStartPos;
   fLoopEndPos = iLoopEndPos;
+  fNextBatch = computeNextBatch();
+}
 
-  computeNextPlayPos();
+//------------------------------------------------------------------------
+// BatchPlayPos::reset
+//------------------------------------------------------------------------
+void BatchPlayPos::reset(TJBox_Float64 iBatchLengthPPQ, TJBox_Int64 iCurrentPlayPos)
+{
+  RE_MOCK_INTERNAL_ASSERT(iBatchLengthPPQ > 0);
+
+  fBatchLengthPPQ = iBatchLengthPPQ;
+  fFactor = 1.0 - fBatchLengthPPQ / constants::kBatchSize;
+  fInitialPlayPos = iCurrentPlayPos;
+  fCurrentPlayPos = iCurrentPlayPos;
+  fCurrentBatch = 0;
+  fNextBatch = computeNextBatch();
 }
 
 }

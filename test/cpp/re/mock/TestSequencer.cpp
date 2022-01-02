@@ -222,11 +222,139 @@ TEST(Track, executeEvents)
   ASSERT_EQ(345, checkEveryBatchCount);
 
   ASSERT_EQ("batch=17,pos=758,note=61,vel=102,idx=61\n"
-            "batch=35,pos=1560,note=60,vel=101,idx=56\n"
-            "batch=35,pos=1560,note=62,vel=103,idx=56\n"
+            "batch=35,pos=1560,note=60,vel=101,idx=57\n"
+            "batch=35,pos=1560,note=62,vel=103,idx=57\n"
             "batch=89,pos=3968,note=61,vel=0,idx=0\n"
             "batch=107,pos=4770,note=62,vel=0,idx=0\n"
             "batch=122,pos=5439,note=60,vel=0,idx=0\n", tester.device()->fOutput);
+}
+
+// Track.looping
+TEST(Track, looping)
+{
+  struct Device : public MockDevice
+  {
+    Device(int iSampleRate) : MockDevice(iSampleRate) {}
+
+    void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
+    {
+      auto const transport = JBox_GetMotherboardObjectRef("/transport");
+      fTransportPlaying = JBox_GetBoolean(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlaying));
+      fTransportPlayPos = JBox_GetNumber(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlayPos));
+
+      auto noteStates = JBox_GetMotherboardObjectRef("/note_states");
+      for(int i = 0; i < iDiffCount; i++)
+      {
+        auto diff = iPropertyDiffs[i];
+        if(diff.fPropertyRef.fObject == transport)
+        {
+          if(diff.fPropertyTag == kJBox_TransportPlaying)
+          {
+            if(JBox_GetBoolean(diff.fPreviousValue) == false && JBox_GetBoolean(diff.fCurrentValue) == true)
+            {
+              fOutput += re::mock::fmt::printf("batch=%d,pos=%d\n", fBatchCount, fTransportPlayPos);
+            }
+          }
+          if(diff.fPropertyTag == kJBox_TransportPlayPos)
+          {
+            if(JBox_GetNumber(diff.fPreviousValue) > JBox_GetNumber(diff.fCurrentValue))
+            {
+              fOutput += fmt::printf("Looping: batch=%d,pos %d => %d\n", fBatchCount,
+                                                 static_cast<int>(JBox_GetNumber(diff.fPreviousValue)),
+                                                 static_cast<int>(JBox_GetNumber(diff.fCurrentValue)));
+            }
+          }
+        }
+        if(diff.fPropertyRef.fObject == noteStates)
+        {
+          auto note = JBox_AsNoteEvent(diff);
+          fOutput += fmt::printf("batch=%d,pos=%d,note=%d,vel=%d,idx=%d\n", fBatchCount, fTransportPlayPos,
+                                 note.fNoteNumber, note.fVelocity, note.fAtFrameIndex);
+        }
+      }
+
+      fBatchCount++;
+    }
+
+    int fBatchCount{};
+    bool fTransportPlaying{};
+    int fTransportPlayPos{};
+    std::string fOutput{};
+  };
+
+  auto c = DeviceConfig<Device>::fromSkeleton()
+    .accept_notes(true)
+    .rtc(Config::rt_input_setup_notify("/note_states/*"))
+    .rtc(Config::rt_input_setup_notify("/transport/*"))
+  ;
+
+  auto tester = HelperTester<Device>(c);
+
+  tester.nextBatch(); // initializes the device
+
+  // reset the device
+  tester.device()->fOutput = "";
+  tester.device()->fBatchCount = 0;
+
+  // we test looping position first
+  tester.rack().setTransportLoopEnabled(true);
+  tester.rack().setTransportLoop(sequencer::Time(2,1,1,0), sequencer::Duration::k1Beat);
+  tester.rack().setTransportPlayPos(sequencer::Time(2,1,1,0));
+
+  tester.newTimeline().play(sequencer::Duration(0,12,0,0));
+
+  auto expected = R"(batch=0,pos=61440
+Looping: batch=345,pos 76776 => 61461
+Looping: batch=690,pos 76797 => 61482
+Looping: batch=1034,pos 76773 => 61458
+Looping: batch=1379,pos 76794 => 61479
+Looping: batch=1723,pos 76771 => 61455
+Looping: batch=2068,pos 76791 => 61476
+Looping: batch=2412,pos 76768 => 61452
+Looping: batch=2757,pos 76789 => 61473
+Looping: batch=3101,pos 76765 => 61450
+Looping: batch=3446,pos 76786 => 61470
+Looping: batch=3790,pos 76762 => 61447
+)";
+
+  ASSERT_EQ(expected, tester.device()->fOutput);
+
+  // reset the device
+  tester.rack().setTransportLoopEnabled(false);
+  tester.rack().setTransportPlayPos(sequencer::Time(2,1,1,0));
+  tester.nextBatch();
+  tester.device()->fOutput = "";
+  tester.device()->fBatchCount = 0;
+
+  tester.rack().setTransportLoopEnabled(true);
+
+  // now we use notes
+  tester.getSequencerTrack()
+    .note(60, sequencer::Time(1,4,4,120), sequencer::Duration::k1Sixteenth)
+    .note(61, sequencer::Time(2,1,2,0), sequencer::Duration::k1Sixteenth)
+    .note(62, sequencer::Time(2,1,4,120), sequencer::Duration::k1Sixteenth)
+    .note(63, sequencer::Time(1,4,4,120), sequencer::Duration(0,1,1,0))
+    ;
+
+  tester.newTimeline().play(sequencer::Duration(0,2,1,0));
+
+  std::cout << tester.device()->fOutput << std::endl;
+
+  auto s = R"(batch=0,pos=61440
+batch=86,pos=65274,note=61,vel=100,idx=9
+batch=172,pos=69108,note=61,vel=0,idx=0
+batch=301,pos=74859,note=62,vel=100,idx=30
+batch=344,pos=76776,note=62,vel=0,idx=0
+Looping: batch=345,pos 76776 => 61461
+batch=430,pos=65250,note=61,vel=100,idx=43
+batch=516,pos=69084,note=61,vel=0,idx=0
+batch=646,pos=74880,note=62,vel=100,idx=0
+batch=689,pos=76797,note=62,vel=0,idx=0
+Looping: batch=690,pos 76797 => 61482
+batch=775,pos=65271,note=61,vel=100,idx=13
+)";
+
+  ASSERT_EQ(s, tester.device()->fOutput);
 }
 
 }

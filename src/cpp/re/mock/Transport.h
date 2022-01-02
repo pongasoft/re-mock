@@ -21,6 +21,7 @@
 
 #include <JukeboxTypes.h>
 #include "Constants.h"
+#include "Errors.h"
 #include <map>
 #include <cmath>
 
@@ -32,53 +33,55 @@ class Rack;
 class BatchPlayPos
 {
 public:
-  void reset(TJBox_Float64 iBatchLengthPPQ, TJBox_Int64 iCurrentPlayPos = 0.0)
-  {
-    fBatchLengthPPQ = iBatchLengthPPQ;
-    fFactor = 1.0 - fBatchLengthPPQ / constants::kBatchSize;
-    fInitialPlayPos = iCurrentPlayPos;
-    fCurrentPlayPos = iCurrentPlayPos;
-    fCurrentBatch = 0;
-    computeNextPlayPos();
-  }
+  void reset(TJBox_Float64 iBatchLengthPPQ, TJBox_Int64 iCurrentPlayPos = 0.0);
 
   void nextBatch();
 
-  constexpr TJBox_Int64 peekNext(size_t iCount = 1) const { return fInitialPlayPos + computeDelta(iCount); }
+  constexpr TJBox_Int64 peekNext(size_t iCount = 1) const { return peekNext(fInitialPlayPos, iCount); }
 
   constexpr TJBox_Int64 getCurrentPlayPos() const { return fCurrentPlayPos; }
-  constexpr TJBox_Int64 getNextPlayPos() const { return fNextPlayPos; }
+  constexpr TJBox_Int64 getNextPlayPos() const { RE_MOCK_INTERNAL_ASSERT(fNextBatch.fCurrentPlayPos > -1); return fNextBatch.fCurrentPlayPos; }
   constexpr TJBox_Int64 getLoopStartPos() const { return fLoopStartPos; }
-  constexpr TJBox_Int64 getLoopPlayPos() const { return fLoopPlayPos; }
-  int getLoopPlaySampleCount() const { return fLoopPlaySampleCount; }
+  constexpr TJBox_Int64 getLoopPlayPos() const { return fNextBatch.fLoopPlayPos; }
+  int getLoopPlaySampleCount() const { return fNextBatch.fLoopPlaySampleCount; }
 
-  bool isLooping() const { return fLoopPlayPos > 0; }
+  bool isLooping() const { return fNextBatch.fLoopPlayPos > 0; }
 
   void setLooping(bool iLoopingEnabled, TJBox_Float64 iLoopStartPos, TJBox_Float64 iLoopEndPos);
 
 private:
-  constexpr TJBox_Int64 computeDelta(size_t iCount) const {
-    return static_cast<TJBox_Int64>((fCurrentBatch + iCount) * fBatchLengthPPQ + fFactor);
+  struct NextBatch
+  {
+    TJBox_Float64 fInitialPlayPos{-1};
+    TJBox_Int64 fCurrentPlayPos{-1};
+    TJBox_Int64 fCurrentBatch{-1};
+    TJBox_Int64 fLoopPlayPos{-1};
+    int fLoopPlaySampleCount{-1};
+  };
+
+  constexpr TJBox_Int64 peekNext(TJBox_Float64 iInitialPlayPos, size_t iCount) const {
+    auto exact = iInitialPlayPos + (fCurrentBatch + iCount) * fBatchLengthPPQ + fFactor;
+    auto int64 = static_cast<TJBox_Int64>(exact);
+//    RE_MOCK_LOG_INFO("%ld / %.7f / %ld", iCount, exact, int64);
+    if(int64 + 1 - exact < 1.e-8)
+      int64++;
+    return int64;
   }
 
-  void computeNextPlayPos();
+  NextBatch computeNextBatch() const;
 
 private:
   TJBox_Float64 fBatchLengthPPQ{};
   TJBox_Float64 fFactor{};
-  TJBox_Int64 fInitialPlayPos{};
-
-  TJBox_Int64 fCurrentPlayPos{};
-  TJBox_Int64 fNextPlayPos{-1};
-
+  TJBox_Float64 fInitialPlayPos{};
   bool fLoopingEnabled{};
   TJBox_Int64 fLoopStartPos{};
   TJBox_Int64 fLoopEndPos{};
 
-  TJBox_Int64 fLoopPlayPos{-1};
-  int fLoopPlaySampleCount{-1};
+  TJBox_Int64 fCurrentPlayPos{};
+  TJBox_Int64 fCurrentBatch{};
 
-  size_t fCurrentBatch{};
+  NextBatch fNextBatch{};
 };
 
 class Transport

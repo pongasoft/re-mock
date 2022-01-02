@@ -130,6 +130,8 @@ if(re-mock_DEV_BUILD)
   # We always include libsndfile in this case
   re_mock_add_support_for_audio_file(${target})
 
+  target_compile_definitions(${target} PUBLIC ENABLE_RE_MOCK_INTERNAL_ASSERT=1)
+
   # Generate the re_mock_build.h file
   set(GENERATED_FILES_DIR "${CMAKE_BINARY_DIR}/generated")
   file(TO_NATIVE_PATH "${CMAKE_CURRENT_LIST_DIR}" PROJECT_DIR_NATIVE_PATH)
@@ -159,6 +161,7 @@ if(re-mock_DEV_BUILD)
       "${re-mock_CPP_TST_DIR}/re/mock/TestRackExtension.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestSequencer.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestStl.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestTransport.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestInfoLua.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestLuaState.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/lua/TestMotherboardDef.cpp"

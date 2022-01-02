@@ -177,7 +177,9 @@ void Track::executeEvents(Motherboard &iMotherboard,
 
   while(event != events.end() && event->fAtPPQ < iPlayBatchEndPos)
   {
-    batch.fAtFrameIndex = iAtFrameIndex + iBatchSize * (event->fAtPPQ - iPlayBatchStartPos) / (iPlayBatchEndPos - iPlayBatchStartPos);
+    batch.fAtFrameIndex = std::round(iAtFrameIndex + iBatchSize * (event->fAtPPQ - iPlayBatchStartPos) / (iPlayBatchEndPos - iPlayBatchStartPos));
+    if(batch.fAtFrameIndex == constants::kBatchSize)
+      batch.fAtFrameIndex = constants::kBatchSize - 1;
     RE_MOCK_INTERNAL_ASSERT(batch.fAtFrameIndex >= 0 && batch.fAtFrameIndex < constants::kBatchSize);
     event->fEvent(iMotherboard, batch);
     event++;
