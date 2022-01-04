@@ -146,4 +146,6 @@ License
 
 - This project includes [lua 5.4.1](https://www.lua.org/) released under an [MIT License](https://www.lua.org/license.html)
 
+- This project includes [midifile](https://github.com/craigsapp/midifile) released under a [BSD 2-Clause "Simplified" License](external/craigsapp-midifile/LICENSE.txt)
+
 - This project (optionally) uses [libsndfile](https://github.com/libsndfile/libsndfile) relased under an [LGPL-2.1 License](https://github.com/libsndfile/libsndfile/blob/master/COPYING)

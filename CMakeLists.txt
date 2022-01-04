@@ -110,6 +110,9 @@ add_subdirectory(external/lua-cmake)
 # Including tinyxml2
 add_subdirectory(external/tinyxml2-9.0.0)
 
+# Including midifile
+add_subdirectory(external/craigsapp-midifile)
+
 # Function to add support for audio file loading (.wav/.aiff)
 function(re_mock_add_support_for_audio_file target)
   include(libsndfile.cmake)
@@ -120,7 +123,7 @@ endfunction()
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
-target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2)
+target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2 midifile)
 
 if(NOT APPLE)
 #  target_compile_options(${target} PUBLIC "/std:c++latest")
@@ -154,6 +157,7 @@ if(re-mock_DEV_BUILD)
       "${re-mock_CPP_TST_DIR}/re/mock/TestFft.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestFmt.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestJukebox.cpp"
+      "${re-mock_CPP_TST_DIR}/re/mock/TestMidi.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestMisc.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestMockDevices.cpp"
       "${re-mock_CPP_TST_DIR}/re/mock/TestPatch.cpp"

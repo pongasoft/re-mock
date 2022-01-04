@@ -1,0 +1,3 @@
+From https://github.com/craigsapp/midifile@de6aa0c8f82f9dff29b62dba013a65c9034d633d (master as of 2022/01/04)
+
+Documentation: https://midifile.sapp.org/
