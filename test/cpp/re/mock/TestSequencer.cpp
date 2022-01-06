@@ -62,6 +62,8 @@ TEST(Time, toPPQ)
     ASSERT_EQ(20800, Time(1, 2, 2, 100).toPPQ(ts).fCount);
     ASSERT_EQ(82240, Time(2, 2, 2, 100).toPPQ(ts).fCount);
 
+    ASSERT_EQ("2.2.2.100", Time::from(82240).normalize(ts).toString());
+
     ASSERT_EQ(Time(1, 1, 1, 100000).toPPQ(ts).fCount, Time(1, 1, 1, 100000).normalize(ts).toPPQ(ts).fCount);
   }
   {
@@ -83,6 +85,9 @@ TEST(Time, toPPQ)
     ASSERT_EQ(5440, Time(1, 1, 2, 100).toPPQ(ts).fCount);
     ASSERT_EQ(9280, Time(1, 2, 2, 100).toPPQ(ts).fCount);
     ASSERT_EQ(28480, Time(2, 2, 2, 100).toPPQ(ts).fCount);
+
+    ASSERT_EQ("2.3.1.100", Time(2, 2, 2, 100).normalize(ts).toString());
+    ASSERT_EQ("2.3.1.100", Time::from(28480).normalize(ts).toString());
 
 
     ASSERT_EQ(28480, Time(2, 2, 2, 100).toPPQ(ts).fCount);

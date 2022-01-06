@@ -78,6 +78,8 @@ public:
 
   std::string toString() const;
 
+  static Time from(PPQ iPPQ);
+
 private:
   TJBox_UInt32 fBars;
   TJBox_UInt32 fBeats;

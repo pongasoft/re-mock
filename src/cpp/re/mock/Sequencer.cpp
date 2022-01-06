@@ -74,6 +74,14 @@ std::string Time::toString() const
 }
 
 //------------------------------------------------------------------------
+// Time::from
+//------------------------------------------------------------------------
+Time Time::from(PPQ iPPQ)
+{
+  return Time{}.ticks(iPPQ.fCount / constants::kPPTickResolution);
+}
+
+//------------------------------------------------------------------------
 // Sequencer::Time::operator+
 //------------------------------------------------------------------------
 Time operator+(Time const &iTime, Duration const &iDuration)
