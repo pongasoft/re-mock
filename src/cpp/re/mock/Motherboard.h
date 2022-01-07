@@ -139,6 +139,12 @@ public: // used by regular code
   void loadPatch(ConfigFile const &iPatchFile);
   void loadPatch(Resource::Patch const &iPatch);
 
+  Resource::Patch generatePatch() const;
+
+  Resource::Patch const &getDefaultValuesPatch() const { return fDefaultValuesPatch; }
+
+  void reset() { loadPatch(fDefaultValuesPatch); }
+
   inline void selectCurrentUserSample(int iUserSampleIndex) { setNum<int>("/device_host/sample_context", iUserSampleIndex); }
 
   void loadUserSampleAsync(std::string const &iPropertyPath,
@@ -236,7 +242,7 @@ protected:
 
   static std::unique_ptr<Motherboard> create(int iInstanceId, int iSampleRate, Config const &iConfig);
 
-  Motherboard(Config const &iConfig);
+  Motherboard(int iInstanceId, int iSampleRate, Config const &iConfig);
 
   void init();
   void addDeviceHostProperties();
@@ -317,6 +323,7 @@ protected:
 
 protected:
   Config fConfig;
+  Resource::Patch fDefaultValuesPatch{};
   std::map<std::string, Resource::LoadingContext> fResourceLoadingContexts{};
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, lua::gui_jbox_property> fGUIProperties{};

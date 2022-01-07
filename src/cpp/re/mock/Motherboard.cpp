@@ -71,7 +71,7 @@ constexpr TJBox_ValueType getValueType(TJBox_Value const &iValue)
 //------------------------------------------------------------------------
 // Motherboard::Motherboard
 //------------------------------------------------------------------------
-Motherboard::Motherboard(Config const &iConfig) : fConfig{iConfig}
+Motherboard::Motherboard(int iInstanceId, int iSampleRate, Config const &iConfig) : fConfig{iConfig}
 {
 //  DLOG_F(INFO, "Motherboard(%p)", this);
 
@@ -83,6 +83,12 @@ Motherboard::Motherboard(Config const &iConfig) : fConfig{iConfig}
   // /environment
   auto env = addObject("/environment");
   fEnvironmentRef = env->fObjectRef;
+
+  // /environment/instance_id
+  env->addProperty("instance_id", PropertyOwner::kHostOwner, makeNumber(iInstanceId), kJBox_EnvironmentInstanceID);
+
+  // /environment/system_sample_rate
+  env->addProperty("system_sample_rate", PropertyOwner::kHostOwner, makeNumber(iSampleRate), kJBox_EnvironmentSystemSampleRate);
 
   env->addProperty("master_tune", PropertyOwner::kHostOwner, makeNumber(0), kJBox_EnvironmentMasterTune);
   env->addProperty("devicevisible", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_EnvironmentDeviceVisible);
@@ -312,21 +318,7 @@ void Motherboard::handlePropertyDiff(impl::JboxPropertyDiff const &iPropertyDiff
 //------------------------------------------------------------------------
 std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRate, Config const &iConfig)
 {
-  auto res = std::unique_ptr<Motherboard>(new Motherboard(iConfig));
-
-  // /environment/instance_id
-  auto idProp = std::make_shared<lua::jbox_number_property>();
-  idProp->fPropertyTag = kJBox_EnvironmentInstanceID;
-  idProp->fDefaultValue = iInstanceId;
-  res->addProperty(res->fEnvironmentRef, "instance_id", PropertyOwner::kHostOwner, idProp);
-
-  // /environment/system_sample_rate
-  auto sampleRateProp = std::make_shared<lua::jbox_number_property>();
-  sampleRateProp->fPropertyTag = kJBox_EnvironmentSystemSampleRate;
-  sampleRateProp->fDefaultValue = iSampleRate;
-  res->addProperty(res->fEnvironmentRef, "system_sample_rate", PropertyOwner::kHostOwner, sampleRateProp);
-
-  return res;
+  return std::unique_ptr<Motherboard>(new Motherboard(iInstanceId, iSampleRate, iConfig));
 }
 
 struct MockJBoxVisitor
@@ -495,6 +487,8 @@ void Motherboard::init()
       // no extra properties
       break;
   }
+
+  fDefaultValuesPatch = generatePatch();
 
   // load the default patch if there is one
   if(fConfig.info().fSupportPatches)
@@ -1532,12 +1526,13 @@ void Motherboard::loadPatch(Resource::Patch const &iPatch)
           fMotherboard->setString(fPropertyPath, o.fValue);
       }
       void operator()(Resource::Patch::sample_property const &o) {
-        auto property = fMotherboard->getProperty(fPropertyPath);
-        if(property->loadValue()->getSample().fSamplePath != o.fValue)
+        auto p = fMotherboard->getProperty(fPropertyPath);
+        auto &sample = p->loadValue()->getSample();
+        if(sample.fSamplePath != o.fValue)
         {
-          auto newSample = fMotherboard->loadSampleAsync(o.fValue);
-          newSample->getSample().fSampleItem = property->loadValue()->getSample().fSampleItem;
-          fMotherboard->storeProperty(property->fPropertyRef, std::move(newSample));
+          auto newSample = o.fValue.empty() ? fMotherboard->makeEmptySample() : fMotherboard->loadSampleAsync(o.fValue);
+          newSample->getSample().fSampleItem = sample.fSampleItem;
+          fMotherboard->storeProperty(p->fPropertyRef, std::move(newSample));
         }
       }
     };
@@ -1545,6 +1540,50 @@ void Motherboard::loadPatch(Resource::Patch const &iPatch)
     std::visit(visitor{propertyPath, this}, property);
   }
 }
+
+//------------------------------------------------------------------------
+// Motherboard::generatePatch
+//------------------------------------------------------------------------
+Resource::Patch Motherboard::generatePatch() const
+{
+  Resource::Patch patch{};
+  for(auto &[id, o]: fJboxObjects)
+  {
+    for(auto &[name, p]: o->fProperties)
+    {
+      // only properties that can be persisted
+      if(p->fPersistence == lua::EPersistence::kPatch)
+      {
+        auto v = p->loadValue();
+        switch(v->getValueType())
+        {
+          case kJBox_Number:
+            patch.number(p->fPropertyPath, v->getNumber());
+            break;
+
+          case kJBox_Boolean:
+            patch.boolean(p->fPropertyPath, v->getBoolean());
+            break;
+
+          case kJBox_String:
+            patch.string(p->fPropertyPath, v->getString().fValue);
+            break;
+
+          case kJBox_Sample:
+            patch.sample(p->fPropertyPath, v->getSample().fSamplePath);
+            break;
+
+          default:
+            RE_MOCK_INTERNAL_ASSERT(false, "should not be reached");
+            break;
+        }
+      }
+    }
+  }
+
+  return patch;
+}
+
 
 //------------------------------------------------------------------------
 // Motherboard::makeNil

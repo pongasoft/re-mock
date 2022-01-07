@@ -166,6 +166,8 @@ public:
   MockAudioDevice::Sample loadSample(std::string const &iSampleResource) const;
   void saveSample(MockAudioDevice::Sample const &iSample, ConfigFile const &iToFile) const;
 
+  void deviceReset() { fDevice.reset(); }
+
   friend class re::mock::tester::Timeline;
 
 protected:

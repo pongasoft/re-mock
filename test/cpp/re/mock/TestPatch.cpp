@@ -212,6 +212,17 @@ TEST(Patch, Load)
 
   auto re = rack.newDevice(c);
 
+  auto defaultValuesPatch = re.getDefaultValuesPatch();
+
+  ASSERT_EQ(7, defaultValuesPatch.fProperties.size());
+  ASSERT_EQ(0.8, std::get<Resource::Patch::number_property>(defaultValuesPatch.fProperties["/custom_properties/prop_float"]).fValue);
+  ASSERT_FALSE(std::get<Resource::Patch::boolean_property>(defaultValuesPatch.fProperties["/custom_properties/prop_bool"]).fValue);
+  ASSERT_EQ("abcd", std::get<Resource::Patch::string_property>(defaultValuesPatch.fProperties["/custom_properties/prop_string"]).fValue);
+  ASSERT_EQ(0, std::get<Resource::Patch::number_property>(defaultValuesPatch.fProperties["/device_host/sample_context"]).fValue);
+  ASSERT_EQ("", std::get<Resource::Patch::sample_property>(defaultValuesPatch.fProperties["/user_samples/0/item"]).fValue);
+  ASSERT_EQ(60.0, std::get<Resource::Patch::number_property>(defaultValuesPatch.fProperties["/user_samples/0/root_key"]).fValue);
+  ASSERT_EQ("", std::get<Resource::Patch::sample_property>(defaultValuesPatch.fProperties["/user_samples/1/item"]).fValue);
+
   // first batch: get default_value->patch_value
   rack.nextBatch();
   ASSERT_EQ(7, re->fDiffs.size());
@@ -302,6 +313,25 @@ TEST(Patch, Load)
 
   // invalid path
   ASSERT_THROW(re.loadPatch(ConfigFile{fmt::path("invalid", "path", "to", "patch")}), Exception);
+
+  // we revert to the default values
+  re.reset();
+
+  rack.nextBatch();
+  ASSERT_EQ(6, re->fDiffs.size());
+
+  {
+    std::map<std::string, std::string> expected{};
+    expected["/custom_properties/prop_float"] = "0.2->0.8@0";
+    expected["/custom_properties/prop_bool"] = "true->false@0";
+    expected["/custom_properties/prop_string"] = "Kooza?->abcd@0";
+    expected["/device_host/sample_context"] = "1.0->0.0@0";
+    expected["/user_samples/0/item"] = "UserSample{.fChannels=1,.fSampleRate=44100,.fFrameCount=6,.fResidentFrameCount=6,.fLoadStatus=resident,.fSamplePath=[/Private/mono_sample.data]}->"
+                                       "UserSample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=nil,.fSamplePath=[]}@0";
+    expected["/user_samples/0/root_key"] = "62.0->60.0@0";
+
+    ASSERT_EQ(expected, re->fDiffs);
+  }
 }
 
 }

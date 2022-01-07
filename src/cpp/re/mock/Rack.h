@@ -167,6 +167,10 @@ public:
     inline void loadPatch(ConfigFile const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
     inline void loadPatch(Resource::Patch const &iPatch) { motherboard().loadPatch(iPatch); }
 
+    inline Resource::Patch generatePatch() const { return motherboard().generatePatch(); }
+    inline Resource::Patch const &getDefaultValuesPatch() const { return motherboard().getDefaultValuesPatch(); }
+    inline void reset() { motherboard().reset(); }
+
     inline bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { return motherboard().loadMoreBlob(iPropertyPath, iCount); }
 
     inline void selectCurrentUserSample(int iUserSampleIndex) { motherboard().selectCurrentUserSample(iUserSampleIndex); }

@@ -45,8 +45,10 @@ public:
   size_t size() const;
   typename std::map<K, O>::iterator begin() noexcept { return fObjects.begin(); }
   typename std::map<K, O>::iterator end() noexcept { return fObjects.end(); }
-  typename std::map<K, O>::const_iterator cbegin() const noexcept { return fObjects.cbegin(); }
-  typename std::map<K, O>::const_iterator cend() const noexcept { return fObjects.cend(); }
+  typename std::map<K, O>::const_iterator begin() const noexcept { return fObjects.begin(); }
+  typename std::map<K, O>::const_iterator end() const noexcept { return fObjects.end(); }
+  typename std::map<K, O>::const_iterator cbegin() const noexcept { return begin(); }
+  typename std::map<K, O>::const_iterator cend() const noexcept { return end(); }
 
 protected:
   std::map<K, O> fObjects{};
