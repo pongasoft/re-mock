@@ -17,6 +17,7 @@
  */
 
 #include "FileManager.h"
+#include "Constants.h"
 
 #if RE_MOCK_SUPPORT_FOR_AUDIO_FILE
 #include <sndfile.hh>
@@ -98,6 +99,73 @@ std::optional<Resource::Blob> FileManager::loadBlob(ConfigFile const &iFile)
     return blob;
   }
   return std::nullopt;
+}
+
+//------------------------------------------------------------------------
+// FileManager::loadMidi
+//------------------------------------------------------------------------
+std::optional<smf::MidiFile> FileManager::loadMidi(ConfigFile const &iFile, bool iConvertToReasonPPQ)
+{
+  smf::MidiFile midiFile;
+  midiFile.read(iFile.fFilename);
+  if(!midiFile.status())
+  {
+    RE_MOCK_LOG_ERROR("Error opening midi file [%s]", iFile.fFilename);
+    return std::nullopt;
+  }
+
+  // convert to RE native PPQ resolution
+  if(iConvertToReasonPPQ && midiFile.getTicksPerQuarterNote() != constants::kPPQResolution)
+  {
+    RE_MOCK_ASSERT(midiFile.getTicksPerQuarterNote() != 0);
+
+    auto f = constants::kPPQResolution / midiFile.getTicksPerQuarterNote();
+
+    for(int track = 0; track < midiFile.size(); track++)
+    {
+      auto &events = midiFile[track];
+      for(int i = 0; i < events.size(); i++)
+      {
+        events[i].tick *= f;
+      }
+    }
+
+    midiFile.setTicksPerQuarterNote(constants::kPPQResolution);
+  }
+  return midiFile;
+}
+
+//------------------------------------------------------------------------
+// ostream << smf::MidiFile
+//------------------------------------------------------------------------
+std::ostream &operator<<(std::ostream &os, smf::MidiFile const &iMidiFile)
+{
+  os << fmt::printf("smt::MidiFile | numTracks = %ld, ppqResolution=%ld\n", iMidiFile.size(), iMidiFile.getTicksPerQuarterNote());
+
+  for(int track = 0; track < iMidiFile.size(); track++)
+  {
+    os << fmt::printf("Track | %d\n", track);
+    auto &events = iMidiFile[track];
+    for(int i = 0; i < events.size(); i++)
+    {
+      auto &event = events[i];
+      if(event.isTempo())
+      {
+        os << fmt::printf("[%d@%d] => tempo=%f\n", event.seq, event.tick, event.getTempoBPM());
+      } else if(event.isNoteOn())
+      {
+        os << fmt::printf("[%d@%d] => noteOn=%d/%d\n", event.seq, event.tick, event.getKeyNumber(), event.getVelocity());
+      } else if(event.isNoteOff())
+      {
+        os << fmt::printf("[%d@%d] => noteOff=%d\n", event.seq, event.tick, event.getKeyNumber());
+      }
+      else
+      {
+        os << fmt::printf("[%d@%d] => CMD=%d | %s\n", event.seq, event.tick, event.getCommandByte(), event.getMetaContent());
+      }
+    }
+  }
+  return os;
 }
 
 #if RE_MOCK_SUPPORT_FOR_AUDIO_FILE
@@ -246,6 +314,7 @@ void FileManager::saveSample(TJBox_UInt32 iChannels,
                       sndFile.strError());
   }
 }
+
 
 #else
 //------------------------------------------------------------------------

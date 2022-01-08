@@ -25,6 +25,7 @@
 #include "ObjectManager.hpp"
 #include "Transport.h"
 #include "Sequencer.h"
+#include <MidiEventList.h>
 
 namespace re::mock {
 
@@ -110,6 +111,7 @@ public:
     NoteOutSocket getNoteOutSocket() const;
     NoteInSocket getNoteInSocket() const;
     sequencer::Track &getSequencerTrack() const { return fImpl->fSequencerTrack; }
+    void loadMidiNotes(smf::MidiEventList const &iEvents) { fImpl->loadMidiNotes(iEvents); }
 
     inline TJBox_Value getValue(std::string const &iPropertyPath) const { return motherboard().getValue(iPropertyPath); }
     inline void setValue(std::string const &iPropertyPath, TJBox_Value const &iValue) { motherboard().setValue(iPropertyPath, iValue); }
@@ -280,6 +282,8 @@ protected:
     std::optional<Extension::NoteWire> findWire(Extension::NoteInSocket const &iInSocket);
 
     std::set<int> const &getDependents() const;
+
+    void loadMidiNotes(smf::MidiEventList const &iEvents);
 
   private:
     int fId;

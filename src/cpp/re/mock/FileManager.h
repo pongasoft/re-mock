@@ -23,8 +23,12 @@
 
 #include <fstream>
 #include "Config.h"
+#include <MidiFile.h>
+#include <ostream>
 
 namespace re::mock {
+
+std::ostream &operator<<(std::ostream &os, smf::MidiFile const &iMidiFile);
 
 class FileManager
 {
@@ -38,6 +42,8 @@ public:
                          TJBox_UInt32 iSampleRate,
                          std::vector<TJBox_AudioSample> const &iData,
                          ConfigFile const &iToFile);
+
+  static std::optional<smf::MidiFile> loadMidi(ConfigFile const &iFile, bool iConvertToReasonPPQ = true);
 
   static std::ifstream::pos_type fileSize(ConfigFile const &iFile);
   static bool fileExists(ConfigFile const &iFile);

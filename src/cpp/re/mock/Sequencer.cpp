@@ -93,6 +93,28 @@ Time operator+(Time const &iTime, Duration const &iDuration)
 }
 
 //------------------------------------------------------------------------
+// Sequencer::Duration::operator+
+//------------------------------------------------------------------------
+Duration operator+(Duration const &d1, Duration const &d2)
+{
+  return Duration(d1.bars() + d2.bars(),
+                  d1.beats() + d2.beats(),
+                  d1.sixteenth() + d2.sixteenth(),
+                  d1.ticks() + d2.ticks());
+}
+
+//------------------------------------------------------------------------
+// Sequencer::Duration::operator*
+//------------------------------------------------------------------------
+Duration operator*(Duration const &iDuration, TJBox_UInt32 iFactor)
+{
+  return Duration(iDuration.bars() * iFactor,
+                  iDuration.beats() * iFactor,
+                  iDuration.sixteenth() * iFactor,
+                  iDuration.ticks() * iFactor);
+}
+
+//------------------------------------------------------------------------
 // Duration::toPPQResolution
 //------------------------------------------------------------------------
 PPQ Duration::toPPQ(TimeSignature iTimeSignature) const
@@ -135,24 +157,39 @@ Track &Track::event(TJBox_Float64 iAtPPQ, Event iEvent)
 }
 
 //------------------------------------------------------------------------
+// Track::noteOn
+//------------------------------------------------------------------------
+Track &Track::noteOn(TJBox_UInt8 iNoteNumber, PPQ iTime, TJBox_UInt8 iNoteVelocity)
+{
+  event(iTime.fCount,
+        [iNoteNumber, iNoteVelocity](Motherboard &iMotherboard, Batch const &iBatch) {
+          // we don't start a note that will be turned off anyway
+          if(iBatch.fType != Batch::Type::kLoopingStart)
+            iMotherboard.setNoteInEvent(iNoteNumber, iNoteVelocity, iBatch.fAtFrameIndex);
+        });
+
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// Track::noteOff
+//------------------------------------------------------------------------
+Track &Track::noteOff(TJBox_UInt8 iNoteNumber, PPQ iTime)
+{
+  event(iTime.fCount,
+        [iNoteNumber](Motherboard &iMotherboard, Batch const &iBatch) {
+          iMotherboard.stopNoteIfOn(iNoteNumber);
+        });
+  return *this;
+}
+
+//------------------------------------------------------------------------
 // Track::note
 //------------------------------------------------------------------------
 Track &Track::note(Note const &iNote)
 {
-  // note on
-  event(iNote.fTime.toPPQ(fTimeSignature),
-        [iNote](Motherboard &iMotherboard, Batch const &iBatch) {
-          // we don't start a note that will be turned off anyway
-          if(iBatch.fType != Batch::Type::kLoopingStart)
-            iMotherboard.setNoteInEvent(iNote.fNumber, iNote.fVelocity, iBatch.fAtFrameIndex);
-        });
-
-  // note off
-  event((iNote.fTime + iNote.fDuration).toPPQ(fTimeSignature),
-        [iNote](Motherboard &iMotherboard, Batch const &iBatch) {
-          iMotherboard.stopNoteIfOn(iNote.fNumber);
-        });
-
+  noteOn(iNote.fNumber, iNote.fTime, iNote.fVelocity);
+  noteOff(iNote.fNumber, iNote.fTime + iNote.fDuration);
   return *this;
 }
 
@@ -259,6 +296,5 @@ void Track::ensureSorted() const
   fSorted = true;
 
 }
-
 
 }

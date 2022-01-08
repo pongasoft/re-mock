@@ -168,6 +168,8 @@ public:
 
   void deviceReset() { fDevice.reset(); }
 
+  void loadMidi(ConfigFile const &iMidiFile, int iTrack = -1, bool iImportTempo = true);
+
   friend class re::mock::tester::Timeline;
 
 protected:

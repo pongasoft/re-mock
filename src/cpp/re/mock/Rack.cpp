@@ -846,4 +846,23 @@ std::optional<Rack::Extension::NoteWire> Rack::ExtensionImpl::findWire(Extension
 
 }
 
+//------------------------------------------------------------------------
+// Rack::ExtensionImpl::loadMidiNotes
+//------------------------------------------------------------------------
+void Rack::ExtensionImpl::loadMidiNotes(smf::MidiEventList const &iEvents)
+{
+  for(int i = 0; i < iEvents.size(); i++)
+  {
+    auto &event = iEvents[i];
+
+    if(event.isNoteOn())
+    {
+      fSequencerTrack.noteOn(event.getKeyNumber(), sequencer::PPQ{static_cast<TJBox_Float64>(event.tick)}, event.getVelocity());
+    } else if(event.isNoteOff())
+    {
+      fSequencerTrack.noteOff(event.getKeyNumber(), sequencer::PPQ{static_cast<TJBox_Float64>(event.tick)});
+    }
+  }
+}
+
 }

@@ -123,6 +123,8 @@ private:
 };
 
 Time operator+(Time const &iTime, Duration const &iDuration);
+Duration operator+(Duration const &d1, Duration const &d2);
+Duration operator*(Duration const &iDuration, TJBox_UInt32 iFactor);
 
 struct Note
 {
@@ -164,6 +166,14 @@ public:
 
   Track &at(Time iTime) { fCurrentTime = iTime; return *this; }
   Track &after(Duration iDuration) { fCurrentTime = fCurrentTime + iDuration; return *this; }
+
+  Track &noteOn(TJBox_UInt8 iNoteNumber, PPQ iTime, TJBox_UInt8 iNoteVelocity = 100);
+  inline Track &noteOn(TJBox_UInt8 iNoteNumber, Time iTime, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(iNoteNumber, iTime.toPPQ(fTimeSignature), iNoteVelocity); }
+  Track &noteOn(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(iNoteNumber, fCurrentTime, iNoteVelocity); }
+
+  Track &noteOff(TJBox_UInt8 iNoteNumber, PPQ iTime);
+  inline Track &noteOff(TJBox_UInt8 iNoteNumber, Time iTime) { return noteOff(iNoteNumber, iTime.toPPQ(fTimeSignature)); }
+  Track &noteOff(TJBox_UInt8 iNoteNumber) { return noteOff(iNoteNumber, fCurrentTime); }
 
   Track &note(Note const &iNote);
 

@@ -234,6 +234,41 @@ void DeviceTester::saveSample(MockAudioDevice::Sample const &iSample, ConfigFile
 }
 
 //------------------------------------------------------------------------
+// DeviceTester::loadMidi
+//------------------------------------------------------------------------
+void DeviceTester::loadMidi(ConfigFile const &iMidiFile, int iTrack, bool iImportTempo)
+{
+  auto midiFile = FileManager::loadMidi(iMidiFile).value();
+
+  // import tempo from midi file
+  if(iImportTempo)
+  {
+    for(int track = 0; track < midiFile.size(); track++)
+    {
+      auto &events = midiFile[track];
+      for(int i = 0; i < events.size(); i++)
+      {
+        auto &event = events[i];
+        if(event.isTempo())
+        {
+          fRack.setTransportTempo(event.getTempoBPM());
+        }
+      }
+    }
+  }
+
+  if(iTrack == -1)
+  {
+    midiFile.joinTracks();
+    iTrack = 0;
+  }
+
+  RE_MOCK_ASSERT(iTrack < midiFile.size(), "Cannot read track [%d]: not enough tracks in midifile (%ld)", iTrack, midiFile.size());
+
+  fDevice.loadMidiNotes(midiFile[iTrack]);
+}
+
+//------------------------------------------------------------------------
 // ExtensionEffectTester::ExtensionEffectTester
 //------------------------------------------------------------------------
 ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig, int iSampleRate) :
