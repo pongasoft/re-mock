@@ -159,7 +159,7 @@ public:
 
     std::string toString(size_t iFrameCount = -1) const;
 
-    static Sample from(Resource::Sample iSample);
+    static Sample from(resource::Sample iSample);
     static Sample from(StereoBuffer const &iStereoBuffer, TJBox_UInt32 iSampleRate);
 
     static const std::size_t npos = -1;

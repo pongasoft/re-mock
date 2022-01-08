@@ -68,10 +68,10 @@ TEST(StudioEffectTester, Sample)
   tester.wireMainOut(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
 
   auto sinePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
-  auto sine = tester.loadSample(ConfigFile{sinePath});
+  auto sine = tester.loadSample(resource::File{sinePath});
 
   {
-    auto processedSine = tester.processSample(ConfigFile{sinePath});
+    auto processedSine = tester.processSample(resource::File{sinePath});
 
     // processedSine should be sine (since MAUPst is pass through)
     ASSERT_EQ(sine.fChannels, processedSine.fChannels);
@@ -90,7 +90,7 @@ TEST(StudioEffectTester, Sample)
   {
     std::vector<int> batches{};
 
-    auto processedSine = tester.processSample(ConfigFile{sinePath},
+    auto processedSine = tester.processSample(resource::File{sinePath},
                                               time::Duration{1},
                                               tester.newTimeline().onEveryBatch([&batches](long f) { batches.emplace_back(f); return true; }));
 
@@ -111,11 +111,11 @@ TEST(StudioEffectTester, Sample)
 //  StudioEffectTester<MAUPst> tester(MAUPst::CONFIG);
 //
 //  auto sinePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
-//  auto sine = tester.loadSample(ConfigFile{sinePath});
+//  auto sine = tester.loadSample(resource::File{sinePath});
 //
-//  tester.saveSample(sine, ConfigFile{"/tmp/sine2.wav"});
+//  tester.saveSample(sine, resource::File{"/tmp/sine2.wav"});
 //
-//  auto sine2 = tester.loadSample(ConfigFile{"/tmp/sine2.wav"});
+//  auto sine2 = tester.loadSample(resource::File{"/tmp/sine2.wav"});
 //
 //  ASSERT_EQ(sine, sine2);
 //}

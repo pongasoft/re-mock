@@ -94,13 +94,13 @@ TEST(Patch, String)
 </JukeboxPatch>
 )";
 
-  auto patch = PatchParser::from(ConfigString{patchString});
+  auto patch = PatchParser::from(resource::String{patchString});
 
-  ASSERT_FLOAT_EQ(0.5, std::get<Resource::Patch::number_property>(patch.fProperties["/custom_properties/prop_number"]).fValue);
-  ASSERT_TRUE(std::get<Resource::Patch::boolean_property>(patch.fProperties["/custom_properties/prop_boolean"]).fValue);
-  ASSERT_EQ("ABC", std::get<Resource::Patch::string_property>(patch.fProperties["/custom_properties/prop_string"]).fValue);
-  ASSERT_EQ("/Public/Samples/Bell.wav", std::get<Resource::Patch::sample_property>(patch.fProperties["/user_samples/0/item"]).fValue);
-  ASSERT_EQ("/tmp/Music/Samples/Sample 01.aif", std::get<Resource::Patch::sample_property>(patch.fProperties["/user_samples/1/item"]).fValue);
+  ASSERT_FLOAT_EQ(0.5, std::get<resource::Patch::number_property>(patch.fProperties["/custom_properties/prop_number"]).fValue);
+  ASSERT_TRUE(std::get<resource::Patch::boolean_property>(patch.fProperties["/custom_properties/prop_boolean"]).fValue);
+  ASSERT_EQ("ABC", std::get<resource::Patch::string_property>(patch.fProperties["/custom_properties/prop_string"]).fValue);
+  ASSERT_EQ("/Public/Samples/Bell.wav", std::get<resource::Patch::sample_property>(patch.fProperties["/user_samples/0/item"]).fValue);
+  ASSERT_EQ("/tmp/Music/Samples/Sample 01.aif", std::get<resource::Patch::sample_property>(patch.fProperties["/user_samples/1/item"]).fValue);
 }
 
 // Patch.Load
@@ -199,15 +199,15 @@ TEST(Patch, Load)
     .rtc(Config::rt_input_setup_notify("/user_samples/0/*"))
     .rtc(Config::rt_input_setup_notify("/user_samples/1/*"))
     .rtc(Config::rt_input_setup_notify("/device_host/sample_context"))
-    .sample_data("/Private/mono_sample.data", Resource::Sample{}.sample_rate(44100).mono().data(sampleMonoData))
-    .sample_data("/Private/stereo_sample.data", Resource::Sample{}.sample_rate(48000).stereo().data(sampleStereoData))
+    .sample_data("/Private/mono_sample.data", resource::Sample{}.sample_rate(44100).mono().data(sampleMonoData))
+    .sample_data("/Private/stereo_sample.data", resource::Sample{}.sample_rate(48000).stereo().data(sampleStereoData))
 
     .patch_string("/Public/default.repatch", defaultPatchString)
 
     // relative to device_resources_dir
     .patch_file("/Public/patch1.repatch", "/re/mock/patches/Kooza_test1.repatch")
 
-    .patch_data("/Public/patch2.repatch", Resource::Patch{}.number("/device_host/sample_context", 1).sample("/user_samples/0/item", "/Private/stereo_sample.data"))
+    .patch_data("/Public/patch2.repatch", resource::Patch{}.number("/device_host/sample_context", 1).sample("/user_samples/0/item", "/Private/stereo_sample.data"))
     ;
 
   auto re = rack.newDevice(c);
@@ -215,13 +215,13 @@ TEST(Patch, Load)
   auto defaultValuesPatch = re.getDefaultValuesPatch();
 
   ASSERT_EQ(7, defaultValuesPatch.fProperties.size());
-  ASSERT_EQ(0.8, std::get<Resource::Patch::number_property>(defaultValuesPatch.fProperties["/custom_properties/prop_float"]).fValue);
-  ASSERT_FALSE(std::get<Resource::Patch::boolean_property>(defaultValuesPatch.fProperties["/custom_properties/prop_bool"]).fValue);
-  ASSERT_EQ("abcd", std::get<Resource::Patch::string_property>(defaultValuesPatch.fProperties["/custom_properties/prop_string"]).fValue);
-  ASSERT_EQ(0, std::get<Resource::Patch::number_property>(defaultValuesPatch.fProperties["/device_host/sample_context"]).fValue);
-  ASSERT_EQ("", std::get<Resource::Patch::sample_property>(defaultValuesPatch.fProperties["/user_samples/0/item"]).fValue);
-  ASSERT_EQ(60.0, std::get<Resource::Patch::number_property>(defaultValuesPatch.fProperties["/user_samples/0/root_key"]).fValue);
-  ASSERT_EQ("", std::get<Resource::Patch::sample_property>(defaultValuesPatch.fProperties["/user_samples/1/item"]).fValue);
+  ASSERT_EQ(0.8, std::get<resource::Patch::number_property>(defaultValuesPatch.fProperties["/custom_properties/prop_float"]).fValue);
+  ASSERT_FALSE(std::get<resource::Patch::boolean_property>(defaultValuesPatch.fProperties["/custom_properties/prop_bool"]).fValue);
+  ASSERT_EQ("abcd", std::get<resource::Patch::string_property>(defaultValuesPatch.fProperties["/custom_properties/prop_string"]).fValue);
+  ASSERT_EQ(0, std::get<resource::Patch::number_property>(defaultValuesPatch.fProperties["/device_host/sample_context"]).fValue);
+  ASSERT_EQ("", std::get<resource::Patch::sample_property>(defaultValuesPatch.fProperties["/user_samples/0/item"]).fValue);
+  ASSERT_EQ(60.0, std::get<resource::Patch::number_property>(defaultValuesPatch.fProperties["/user_samples/0/root_key"]).fValue);
+  ASSERT_EQ("", std::get<resource::Patch::sample_property>(defaultValuesPatch.fProperties["/user_samples/1/item"]).fValue);
 
   // first batch: get default_value->patch_value
   rack.nextBatch();
@@ -263,7 +263,7 @@ TEST(Patch, Load)
 </JukeboxPatch>
 )";
 
-  re.loadPatch(ConfigString{patchString});
+  re.loadPatch(resource::String{patchString});
   rack.nextBatch();
   ASSERT_EQ(1, re->fDiffs.size());
 
@@ -275,7 +275,7 @@ TEST(Patch, Load)
   }
 
   // load a patch file (via absolute path) (2 changes)
-  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
+  re.loadPatch(*c.resource_file(resource::File{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
   rack.nextBatch();
   ASSERT_EQ(4, re->fDiffs.size());
 
@@ -291,7 +291,7 @@ TEST(Patch, Load)
   }
 
   // load the same patch file (no change!)
-  re.loadPatch(*c.resource_file(ConfigFile{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
+  re.loadPatch(*c.resource_file(resource::File{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
   rack.nextBatch();
   ASSERT_EQ(0, re->fDiffs.size());
 
@@ -312,7 +312,7 @@ TEST(Patch, Load)
   }
 
   // invalid path
-  ASSERT_THROW(re.loadPatch(ConfigFile{fmt::path("invalid", "path", "to", "patch")}), Exception);
+  ASSERT_THROW(re.loadPatch(resource::File{fmt::path("invalid", "path", "to", "patch")}), Exception);
 
   // we revert to the default values
   re.reset();

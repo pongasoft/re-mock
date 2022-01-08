@@ -33,20 +33,20 @@ std::ostream &operator<<(std::ostream &os, smf::MidiFile const &iMidiFile);
 class FileManager
 {
 public:
-  static std::optional<Resource::Blob> loadBlob(ConfigFile const &iFile);
-  static std::optional<Resource::Sample> loadSample(ConfigFile const &iFile);
-  static void saveSample(Resource::Sample const &iSample, ConfigFile const &iToFile) {
+  static std::optional<resource::Blob> loadBlob(resource::File const &iFile);
+  static std::optional<resource::Sample> loadSample(resource::File const &iFile);
+  static void saveSample(resource::Sample const &iSample, resource::File const &iToFile) {
     saveSample(iSample.fChannels, iSample.fSampleRate, iSample.fData, iToFile);
   }
   static void saveSample(TJBox_UInt32 iChannels,
                          TJBox_UInt32 iSampleRate,
                          std::vector<TJBox_AudioSample> const &iData,
-                         ConfigFile const &iToFile);
+                         resource::File const &iToFile);
 
-  static std::optional<smf::MidiFile> loadMidi(ConfigFile const &iFile, bool iConvertToReasonPPQ = true);
+  static std::optional<smf::MidiFile> loadMidi(resource::File const &iFile, bool iConvertToReasonPPQ = true);
 
-  static std::ifstream::pos_type fileSize(ConfigFile const &iFile);
-  static bool fileExists(ConfigFile const &iFile);
+  static std::ifstream::pos_type fileSize(resource::File const &iFile);
+  static bool fileExists(resource::File const &iFile);
 };
 
 }

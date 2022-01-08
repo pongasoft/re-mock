@@ -142,9 +142,9 @@ sample_reference_resolver extractSampleReferenceResolver(XMLElement const *e)
 //------------------------------------------------------------------------
 // createPatch
 //------------------------------------------------------------------------
-Resource::Patch createPatch(XMLDocument const &iDoc)
+resource::Patch createPatch(XMLDocument const &iDoc)
 {
-  Resource::Patch patch;
+  resource::Patch patch;
 
   auto e = iDoc.FirstChildElement("JukeboxPatch");
   RE_MOCK_ASSERT(e != nullptr, "Missing JukeboxPatch root element");
@@ -215,7 +215,7 @@ Resource::Patch createPatch(XMLDocument const &iDoc)
 //------------------------------------------------------------------------
 // Patch::from (file)
 //------------------------------------------------------------------------
-Resource::Patch PatchParser::from(ConfigFile iPatchFile)
+resource::Patch PatchParser::from(resource::File iPatchFile)
 {
   XMLDocument doc;
   auto res = doc.LoadFile(iPatchFile.fFilename.c_str());
@@ -227,7 +227,7 @@ Resource::Patch PatchParser::from(ConfigFile iPatchFile)
 //------------------------------------------------------------------------
 // Patch::from (String)
 //------------------------------------------------------------------------
-Resource::Patch PatchParser::from(ConfigString iPatchString)
+resource::Patch PatchParser::from(resource::String iPatchString)
 {
   XMLDocument doc;
   auto res = doc.Parse(iPatchString.fString.c_str());

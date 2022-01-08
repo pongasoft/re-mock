@@ -70,6 +70,7 @@ set(re-mock_BUILD_HEADERS
     ${re-mock_CPP_SRC_DIR}/re/mock/PatchParser.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Transport.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Rack.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Resources.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Sequencer.h
     ${re-mock_CPP_SRC_DIR}/re/mock/fmt.h
     ${re-mock_CPP_SRC_DIR}/re/mock/stl.h

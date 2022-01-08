@@ -165,12 +165,12 @@ public:
     inline const T *getNativeObjectRO(std::string const &iPropertyPath) const { return motherboard().getNativeObjectRO<T>(iPropertyPath); }
 
     inline void loadPatch(std::string const &iPatchPath) { motherboard().loadPatch(iPatchPath); }
-    inline void loadPatch(ConfigString const &iPatchString) { motherboard().loadPatch(iPatchString); }
-    inline void loadPatch(ConfigFile const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
-    inline void loadPatch(Resource::Patch const &iPatch) { motherboard().loadPatch(iPatch); }
+    inline void loadPatch(resource::String const &iPatchString) { motherboard().loadPatch(iPatchString); }
+    inline void loadPatch(resource::File const &iPatchFile) { motherboard().loadPatch(iPatchFile); }
+    inline void loadPatch(resource::Patch const &iPatch) { motherboard().loadPatch(iPatch); }
 
-    inline Resource::Patch generatePatch() const { return motherboard().generatePatch(); }
-    inline Resource::Patch const &getDefaultValuesPatch() const { return motherboard().getDefaultValuesPatch(); }
+    inline resource::Patch generatePatch() const { return motherboard().generatePatch(); }
+    inline resource::Patch const &getDefaultValuesPatch() const { return motherboard().getDefaultValuesPatch(); }
     inline void reset() { motherboard().reset(); }
 
     inline bool loadMoreBlob(std::string const &iPropertyPath, long iCount = -1) { return motherboard().loadMoreBlob(iPropertyPath, iCount); }
@@ -179,18 +179,18 @@ public:
 
     inline void loadUserSampleAsync(std::string const &iPropertyPath,
                                     std::string const &iResourcePath,
-                                    std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
+                                    std::optional<resource::LoadingContext> iCtx = std::nullopt) {
       motherboard().loadUserSampleAsync(iPropertyPath, iResourcePath, iCtx);
     }
 
     inline void loadUserSampleAsync(int iUserSampleIndex,
                                     std::string const &iResourcePath,
-                                    std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
+                                    std::optional<resource::LoadingContext> iCtx = std::nullopt) {
       motherboard().loadUserSampleAsync(iUserSampleIndex, iResourcePath, iCtx);
     }
 
     inline void loadCurrentUserSampleAsync(std::string const &iResourcePath,
-                                           std::optional<Resource::LoadingContext> iCtx = std::nullopt) {
+                                           std::optional<resource::LoadingContext> iCtx = std::nullopt) {
       motherboard().loadCurrentUserSampleAsync(iResourcePath, iCtx);
     }
 
@@ -204,7 +204,7 @@ public:
 
     inline void selectCurrentPattern(int iPatternIndex, int iPatternStartPos) { motherboard().selectCurrentPattern(iPatternIndex, iPatternStartPos); }
 
-    inline void setResourceLoadingContext(std::string const &iResourcePath, Resource::LoadingContext const &iCtx) { motherboard().setResourceLoadingContext(iResourcePath, iCtx); }
+    inline void setResourceLoadingContext(std::string const &iResourcePath, resource::LoadingContext const &iCtx) { motherboard().setResourceLoadingContext(iResourcePath, iCtx); }
     inline void clearResourceLoadingContext(std::string const &iResourcePath) { motherboard().clearResourceLoadingContext(iResourcePath); }
 
     template<typename T>

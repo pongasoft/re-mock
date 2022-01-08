@@ -222,7 +222,7 @@ struct Blob
   struct Info
   {
     TJBox_SizeT fSize{};
-    Resource::LoadingContext fLoadingContext{};
+    resource::LoadingContext fLoadingContext{};
 
     TJBox_SizeT getSize() const { return fLoadingContext.isLoadOk() ? fSize : 0; }
     TJBox_SizeT getResidentSize() const { return fLoadingContext.fResidentSize; }
@@ -234,7 +234,7 @@ struct Blob
   TJBox_SizeT getResidentSize() const { return fLoadingContext.fResidentSize; }
 
   std::vector<char> fData{};
-  Resource::LoadingContext fLoadingContext{};
+  resource::LoadingContext fLoadingContext{};
   std::string fBlobPath{};
 };
 
@@ -243,7 +243,7 @@ struct Sample
   struct Metadata
   {
     TJBox_SampleMetaData fMain;
-    Resource::LoadingContext fLoadingContext{};
+    resource::LoadingContext fLoadingContext{};
     std::string fSamplePath{};
 
     std::string getLoopModeAsString() const;
@@ -259,7 +259,7 @@ struct Sample
   TJBox_UInt32 fChannels{1};
   TJBox_UInt32 fSampleRate{1};
   std::vector<TJBox_AudioSample> fData{};
-  Resource::LoadingContext fLoadingContext{};
+  resource::LoadingContext fLoadingContext{};
   TJBox_ObjectRef fSampleItem{};
   std::string fSamplePath{};
 };

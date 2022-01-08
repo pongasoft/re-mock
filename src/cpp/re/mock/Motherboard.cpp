@@ -323,11 +323,11 @@ std::unique_ptr<Motherboard> Motherboard::create(int iInstanceId, int iSampleRat
 
 struct MockJBoxVisitor
 {
-  void operator()(ConfigString const &iString) {
+  void operator()(resource::String const &iString) {
     fCode += iString.fString + "\n";
     fMockJBox.loadString(iString.fString);
   }
-  void operator()(ConfigFile const &iFile) { fMockJBox.loadFile(iFile.fFilename); }
+  void operator()(resource::File const &iFile) { fMockJBox.loadFile(iFile.fFilename); }
 
   lua::MockJBox &fMockJBox;
   std::string fCode{};
@@ -957,7 +957,7 @@ std::unique_ptr<JboxValue> Motherboard::loadBlobAsync(std::string const &iBlobPa
 
   if(!blobResource)
   {
-    b->fLoadingContext = Resource::LoadingContext{LoadStatus::kMissing};
+    b->fLoadingContext = resource::LoadingContext{resource::LoadStatus::kMissing};
   }
   else
   {
@@ -965,7 +965,7 @@ std::unique_ptr<JboxValue> Motherboard::loadBlobAsync(std::string const &iBlobPa
     if(loadingContext != fResourceLoadingContexts.end())
       b->fLoadingContext = loadingContext->second;
     else
-      b->fLoadingContext = Resource::LoadingContext{LoadStatus::kResident, blobResource->fData.size() };
+      b->fLoadingContext = resource::LoadingContext{resource::LoadStatus::kResident, blobResource->fData.size() };
 
     if(b->fLoadingContext.isLoadOk())
       b->fData = std::move(blobResource->fData);
@@ -993,13 +993,13 @@ bool Motherboard::loadMoreBlob(std::string const &iPropertyPath, long iCount)
 
   auto status = blob.fLoadingContext.fStatus;
 
-  if(status == LoadStatus::kPartiallyResident)
+  if(status == resource::LoadStatus::kPartiallyResident)
   {
     auto residentSize = blob.getResidentSize();
     auto newResidentSize = iCount < 0 ? blob.getSize() : std::min(residentSize + iCount, blob.getSize());
 
     if(newResidentSize == blob.getSize())
-      status = LoadStatus::kResident;
+      status = resource::LoadStatus::kResident;
 
     if(residentSize != newResidentSize)
     {
@@ -1013,7 +1013,7 @@ bool Motherboard::loadMoreBlob(std::string const &iPropertyPath, long iCount)
     }
   }
 
-  return status == LoadStatus::kResident;
+  return status == resource::LoadStatus::kResident;
 }
 
 //------------------------------------------------------------------------
@@ -1481,7 +1481,7 @@ void Motherboard::loadPatch(std::string const &iPatchPath)
 //------------------------------------------------------------------------
 // Motherboard::loadPatch
 //------------------------------------------------------------------------
-void Motherboard::loadPatch(ConfigFile const &iPatchFile)
+void Motherboard::loadPatch(resource::File const &iPatchFile)
 {
   loadPatch(PatchParser::from(iPatchFile));
 }
@@ -1489,7 +1489,7 @@ void Motherboard::loadPatch(ConfigFile const &iPatchFile)
 //------------------------------------------------------------------------
 // Motherboard::loadPatch
 //------------------------------------------------------------------------
-void Motherboard::loadPatch(ConfigString const &iPatchString)
+void Motherboard::loadPatch(resource::String const &iPatchString)
 {
   loadPatch(PatchParser::from(iPatchString));
 }
@@ -1497,7 +1497,7 @@ void Motherboard::loadPatch(ConfigString const &iPatchString)
 //------------------------------------------------------------------------
 // Motherboard::loadPatch
 //------------------------------------------------------------------------
-void Motherboard::loadPatch(Resource::Patch const &iPatch)
+void Motherboard::loadPatch(resource::Patch const &iPatch)
 {
   for(auto const &[propertyPath, property]: iPatch.fProperties)
   {
@@ -1513,19 +1513,19 @@ void Motherboard::loadPatch(Resource::Patch const &iPatch)
       std::string fPropertyPath{};
       Motherboard *fMotherboard{};
 
-      void operator()(Resource::Patch::boolean_property const &o) {
+      void operator()(resource::Patch::boolean_property const &o) {
         if(fMotherboard->getBool(fPropertyPath) != o.fValue)
           fMotherboard->setBool(fPropertyPath, o.fValue);
       }
-      void operator()(Resource::Patch::number_property const &o) {
+      void operator()(resource::Patch::number_property const &o) {
         if(!stl::almost_equal(fMotherboard->getNum(fPropertyPath), o.fValue))
           fMotherboard->setNum(fPropertyPath, o.fValue);
       }
-      void operator()(Resource::Patch::string_property const &o) {
+      void operator()(resource::Patch::string_property const &o) {
         if(fMotherboard->getString(fPropertyPath) != o.fValue)
           fMotherboard->setString(fPropertyPath, o.fValue);
       }
-      void operator()(Resource::Patch::sample_property const &o) {
+      void operator()(resource::Patch::sample_property const &o) {
         auto p = fMotherboard->getProperty(fPropertyPath);
         auto &sample = p->loadValue()->getSample();
         if(sample.fSamplePath != o.fValue)
@@ -1544,9 +1544,9 @@ void Motherboard::loadPatch(Resource::Patch const &iPatch)
 //------------------------------------------------------------------------
 // Motherboard::generatePatch
 //------------------------------------------------------------------------
-Resource::Patch Motherboard::generatePatch() const
+resource::Patch Motherboard::generatePatch() const
 {
-  Resource::Patch patch{};
+  resource::Patch patch{};
   for(auto &[id, o]: fJboxObjects)
   {
     for(auto &[name, p]: o->fProperties)
@@ -1761,7 +1761,7 @@ std::unique_ptr<JboxValue> Motherboard::loadSampleAsync(std::string const &iSamp
 
   if(!sampleResource)
   {
-    sample->fLoadingContext = Resource::LoadingContext{LoadStatus::kMissing};
+    sample->fLoadingContext = resource::LoadingContext{resource::LoadStatus::kMissing};
   }
   else
   {
@@ -1771,7 +1771,7 @@ std::unique_ptr<JboxValue> Motherboard::loadSampleAsync(std::string const &iSamp
     if(loadingContext != fResourceLoadingContexts.end())
       sample->fLoadingContext = loadingContext->second;
     else
-      sample->fLoadingContext = Resource::LoadingContext{LoadStatus::kResident, sampleResource->fData.size() / sampleResource->fChannels };
+      sample->fLoadingContext = resource::LoadingContext{resource::LoadStatus::kResident, sampleResource->fData.size() / sampleResource->fChannels };
 
     if(sample->fLoadingContext.isLoadOk())
     {
@@ -1803,7 +1803,7 @@ bool Motherboard::loadMoreSample(std::string const &iPropertyPath, long iFrameCo
 
   auto status = sample.fLoadingContext.fStatus;
 
-  if(status == LoadStatus::kPartiallyResident)
+  if(status == resource::LoadStatus::kPartiallyResident)
   {
     auto residentFrameCount = sample.getResidentFrameCount();
     auto newResidentFrameCount = iFrameCount < 0 ?
@@ -1811,7 +1811,7 @@ bool Motherboard::loadMoreSample(std::string const &iPropertyPath, long iFrameCo
                                  std::min(residentFrameCount + static_cast<TJBox_AudioFramePos>(iFrameCount), sample.getFrameCount());
 
     if(newResidentFrameCount == sample.getFrameCount())
-      status = LoadStatus::kResident;
+      status = resource::LoadStatus::kResident;
 
     if(residentFrameCount != newResidentFrameCount)
     {
@@ -1825,7 +1825,7 @@ bool Motherboard::loadMoreSample(std::string const &iPropertyPath, long iFrameCo
     }
   }
 
-  return status == LoadStatus::kResident;
+  return status == resource::LoadStatus::kResident;
 }
 
 //------------------------------------------------------------------------
@@ -1833,7 +1833,7 @@ bool Motherboard::loadMoreSample(std::string const &iPropertyPath, long iFrameCo
 //------------------------------------------------------------------------
 void Motherboard::loadUserSampleAsync(std::string const &iPropertyPath,
                                       std::string const &iResourcePath,
-                                      std::optional<Resource::LoadingContext> iCtx)
+                                      std::optional<resource::LoadingContext> iCtx)
 {
   auto sampleItem = getJboxValue(iPropertyPath)->getSample().fSampleItem;
 

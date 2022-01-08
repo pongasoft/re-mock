@@ -27,7 +27,7 @@ namespace re::mock {
 //------------------------------------------------------------------------
 // Config::skeletonMotherboardDef
 //------------------------------------------------------------------------
-ConfigString Config::skeletonMotherboardDef() {
+resource::String Config::skeletonMotherboardDef() {
   return {R"(
 format_version = "2.0"
 gui_owner_properties = {}
@@ -51,7 +51,7 @@ user_samples = {}
 //------------------------------------------------------------------------
 // Config::skeletonRealtimeController
 //------------------------------------------------------------------------
-ConfigString Config::skeletonRealtimeController() {
+resource::String Config::skeletonRealtimeController() {
   return {R"(
 format_version = "1.0"
 rtc_bindings = {
@@ -79,7 +79,7 @@ Config Config::fromSkeleton(Info const &iInfo)
 //------------------------------------------------------------------------
 // Config::stereoOut
 //------------------------------------------------------------------------
-ConfigString Config::stereo_audio_out(char const *iLeftSocketName, char const *iRightSocketName)
+resource::String Config::stereo_audio_out(char const *iLeftSocketName, char const *iRightSocketName)
 {
   return {
     fmt::printf(R"(audio_outputs["%s"] = jbox.audio_output{};audio_outputs["%s"] = jbox.audio_output{})",
@@ -91,7 +91,7 @@ ConfigString Config::stereo_audio_out(char const *iLeftSocketName, char const *i
 //------------------------------------------------------------------------
 // Config::stereoIn
 //------------------------------------------------------------------------
-ConfigString Config::stereo_audio_in(char const *iLeftSocketName, char const *iRightSocketName)
+resource::String Config::stereo_audio_in(char const *iLeftSocketName, char const *iRightSocketName)
 {
   return {
     fmt::printf(R"(audio_inputs["%s"] = jbox.audio_input{};audio_inputs["%s"] = jbox.audio_input{})",
@@ -103,7 +103,7 @@ ConfigString Config::stereo_audio_in(char const *iLeftSocketName, char const *iR
 //------------------------------------------------------------------------
 // Config::audio_out
 //------------------------------------------------------------------------
-ConfigString Config::audio_out(std::string const &iSocketName)
+resource::String Config::audio_out(std::string const &iSocketName)
 {
   return {fmt::printf(R"(audio_outputs["%s"] = jbox.audio_output{})", iSocketName)};
 }
@@ -111,7 +111,7 @@ ConfigString Config::audio_out(std::string const &iSocketName)
 //------------------------------------------------------------------------
 // Config::audio_in
 //------------------------------------------------------------------------
-ConfigString Config::audio_in(std::string const &iSocketName)
+resource::String Config::audio_in(std::string const &iSocketName)
 {
   return {fmt::printf(R"(audio_inputs["%s"] = jbox.audio_input{})", iSocketName)};
 }
@@ -119,7 +119,7 @@ ConfigString Config::audio_in(std::string const &iSocketName)
 //------------------------------------------------------------------------
 // Config::cv_out
 //------------------------------------------------------------------------
-ConfigString Config::cv_out(char const *iSocketName)
+resource::String Config::cv_out(char const *iSocketName)
 {
   return {fmt::printf(R"(cv_outputs["%s"] = jbox.cv_output{})", iSocketName)};
 }
@@ -127,7 +127,7 @@ ConfigString Config::cv_out(char const *iSocketName)
 //------------------------------------------------------------------------
 // Config::cv_in
 //------------------------------------------------------------------------
-ConfigString Config::cv_in(char const *iSocketName)
+resource::String Config::cv_in(char const *iSocketName)
 {
   return {fmt::printf(R"(cv_inputs["%s"] = jbox.cv_input{})", iSocketName)};
 }
@@ -135,7 +135,7 @@ ConfigString Config::cv_in(char const *iSocketName)
 //------------------------------------------------------------------------
 // Config::rtc_binding
 //------------------------------------------------------------------------
-ConfigString Config::rtc_binding(std::string const &iSource, std::string const &iDest)
+resource::String Config::rtc_binding(std::string const &iSource, std::string const &iDest)
 {
   return {fmt::printf(R"(rtc_bindings[#rtc_bindings + 1] = { source ="%s", dest = "%s"})", iSource, iDest)};
 }
@@ -143,7 +143,7 @@ ConfigString Config::rtc_binding(std::string const &iSource, std::string const &
 //------------------------------------------------------------------------
 // Config::rt_input_setup_notify
 //------------------------------------------------------------------------
-ConfigString Config::rt_input_setup_notify(std::string const &iPropertyName)
+resource::String Config::rt_input_setup_notify(std::string const &iPropertyName)
 {
   return {fmt::printf(R"(do local _x = rt_input_setup["notify"];_x[#_x + 1] = "%s" end)", iPropertyName)};
 }
@@ -151,7 +151,7 @@ ConfigString Config::rt_input_setup_notify(std::string const &iPropertyName)
 //------------------------------------------------------------------------
 // Config::rt_input_setup_notify_all_notes
 //------------------------------------------------------------------------
-ConfigString Config::rt_input_setup_notify_all_notes()
+resource::String Config::rt_input_setup_notify_all_notes()
 {
   return rt_input_setup_notify("/note_states/*");
 }
@@ -184,7 +184,7 @@ inline void persistence(std::optional<lua::EPersistence> iPersistence, std::vect
 inline std::string to_args(std::vector<std::string> const &iArgs) { return stl::join_to_string(iArgs); }
 
 //! Generates the custom property string with the proper arguments
-inline ConfigString custom_property(std::string const &iPropertyType,
+inline resource::String custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     char const *iJboxType,
                                     std::vector<std::string> const &iArgs)
@@ -193,7 +193,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
 }
 
 //! Generates the custom property string with the proper arguments
-inline ConfigString custom_property(std::string const &iPropertyType,
+inline resource::String custom_property(std::string const &iPropertyType,
                                     int iPropertyIndex,
                                     char const *iJboxType,
                                     std::vector<std::string> const &iArgs)
@@ -202,7 +202,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
 }
 
 //! custom_property for lua::jbox_boolean_property
-inline ConfigString custom_property(std::string const &iPropertyType,
+inline resource::String custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     lua::jbox_boolean_property const &iProperty)
 {
@@ -213,7 +213,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
 }
 
 //! custom_property for lua::jbox_number_property
-inline ConfigString custom_property(std::string const &iPropertyType,
+inline resource::String custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     lua::jbox_number_property const &iProperty)
 {
@@ -224,7 +224,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
 }
 
 //! custom_property for lua::jbox_string_property
-inline ConfigString custom_property(std::string const &iPropertyType,
+inline resource::String custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     lua::jbox_string_property const &iProperty)
 {
@@ -240,7 +240,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
 }
 
 //! custom_property for lua::jbox_blob_property
-inline ConfigString custom_property(std::string const &iPropertyType,
+inline resource::String custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     lua::jbox_blob_property const &iProperty)
 {
@@ -252,7 +252,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
 }
 
 //! custom_property for lua::jbox_sample_property
-inline ConfigString custom_property(std::string const &iPropertyType,
+inline resource::String custom_property(std::string const &iPropertyType,
                                     std::string const &iPropertyName,
                                     lua::jbox_sample_property const &iProperty)
 {
@@ -268,7 +268,7 @@ inline ConfigString custom_property(std::string const &iPropertyType,
 //------------------------------------------------------------------------
 // Config::gui_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
+resource::String Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
 {
   return impl::custom_property("gui_owner_properties", iPropertyName, iProperty);
 }
@@ -276,7 +276,7 @@ ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::gui_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+resource::String Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
 {
   return impl::custom_property("gui_owner_properties", iPropertyName, iProperty);
 }
@@ -284,7 +284,7 @@ ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::document_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
+resource::String Config::gui_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
 {
   return impl::custom_property("gui_owner_properties", iPropertyName, iProperty);
 }
@@ -292,7 +292,7 @@ ConfigString Config::gui_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::document_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
+resource::String Config::document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
 {
   return impl::custom_property("document_owner_properties", iPropertyName, iProperty);
 }
@@ -300,7 +300,7 @@ ConfigString Config::document_owner_property(std::string const &iPropertyName, l
 //------------------------------------------------------------------------
 // Config::document_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+resource::String Config::document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
 {
   return impl::custom_property("document_owner_properties", iPropertyName, iProperty);
 }
@@ -308,7 +308,7 @@ ConfigString Config::document_owner_property(std::string const &iPropertyName, l
 //------------------------------------------------------------------------
 // Config::document_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::document_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
+resource::String Config::document_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
 {
   return impl::custom_property("document_owner_properties", iPropertyName, iProperty);
 }
@@ -316,7 +316,7 @@ ConfigString Config::document_owner_property(std::string const &iPropertyName, l
 //------------------------------------------------------------------------
 // Config::user_sample
 //------------------------------------------------------------------------
-ConfigString Config::user_sample(std::string const &iSampleName, lua::jbox_user_sample_property const &iProperty)
+resource::String Config::user_sample(std::string const &iSampleName, lua::jbox_user_sample_property const &iProperty)
 {
   RE_MOCK_ASSERT(iProperty.fName == std::nullopt || *iProperty.fName == iSampleName,
                  "name mismatch");
@@ -335,7 +335,7 @@ ConfigString Config::user_sample(std::string const &iSampleName, lua::jbox_user_
 //------------------------------------------------------------------------
 // Config::user_sample
 //------------------------------------------------------------------------
-ConfigString Config::user_sample(int iSampleIndex, lua::jbox_user_sample_property const &iProperty)
+resource::String Config::user_sample(int iSampleIndex, lua::jbox_user_sample_property const &iProperty)
 {
   RE_MOCK_ASSERT(iProperty.fName == std::nullopt, "no name should be defined when using this api");
   std::vector<std::string> args{};
@@ -353,16 +353,16 @@ ConfigString Config::user_sample(int iSampleIndex, lua::jbox_user_sample_propert
 //------------------------------------------------------------------------
 // Config::patterns
 //------------------------------------------------------------------------
-ConfigString Config::patterns(int iNumPatterns)
+resource::String Config::patterns(int iNumPatterns)
 {
-  return ConfigString{fmt::printf("patterns = { num_patterns = %d }", iNumPatterns)};
+  return resource::String{fmt::printf("patterns = { num_patterns = %d }", iNumPatterns)};
 }
 
 
 //------------------------------------------------------------------------
 // Config::rt_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
+resource::String Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
 {
   return impl::custom_property("rt_owner_properties", iPropertyName, iProperty);
 }
@@ -370,7 +370,7 @@ ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jb
 //------------------------------------------------------------------------
 // Config::rt_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+resource::String Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
 {
   return impl::custom_property("rt_owner_properties", iPropertyName, iProperty);
 }
@@ -378,7 +378,7 @@ ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jb
 //------------------------------------------------------------------------
 // Config::rt_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
+resource::String Config::rt_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
 {
   return impl::custom_property("rt_owner_properties", iPropertyName, iProperty);
 }
@@ -386,7 +386,7 @@ ConfigString Config::rt_owner_property(std::string const &iPropertyName, lua::jb
 //------------------------------------------------------------------------
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
+resource::String Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty)
 {
   return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
 }
@@ -394,7 +394,7 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
+resource::String Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty)
 {
   return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
 }
@@ -402,7 +402,7 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
+resource::String Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty)
 {
   return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
 }
@@ -410,7 +410,7 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_blob_property const &iProperty)
+resource::String Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_blob_property const &iProperty)
 {
   return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
 }
@@ -418,7 +418,7 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_sample_property const &iProperty)
+resource::String Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_sample_property const &iProperty)
 {
   return impl::custom_property("rtc_owner_properties", iPropertyName, iProperty);
 }
@@ -426,7 +426,7 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::rtc_owner_property
 //------------------------------------------------------------------------
-ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty)
+resource::String Config::rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty)
 {
   struct visitor {
     std::string operator()(bool v) { return (v ? "true" : "false"); }
@@ -457,11 +457,11 @@ ConfigString Config::rtc_owner_property(std::string const &iPropertyName, lua::j
 //------------------------------------------------------------------------
 // Config::resource_file
 //------------------------------------------------------------------------
-std::optional<ConfigFile> Config::resource_file(ConfigFile iRelativeResourcePath) const
+std::optional<resource::File> Config::resource_file(resource::File iRelativeResourcePath) const
 {
   if(fDeviceResourcesDir)
   {
-    return ConfigFile{fmt::path(*fDeviceResourcesDir, fmt::split(iRelativeResourcePath.fFilename, '/'))};
+    return resource::File{fmt::path(*fDeviceResourcesDir, fmt::split(iRelativeResourcePath.fFilename, '/'))};
   }
   else
     return std::nullopt;
@@ -470,9 +470,9 @@ std::optional<ConfigFile> Config::resource_file(ConfigFile iRelativeResourcePath
 //------------------------------------------------------------------------
 // Config::findPatchResource
 //------------------------------------------------------------------------
-std::optional<Resource::Patch> Config::findPatchResource(std::string const &iResourcePath) const
+std::optional<resource::Patch> Config::findPatchResource(std::string const &iResourcePath) const
 {
-  auto resourceFile = ConfigFile{iResourcePath};
+  auto resourceFile = resource::File{iResourcePath};
 
   auto patchResource = fResources.find(iResourcePath);
   if(patchResource != fResources.end())
@@ -480,15 +480,15 @@ std::optional<Resource::Patch> Config::findPatchResource(std::string const &iRes
     auto r = std::get<ConfigResource::Patch>(patchResource->second);
 
     // it's already a patch...
-    if(std::holds_alternative<Resource::Patch>(r.fPatchVariant))
-      return std::get<Resource::Patch>(r.fPatchVariant);
+    if(std::holds_alternative<resource::Patch>(r.fPatchVariant))
+      return std::get<resource::Patch>(r.fPatchVariant);
 
     // it's a string
-    if(std::holds_alternative<ConfigString>(r.fPatchVariant))
-      return PatchParser::from(std::get<ConfigString>(r.fPatchVariant));
+    if(std::holds_alternative<resource::String>(r.fPatchVariant))
+      return PatchParser::from(std::get<resource::String>(r.fPatchVariant));
     else
       // it's a file
-      resourceFile = std::get<ConfigFile>(r.fPatchVariant);
+      resourceFile = std::get<resource::File>(r.fPatchVariant);
   }
 
   // check the path as-is
@@ -506,18 +506,18 @@ std::optional<Resource::Patch> Config::findPatchResource(std::string const &iRes
 //------------------------------------------------------------------------
 // Config::findBlobResource
 //------------------------------------------------------------------------
-std::optional<Resource::Blob> Config::findBlobResource(std::string const &iResourcePath) const
+std::optional<resource::Blob> Config::findBlobResource(std::string const &iResourcePath) const
 {
-  auto resourceFile = ConfigFile{iResourcePath};
+  auto resourceFile = resource::File{iResourcePath};
 
   auto blobResource = fResources.find(iResourcePath);
   if(blobResource != fResources.end())
   {
     auto b = std::get<ConfigResource::Blob>(blobResource->second);
-    if(std::holds_alternative<Resource::Blob>(b.fBlobVariant))
-      return std::get<Resource::Blob>(b.fBlobVariant);
+    if(std::holds_alternative<resource::Blob>(b.fBlobVariant))
+      return std::get<resource::Blob>(b.fBlobVariant);
     else
-      resourceFile = std::get<ConfigFile>(b.fBlobVariant);
+      resourceFile = std::get<resource::File>(b.fBlobVariant);
   }
 
   // check the path as-is
@@ -536,19 +536,19 @@ std::optional<Resource::Blob> Config::findBlobResource(std::string const &iResou
 //------------------------------------------------------------------------
 // Config::findSampleResource
 //------------------------------------------------------------------------
-std::optional<Resource::Sample> Config::findSampleResource(std::string const &iResourcePath) const
+std::optional<resource::Sample> Config::findSampleResource(std::string const &iResourcePath) const
 {
-  auto resourceFile = ConfigFile{iResourcePath};
+  auto resourceFile = resource::File{iResourcePath};
 
   auto sampleResource = fResources.find(iResourcePath);
   if(sampleResource != fResources.end())
   {
     auto s = std::get<ConfigResource::Sample>(sampleResource->second);
 
-    if(std::holds_alternative<Resource::Sample>(s.fSampleVariant))
-      return std::get<Resource::Sample>(s.fSampleVariant);
+    if(std::holds_alternative<resource::Sample>(s.fSampleVariant))
+      return std::get<resource::Sample>(s.fSampleVariant);
     else
-      resourceFile = std::get<ConfigFile>(s.fSampleVariant);
+      resourceFile = std::get<resource::File>(s.fSampleVariant);
   }
 
   // check the path as-is
@@ -608,7 +608,7 @@ Info fromInfoLua(lua::InfoLua &iInfo)
 //------------------------------------------------------------------------
 // Info::info
 //------------------------------------------------------------------------
-Info Info::from(ConfigFile iFile)
+Info Info::from(resource::File iFile)
 {
   auto luaInfo = lua::InfoLua::fromFile(iFile.fFilename);
   return impl::fromInfoLua(*luaInfo);
@@ -617,7 +617,7 @@ Info Info::from(ConfigFile iFile)
 //------------------------------------------------------------------------
 // Info::info
 //------------------------------------------------------------------------
-Info Info::from(ConfigString iString)
+Info Info::from(resource::String iString)
 {
   auto luaInfo = lua::InfoLua::fromString(iString.fString);
   return impl::fromInfoLua(*luaInfo);
@@ -633,9 +633,9 @@ Info Info::fromSkeleton(DeviceType iDeviceType)
 }
 
 //------------------------------------------------------------------------
-// Resource::LoadingContext::getStatusAsString
+// resource::LoadingContext::getStatusAsString
 //------------------------------------------------------------------------
-std::string Resource::LoadingContext::getStatusAsString() const
+std::string resource::LoadingContext::getStatusAsString() const
 {
   std::string res;
 
@@ -664,7 +664,7 @@ std::string Resource::LoadingContext::getStatusAsString() const
 //------------------------------------------------------------------------
 // Sample::Metadata::getStateAsInt
 //------------------------------------------------------------------------
-int Resource::LoadingContext::getStatusAsInt() const
+int resource::LoadingContext::getStatusAsInt() const
 {
   int res;
 

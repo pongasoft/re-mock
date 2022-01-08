@@ -27,6 +27,7 @@
 #include <set>
 #include <re/mock/lua/MotherboardDef.h>
 #include "Errors.h"
+#include "Resources.h"
 
 namespace re::mock {
 
@@ -74,7 +75,7 @@ struct Realtime
 struct ConfigFile { std::string fFilename{}; };
 struct ConfigString { std::string fString{}; };
 
-using ConfigSource = std::variant<ConfigFile, ConfigString>;
+using ConfigSource = std::variant<resource::File, resource::String>;
 
 struct Info
 {
@@ -88,67 +89,10 @@ struct Info
   Info &accept_notes(bool b) { fAcceptNotes = b; return *this; }
 
   static Info fromSkeleton(DeviceType iDeviceType);
-  static Info from(ConfigFile iFile);
-  static Info from(ConfigString iString);
-  static Info from_string(std::string iString) { return from(ConfigString{iString}); }
-  static Info from_file(std::string iFile) { return from(ConfigFile{iFile}); }
-};
-
-enum class LoadStatus { kNil, kPartiallyResident, kResident, kHasErrors, kMissing };
-
-inline bool isLoadStatusOk(LoadStatus s) { return s == LoadStatus::kResident || s == LoadStatus::kPartiallyResident; }
-
-struct Resource
-{
-  struct LoadingContext
-  {
-    LoadStatus fStatus{LoadStatus::kNil};
-    size_t fResidentSize{};
-
-    bool isLoadOk() const { return isLoadStatusOk(fStatus); }
-    std::string getStatusAsString() const;
-    int getStatusAsInt() const;
-
-    LoadingContext &resident_size(size_t s) { fResidentSize = s; return *this; }
-    LoadingContext &status(LoadStatus l) { fStatus = l; return *this; }
-  };
-
-  struct Patch {
-    struct boolean_property { bool fValue{}; };
-    struct number_property { TJBox_Float64 fValue{}; };
-    struct string_property { std::string fValue{}; };
-    struct sample_property { std::string fValue{}; };
-
-    using patch_property = std::variant<
-      boolean_property,
-      number_property,
-      string_property,
-      sample_property
-    >;
-
-    Patch &boolean(std::string iPath, bool iValue) { fProperties[iPath] = boolean_property { iValue }; return *this; };
-    Patch &number(std::string iPath, TJBox_Float64 iValue) { fProperties[iPath] = number_property { iValue }; return *this; };
-    Patch &string(std::string iPath, std::string const &iValue) { fProperties[iPath] = string_property { iValue }; return *this; };
-    Patch &sample(std::string iPath, std::string iValue) { fProperties[iPath] = sample_property { iValue }; return *this; };
-
-    std::map<std::string, patch_property> fProperties{};
-  };
-
-
-  struct Blob { std::vector<char> fData{}; };
-
-  struct Sample
-  {
-    TJBox_UInt32 fChannels{1};
-    TJBox_UInt32 fSampleRate{1};
-    std::vector<TJBox_AudioSample> fData{};
-
-    Sample &channels(TJBox_UInt32 c) { fChannels = c; return *this; }
-    Sample &mono() { return channels(1); }
-    Sample &stereo() { return channels(2); }
-    Sample &sample_rate(TJBox_UInt32 s) { fSampleRate = s; return *this; }
-    Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
-  };
+  static Info from(resource::File iFile);
+  static Info from(resource::String iString);
+  static Info from_string(std::string iString) { return from(resource::String{iString}); }
+  static Info from_file(std::string iFile) { return from(resource::File{iFile}); }
 };
 
 struct Config
@@ -159,39 +103,39 @@ struct Config
 
   using rt_callback_t = std::function<void (Realtime &rt)>;
 
-  static ConfigString gui_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
-  static ConfigString gui_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
-  static ConfigString gui_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
+  static resource::String gui_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
+  static resource::String gui_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static resource::String gui_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
 
-  static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
-  static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
-  static ConfigString document_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
+  static resource::String document_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
+  static resource::String document_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static resource::String document_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
 
-  static ConfigString user_sample(std::string const &iSampleName, lua::jbox_user_sample_property const &iProperty);
-  static ConfigString user_sample(int iSampleIndex, lua::jbox_user_sample_property const &iProperty);
+  static resource::String user_sample(std::string const &iSampleName, lua::jbox_user_sample_property const &iProperty);
+  static resource::String user_sample(int iSampleIndex, lua::jbox_user_sample_property const &iProperty);
 
-  static ConfigString patterns(int iNumPatterns);
+  static resource::String patterns(int iNumPatterns);
 
   // TODO add performance properties
-  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
-  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
-  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
-  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty);
-  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_blob_property const &iProperty);
-  static ConfigString rtc_owner_property(std::string const &iPropertyName, lua::jbox_sample_property const &iProperty);
-  static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
-  static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
-  static ConfigString rt_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
+  static resource::String rtc_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
+  static resource::String rtc_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static resource::String rtc_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
+  static resource::String rtc_owner_property(std::string const &iPropertyName, lua::jbox_native_object const &iProperty);
+  static resource::String rtc_owner_property(std::string const &iPropertyName, lua::jbox_blob_property const &iProperty);
+  static resource::String rtc_owner_property(std::string const &iPropertyName, lua::jbox_sample_property const &iProperty);
+  static resource::String rt_owner_property(std::string const &iPropertyName, lua::jbox_boolean_property const &iProperty);
+  static resource::String rt_owner_property(std::string const &iPropertyName, lua::jbox_number_property const &iProperty);
+  static resource::String rt_owner_property(std::string const &iPropertyName, lua::jbox_string_property const &iProperty);
 
-  static ConfigString audio_out(std::string const &iSocketName);
-  static ConfigString stereo_audio_out(char const *iLeftSocketName = LEFT_SOCKET, char const *iRightSocketName = RIGHT_SOCKET);
-  static ConfigString audio_in(std::string const &iSocketName);
-  static ConfigString stereo_audio_in(char const *iLeftSocketName = LEFT_SOCKET, char const *iRightSocketName = RIGHT_SOCKET);
-  static ConfigString cv_out(char const *iSocketName = SOCKET);
-  static ConfigString cv_in(char const *iSocketName = SOCKET);
-  static ConfigString rtc_binding(std::string const &iSource, std::string const &iDest);
-  static ConfigString rt_input_setup_notify(std::string const &iPropertyName);
-  static ConfigString rt_input_setup_notify_all_notes();
+  static resource::String audio_out(std::string const &iSocketName);
+  static resource::String stereo_audio_out(char const *iLeftSocketName = LEFT_SOCKET, char const *iRightSocketName = RIGHT_SOCKET);
+  static resource::String audio_in(std::string const &iSocketName);
+  static resource::String stereo_audio_in(char const *iLeftSocketName = LEFT_SOCKET, char const *iRightSocketName = RIGHT_SOCKET);
+  static resource::String cv_out(char const *iSocketName = SOCKET);
+  static resource::String cv_in(char const *iSocketName = SOCKET);
+  static resource::String rtc_binding(std::string const &iSource, std::string const &iDest);
+  static resource::String rt_input_setup_notify(std::string const &iPropertyName);
+  static resource::String rt_input_setup_notify_all_notes();
 
   explicit Config(DeviceType iDeviceType) { fInfo.device_type(iDeviceType); }
   explicit Config(Info const &iInfo) :fInfo{iInfo} {}
@@ -215,16 +159,16 @@ struct Config
   Config &device_resources_dir(std::string s) { fDeviceResourcesDir = s; return *this; }
 
   std::vector<ConfigSource> const &mdef() const { return fMotherboardDefs; }
-  Config &mdef(ConfigFile iFile) { fMotherboardDefs.emplace_back(iFile); return *this; }
-  Config &mdef(ConfigString iString) { fMotherboardDefs.emplace_back(iString); return *this; }
-  Config &mdef_string(std::string iString) { return mdef(ConfigString{iString}); }
-  Config &mdef_file(std::string iFile) { return mdef(ConfigFile{iFile}); }
+  Config &mdef(resource::File iFile) { fMotherboardDefs.emplace_back(iFile); return *this; }
+  Config &mdef(resource::String iString) { fMotherboardDefs.emplace_back(iString); return *this; }
+  Config &mdef_string(std::string iString) { return mdef(resource::String{iString}); }
+  Config &mdef_file(std::string iFile) { return mdef(resource::File{iFile}); }
 
   std::vector<ConfigSource> const &rtc() const { return fRealtimeControllers; }
-  Config &rtc(ConfigFile iFile) { fRealtimeControllers.emplace_back(iFile); return *this; }
-  Config &rtc(ConfigString iString) { fRealtimeControllers.emplace_back(iString); return *this; }
-  Config &rtc_string(std::string iString) { return rtc(ConfigString{iString}); }
-  Config &rtc_file(std::string iFile) { return rtc(ConfigFile{iFile}); }
+  Config &rtc(resource::File iFile) { fRealtimeControllers.emplace_back(iFile); return *this; }
+  Config &rtc(resource::String iString) { fRealtimeControllers.emplace_back(iString); return *this; }
+  Config &rtc_string(std::string iString) { return rtc(resource::String{iString}); }
+  Config &rtc_file(std::string iFile) { return rtc(resource::File{iFile}); }
 
   rt_callback_t rt() const { return fRealtime; }
   Config &rt(rt_callback_t iCallback)
@@ -250,43 +194,43 @@ struct Config
   template<typename T>
   Config &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
-  Config& patch_string(std::string iResourcePath, std::string const &iPatchString) { fResources[iResourcePath] = ConfigResource::Patch{ConfigString{iPatchString}}; return *this; }
-  Config& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fResources[iResourcePath] = ConfigResource::Patch{ConfigFile{iPatchFile}}; return *this; }
-  Config& patch_data(std::string iResourcePath, Resource::Patch iPatch) { fResources[iResourcePath] = ConfigResource::Patch{std::move(iPatch)}; return *this; }
+  Config& patch_string(std::string iResourcePath, std::string const &iPatchString) { fResources[iResourcePath] = ConfigResource::Patch{resource::String{iPatchString}}; return *this; }
+  Config& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fResources[iResourcePath] = ConfigResource::Patch{resource::File{iPatchFile}}; return *this; }
+  Config& patch_data(std::string iResourcePath, resource::Patch iPatch) { fResources[iResourcePath] = ConfigResource::Patch{std::move(iPatch)}; return *this; }
 
-  Config& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fResources[iResourcePath] = ConfigResource::Blob{ConfigFile{iBlobFile}}; return *this; }
-  Config& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fResources[iResourcePath] = ConfigResource::Blob{Resource::Blob{std::move(iBlobData)}}; return *this; }
+  Config& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fResources[iResourcePath] = ConfigResource::Blob{resource::File{iBlobFile}}; return *this; }
+  Config& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fResources[iResourcePath] = ConfigResource::Blob{resource::Blob{std::move(iBlobData)}}; return *this; }
 
-  Config& sample_file(std::string iResourcePath, std::string const &iSampleFile) { fResources[iResourcePath] = ConfigResource::Sample{ConfigFile{iSampleFile}}; return *this; }
-  Config& sample_data(std::string iResourcePath, Resource::Sample iSample) { fResources[iResourcePath] = ConfigResource::Sample{std::move(iSample)}; return *this; }
+  Config& sample_file(std::string iResourcePath, std::string const &iSampleFile) { fResources[iResourcePath] = ConfigResource::Sample{resource::File{iSampleFile}}; return *this; }
+  Config& sample_data(std::string iResourcePath, resource::Sample iSample) { fResources[iResourcePath] = ConfigResource::Sample{std::move(iSample)}; return *this; }
 
-  Config& resource_loading_context(std::string iResourcePath, Resource::LoadingContext iCtx) { fResourceLoadingContexts[iResourcePath] = std::move(iCtx); return *this; }
+  Config& resource_loading_context(std::string iResourcePath, resource::LoadingContext iCtx) { fResourceLoadingContexts[iResourcePath] = std::move(iCtx); return *this; }
 
   /**
    * Returns the resource relative to `device_resources_dir()` (if device_resources_dir exists).
    *
    * @param iRelativeResourcePath must use Unix like path
    *                              (which is what the SDK uses (for example: `/Public/Default.repatch`)) */
-  std::optional<ConfigFile> resource_file(ConfigFile iRelativeResourcePath) const;
+  std::optional<resource::File> resource_file(resource::File iRelativeResourcePath) const;
 
-  std::optional<Resource::Patch> findPatchResource(std::string const &iResourcePath) const;
-  std::optional<Resource::Blob> findBlobResource(std::string const &iResourcePath) const;
-  std::optional<Resource::Sample> findSampleResource(std::string const &iResourcePath) const;
+  std::optional<resource::Patch> findPatchResource(std::string const &iResourcePath) const;
+  std::optional<resource::Blob> findBlobResource(std::string const &iResourcePath) const;
+  std::optional<resource::Sample> findSampleResource(std::string const &iResourcePath) const;
 
   static Config fromSkeleton(Info const &iInfo);
   static Config fromSkeleton(DeviceType iDeviceType = DeviceType::kHelper) { return fromSkeleton(Info::fromSkeleton(iDeviceType)); }
 
   friend class Motherboard;
 
-  static ConfigString skeletonMotherboardDef();
-  static ConfigString skeletonRealtimeController();
+  static resource::String skeletonMotherboardDef();
+  static resource::String skeletonRealtimeController();
 
 protected:
   struct ConfigResource
   {
-    struct Patch { std::variant<ConfigString, ConfigFile, Resource::Patch> fPatchVariant; };
-    struct Blob { std::variant<ConfigFile, Resource::Blob> fBlobVariant; };
-    struct Sample { std::variant<ConfigFile, Resource::Sample> fSampleVariant; };
+    struct Patch { std::variant<resource::String, resource::File, resource::Patch> fPatchVariant; };
+    struct Blob { std::variant<resource::File, resource::Blob> fBlobVariant; };
+    struct Sample { std::variant<resource::File, resource::Sample> fSampleVariant; };
   };
 
   using AnyConfigResource = std::variant<ConfigResource::Patch, ConfigResource::Blob, ConfigResource::Sample>;
@@ -300,7 +244,7 @@ protected:
   std::vector<ConfigSource> fRealtimeControllers{};
   rt_callback_t fRealtime{};
   std::map<std::string, AnyConfigResource> fResources{};
-  std::map<std::string, Resource::LoadingContext> fResourceLoadingContexts{};
+  std::map<std::string, resource::LoadingContext> fResourceLoadingContexts{};
 };
 
 template<typename T>
@@ -316,11 +260,11 @@ struct DeviceConfig
   std::optional<std::string> device_root_dir() const { return fConfig.device_root_dir(); };
   std::optional<std::string> device_resources_dir() const { return fConfig.device_resources_dir(); };
 
-  std::optional<ConfigFile> resource_file(ConfigFile iRelativeResourcePath) const { return fConfig.resource_file(iRelativeResourcePath); }
+  std::optional<resource::File> resource_file(resource::File iRelativeResourcePath) const { return fConfig.resource_file(iRelativeResourcePath); }
 
-  std::optional<Resource::Patch> findPatchResource(std::string const &iResourcePath) const { return fConfig.findPatchResource(iResourcePath); }
-  std::optional<Resource::Blob> findBlobResource(std::string const &iResourcePath) const { return fConfig.findBlobResource(iResourcePath); }
-  std::optional<Resource::Sample> findSampleResource(std::string const &iResourcePath) const { return fConfig.findSampleResource(iResourcePath); }
+  std::optional<resource::Patch> findPatchResource(std::string const &iResourcePath) const { return fConfig.findPatchResource(iResourcePath); }
+  std::optional<resource::Blob> findBlobResource(std::string const &iResourcePath) const { return fConfig.findBlobResource(iResourcePath); }
+  std::optional<resource::Sample> findSampleResource(std::string const &iResourcePath) const { return fConfig.findSampleResource(iResourcePath); }
 
   DeviceConfig &debug(bool iDebug = true) { fConfig.debug(iDebug); return *this; }
 
@@ -333,15 +277,15 @@ struct DeviceConfig
   DeviceConfig &default_patch(std::string s) { fConfig.default_patch(s); return *this; }
   DeviceConfig &accept_notes(bool b) { fConfig.accept_notes(b); return *this; }
 
-  DeviceConfig &mdef(ConfigFile iFile) { fConfig.mdef(iFile); return *this; }
-  DeviceConfig &mdef(ConfigString iString) { fConfig.mdef(iString); return *this; }
-  DeviceConfig &mdef_string(std::string iString) { return mdef(ConfigString{iString}); }
-  DeviceConfig &mdef_file(std::string iFile) { return mdef(ConfigFile{iFile}); }
+  DeviceConfig &mdef(resource::File iFile) { fConfig.mdef(iFile); return *this; }
+  DeviceConfig &mdef(resource::String iString) { fConfig.mdef(iString); return *this; }
+  DeviceConfig &mdef_string(std::string iString) { return mdef(resource::String{iString}); }
+  DeviceConfig &mdef_file(std::string iFile) { return mdef(resource::File{iFile}); }
 
-  DeviceConfig &rtc(ConfigFile iFile) { fConfig.rtc(iFile); return *this; }
-  DeviceConfig &rtc(ConfigString iString) { fConfig.rtc(iString); return *this; }
-  DeviceConfig &rtc_string(std::string iString) { return rtc(ConfigString{iString}); }
-  DeviceConfig &rtc_file(std::string iFile) { return rtc(ConfigFile{iFile}); }
+  DeviceConfig &rtc(resource::File iFile) { fConfig.rtc(iFile); return *this; }
+  DeviceConfig &rtc(resource::String iString) { fConfig.rtc(iString); return *this; }
+  DeviceConfig &rtc_string(std::string iString) { return rtc(resource::String{iString}); }
+  DeviceConfig &rtc_file(std::string iFile) { return rtc(resource::File{iFile}); }
 
   DeviceConfig &rt(rt_callback_t iCallback) { fConfig.rt(std::move(iCallback)); return *this; }
 
@@ -355,15 +299,15 @@ struct DeviceConfig
 
   DeviceConfig& patch_string(std::string iResourcePath, std::string const &iPatchString) { fConfig.patch_string(iResourcePath, iPatchString); return *this; }
   DeviceConfig& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fConfig.patch_file(iResourcePath, iPatchFile); return *this; }
-  DeviceConfig& patch_data(std::string iResourcePath, Resource::Patch iPatch) { fConfig.patch_data(iResourcePath, std::move(iPatch)); return *this; }
+  DeviceConfig& patch_data(std::string iResourcePath, resource::Patch iPatch) { fConfig.patch_data(iResourcePath, std::move(iPatch)); return *this; }
 
   DeviceConfig& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fConfig.blob_file(iResourcePath, iBlobFile); return *this; }
   DeviceConfig& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fConfig.blob_data(iResourcePath, iBlobData); return *this; }
 
   DeviceConfig& sample_file(std::string iResourcePath, std::string const &iSampleFile) { fConfig.sample_file(iResourcePath, iSampleFile); return *this; }
-  DeviceConfig& sample_data(std::string iResourcePath, Resource::Sample iSample) { fConfig.sample_data(iResourcePath, std::move(iSample)); return *this; }
+  DeviceConfig& sample_data(std::string iResourcePath, resource::Sample iSample) { fConfig.sample_data(iResourcePath, std::move(iSample)); return *this; }
 
-  DeviceConfig& resource_loading_context(std::string iResourcePath, Resource::LoadingContext iCtx) { fConfig.resource_loading_context(iResourcePath, iCtx); return *this; }
+  DeviceConfig& resource_loading_context(std::string iResourcePath, resource::LoadingContext iCtx) { fConfig.resource_loading_context(iResourcePath, iCtx); return *this; }
 
   static DeviceConfig fromJBoxExport(std::string const &iDeviceRootFolder,
                                      std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());

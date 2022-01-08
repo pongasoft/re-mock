@@ -92,11 +92,11 @@ so that the device runs past the end of the sample).
 
 ```c++
 auto sinePath = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "sine.wav");
-auto sine = tester.loadSample(ConfigFile{sinePath});
-auto processedSine = tester.processSample(ConfigFile{sinePath}); // you can optionally add a "tail" (check API)
+auto sine = tester.loadSample(resource::File{sinePath});
+auto processedSine = tester.processSample(resource::File{sinePath}); // you can optionally add a "tail" (check API)
 
 auto processedSinePath = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "processed_sine.wav");
-auto expectedProcessedSine = tester.loadSample(ConfigFile{processedSinePath});
+auto expectedProcessedSine = tester.loadSample(resource::File{processedSinePath});
 
 ASSERT_EQ(expectedProcessedSine, processedSine); // compare the 2 samples
 ```
@@ -139,7 +139,7 @@ auto noteEvents = MockNotePlayer::NoteEvents{}.noteOn(Midi::A(3));
 auto sample = tester.setNoteEvents(noteEvents).play(Duration::Time{1000}); // "play" for 1s while A3 is held
 
 auto path = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "instrument_A3_1s.wav");
-auto expectedSample = tester.loadSample(ConfigFile{path});
+auto expectedSample = tester.loadSample(resource::File{path});
 
 ASSERT_EQ(expectedSample, sample); // compare the 2 samples
 ```

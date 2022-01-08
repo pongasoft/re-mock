@@ -31,7 +31,7 @@ namespace impl {
 // loadFile
 //------------------------------------------------------------------------
 template<typename Container, size_t BUFFER_SIZE = 1024>
-long loadFile(ConfigFile const &iFile, Container &oBuffer)
+long loadFile(resource::File const &iFile, Container &oBuffer)
 {
   std::ifstream ifs{iFile.fFilename, std::fstream::binary};
   if(!ifs)
@@ -70,7 +70,7 @@ long loadFile(ConfigFile const &iFile, Container &oBuffer)
 //------------------------------------------------------------------------
 // FileManager::fileSize
 //------------------------------------------------------------------------
-std::ifstream::pos_type FileManager::fileSize(ConfigFile const &iFile)
+std::ifstream::pos_type FileManager::fileSize(resource::File const &iFile)
 {
   std::ifstream in(iFile.fFilename, std::ifstream::ate | std::ifstream::binary);
   return in.tellg();
@@ -79,7 +79,7 @@ std::ifstream::pos_type FileManager::fileSize(ConfigFile const &iFile)
 //------------------------------------------------------------------------
 // FileManager::fileExists
 //------------------------------------------------------------------------
-bool FileManager::fileExists(ConfigFile const &iFile)
+bool FileManager::fileExists(resource::File const &iFile)
 {
   return std::ifstream{iFile.fFilename}.is_open();
 }
@@ -87,12 +87,12 @@ bool FileManager::fileExists(ConfigFile const &iFile)
 //------------------------------------------------------------------------
 // FileManager::loadBlob
 //------------------------------------------------------------------------
-std::optional<Resource::Blob> FileManager::loadBlob(ConfigFile const &iFile)
+std::optional<resource::Blob> FileManager::loadBlob(resource::File const &iFile)
 {
   auto size = fileSize(iFile);
   if(size > -1)
   {
-    Resource::Blob blob{};
+    resource::Blob blob{};
     blob.fData.reserve(size);
     auto readSize = impl::loadFile(iFile, blob.fData);
     RE_MOCK_ASSERT(readSize == size);
@@ -104,7 +104,7 @@ std::optional<Resource::Blob> FileManager::loadBlob(ConfigFile const &iFile)
 //------------------------------------------------------------------------
 // FileManager::loadMidi
 //------------------------------------------------------------------------
-std::optional<smf::MidiFile> FileManager::loadMidi(ConfigFile const &iFile, bool iConvertToReasonPPQ)
+std::optional<smf::MidiFile> FileManager::loadMidi(resource::File const &iFile, bool iConvertToReasonPPQ)
 {
   smf::MidiFile midiFile;
   midiFile.read(iFile.fFilename);
@@ -248,7 +248,7 @@ bool saveSample(Container const &iBuffer, SndfileHandle &iFileHandle)
 //------------------------------------------------------------------------
 // FileManager::loadSample
 //------------------------------------------------------------------------
-std::optional<Resource::Sample> FileManager::loadSample(ConfigFile const &iFile)
+std::optional<resource::Sample> FileManager::loadSample(resource::File const &iFile)
 {
   if(!FileManager::fileExists(iFile))
     return std::nullopt;
@@ -264,7 +264,7 @@ std::optional<Resource::Sample> FileManager::loadSample(ConfigFile const &iFile)
     return std::nullopt;
   }
 
-  Resource::Sample sample{};
+  resource::Sample sample{};
   sample.fData.reserve(sndFile.frames() * sndFile.channels());
 
   if(impl::loadSample(sndFile, sample.fData) >= 0)
@@ -289,7 +289,7 @@ std::optional<Resource::Sample> FileManager::loadSample(ConfigFile const &iFile)
 void FileManager::saveSample(TJBox_UInt32 iChannels,
                              TJBox_UInt32 iSampleRate,
                              std::vector<TJBox_AudioSample> const &iData,
-                             ConfigFile const &iToFile)
+                             resource::File const &iToFile)
 {
   SndfileHandle sndFile(iToFile.fFilename.c_str(),
                         SFM_WRITE, // open for writing
@@ -320,7 +320,7 @@ void FileManager::saveSample(TJBox_UInt32 iChannels,
 //------------------------------------------------------------------------
 // FileManager::loadSample
 //------------------------------------------------------------------------
-std::optional<Resource::Sample> FileManager::loadSample(ConfigFile const &iFile)
+std::optional<resource::Sample> FileManager::loadSample(resource::File const &iFile)
 {
   RE_MOCK_ASSERT(false,
                  "Loading sample is disabled by default. To enable, define option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE \"\" ON) "
@@ -334,7 +334,7 @@ std::optional<Resource::Sample> FileManager::loadSample(ConfigFile const &iFile)
 void FileManager::saveSample(TJBox_UInt32 iChannels,
                              TJBox_UInt32 iSampleRate,
                              std::vector<TJBox_AudioSample> const &iData,
-                             ConfigFile const &iToFile)
+                             resource::File const &iToFile)
 {
   RE_MOCK_ASSERT(false,
                 "Saving a sample is disabled by default. To enable, define option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE \"\" ON) "

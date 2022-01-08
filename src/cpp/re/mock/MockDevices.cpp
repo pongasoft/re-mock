@@ -734,7 +734,7 @@ bool operator==(MockAudioDevice::Sample const &lhs, MockAudioDevice::Sample cons
 //------------------------------------------------------------------------
 // MockAudioDevice::Sample::from
 //------------------------------------------------------------------------
-MockAudioDevice::Sample MockAudioDevice::Sample::from(Resource::Sample iSample)
+MockAudioDevice::Sample MockAudioDevice::Sample::from(resource::Sample iSample)
 {
   return {
     iSample.fChannels,

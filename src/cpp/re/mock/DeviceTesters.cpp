@@ -208,7 +208,7 @@ void DeviceTester::nextBatches(Duration iDuration)
 //------------------------------------------------------------------------
 // DeviceTester::loadSample
 //------------------------------------------------------------------------
-MockAudioDevice::Sample DeviceTester::loadSample(ConfigFile const &iSampleFile) const
+MockAudioDevice::Sample DeviceTester::loadSample(resource::File const &iSampleFile) const
 {
   auto sample = FileManager::loadSample(iSampleFile);
   RE_MOCK_ASSERT(sample != std::nullopt, "Could not load sample [%s]", iSampleFile.fFilename);
@@ -228,7 +228,7 @@ MockAudioDevice::Sample DeviceTester::loadSample(std::string const &iSampleResou
 //------------------------------------------------------------------------
 // DeviceTester::saveSample
 //------------------------------------------------------------------------
-void DeviceTester::saveSample(MockAudioDevice::Sample const &iSample, ConfigFile const &iToFile) const
+void DeviceTester::saveSample(MockAudioDevice::Sample const &iSample, resource::File const &iToFile) const
 {
   FileManager::saveSample(iSample.fChannels, iSample.fSampleRate, iSample.fData, iToFile);
 }
@@ -236,7 +236,7 @@ void DeviceTester::saveSample(MockAudioDevice::Sample const &iSample, ConfigFile
 //------------------------------------------------------------------------
 // DeviceTester::loadMidi
 //------------------------------------------------------------------------
-void DeviceTester::loadMidi(ConfigFile const &iMidiFile, int iTrack, bool iImportTempo)
+void DeviceTester::loadMidi(resource::File const &iMidiFile, int iTrack, bool iImportTempo)
 {
   auto midiFile = FileManager::loadMidi(iMidiFile).value();
 

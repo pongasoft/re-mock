@@ -59,7 +59,7 @@ TEST(SanityCheck, SDKExamples)
       if(def->supports_patches())
       {
         auto patchFile = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "Resources", def->default_patch());
-        auto patch = PatchParser::from(ConfigFile{patchFile});
+        auto patch = PatchParser::from(resource::File{patchFile});
         patchPropertiesCount = patch.fProperties.size();
       }
 

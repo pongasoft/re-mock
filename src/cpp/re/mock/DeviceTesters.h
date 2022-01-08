@@ -162,13 +162,13 @@ public:
 
   void nextBatches(Duration iDuration);
 
-  MockAudioDevice::Sample loadSample(ConfigFile const &iSampleFile) const;
+  MockAudioDevice::Sample loadSample(resource::File const &iSampleFile) const;
   MockAudioDevice::Sample loadSample(std::string const &iSampleResource) const;
-  void saveSample(MockAudioDevice::Sample const &iSample, ConfigFile const &iToFile) const;
+  void saveSample(MockAudioDevice::Sample const &iSample, resource::File const &iToFile) const;
 
   void deviceReset() { fDevice.reset(); }
 
-  void loadMidi(ConfigFile const &iMidiFile, int iTrack = -1, bool iImportTempo = true);
+  void loadMidi(resource::File const &iMidiFile, int iTrack = -1, bool iImportTempo = true);
 
   friend class re::mock::tester::Timeline;
 
@@ -226,7 +226,7 @@ public:
                                         std::optional<Duration> iTail = std::nullopt,
                                         std::optional<tester::Timeline> iTimeline = std::nullopt);
 
-  MockAudioDevice::Sample processSample(ConfigFile const &iSampleFile,
+  MockAudioDevice::Sample processSample(resource::File const &iSampleFile,
                                         std::optional<Duration> iTail = std::nullopt,
                                         std::optional<tester::Timeline> iTimeline = std::nullopt) {
     return processSample(loadSample(iSampleFile), iTail, std::move(iTimeline));

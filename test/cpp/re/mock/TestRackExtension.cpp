@@ -311,7 +311,7 @@ TEST(RackExtension, RealtimeController_NativeObject)
       .mdef(Config::rtc_owner_property("prop_function_return", lua::jbox_string_property{}))
       .mdef(Config::rtc_owner_property("prop_gain", lua::jbox_native_object{}.property_tag(3000)))
 
-      .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
+      .rtc(resource::File{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
                                 "RackExtension_RealtimeController_NativeObject.lua")})
       .rt([](Realtime &rt) {
         rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[],
@@ -451,9 +451,9 @@ TEST(RackExtension, RealtimeController_Blob)
     .blob_data("/Private/blob.data", blobData)
     .blob_file("/Private/blob.file", fmt::path(RE_MOCK_PROJECT_DIR, "LICENSE.txt"))
 
-    .resource_loading_context("/Private/blob.file", Resource::LoadingContext{}.status(LoadStatus::kPartiallyResident).resident_size(100))
+    .resource_loading_context("/Private/blob.file", resource::LoadingContext{}.status(resource::LoadStatus::kPartiallyResident).resident_size(100))
 
-    .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
+    .rtc(resource::File{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
                               "RackExtension_RealtimeController_Blob.lua")});
 
   auto re = rack.newDevice(c);
@@ -524,7 +524,7 @@ TEST(RackExtension, RealtimeController_Blob)
   ASSERT_EQ("is_blob=true;size=0.0;resident_size=0.0;state=0.0", re.getString("/custom_properties/on_prop_blob_return"));
 
   // make /Private/blob.data missing
-  re.setResourceLoadingContext("/Private/blob.data", Resource::LoadingContext{}.status(LoadStatus::kMissing));
+  re.setResourceLoadingContext("/Private/blob.data", resource::LoadingContext{}.status(resource::LoadStatus::kMissing));
 
   // load_blob_data (missing)
   re.setString("/custom_properties/prop_function", "load_blob_data");
@@ -540,7 +540,7 @@ TEST(RackExtension, RealtimeController_Blob)
   ASSERT_THROW(re.loadMoreBlob("/custom_properties/prop_blob"), Exception);
 
   // make /Private/blob.data kHasErrors
-  re.setResourceLoadingContext("/Private/blob.data", Resource::LoadingContext{}.status(LoadStatus::kHasErrors));
+  re.setResourceLoadingContext("/Private/blob.data", resource::LoadingContext{}.status(resource::LoadStatus::kHasErrors));
 
   // load_blob_data (missing)
   re.setString("/custom_properties/prop_function", "noop");
@@ -644,14 +644,14 @@ TEST(RackExtension, RealtimeController_Sample)
                                        4000)))
     .mdef(Config::rtc_owner_property("prop_sample", lua::jbox_sample_property{}.property_tag(5000)))
 
-    .sample_data("/Private/sample.default", Resource::Sample{}.sample_rate(44100).channels(1).data({0,1,2,3}))
+    .sample_data("/Private/sample.default", resource::Sample{}.sample_rate(44100).channels(1).data({0,1,2,3}))
     .sample_file("/Private/mono_sample.file", fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio",
                                                         "sine.wav"))
-    .sample_data("/Private/stereo_sample.data", Resource::Sample{}.sample_rate(44100).channels(2).data(sampleStereoData))
+    .sample_data("/Private/stereo_sample.data", resource::Sample{}.sample_rate(44100).channels(2).data(sampleStereoData))
 
-    .resource_loading_context("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kPartiallyResident).resident_size(2))
+    .resource_loading_context("/Private/stereo_sample.data", resource::LoadingContext{}.status(resource::LoadStatus::kPartiallyResident).resident_size(2))
 
-    .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
+    .rtc(resource::File{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
                               "RackExtension_RealtimeController_Sample.lua")});
 
   auto re = rack.newDevice(c);
@@ -748,7 +748,7 @@ TEST(RackExtension, RealtimeController_Sample)
             re.getString("/custom_properties/on_prop_sample_return"));
 
   // make /Private/sample.data missing
-  re.setResourceLoadingContext("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kMissing));
+  re.setResourceLoadingContext("/Private/stereo_sample.data", resource::LoadingContext{}.status(resource::LoadStatus::kMissing));
 
   // load_sample_data (missing)
   re.setString("/custom_properties/prop_function", "noop"); // to force a change
@@ -769,7 +769,7 @@ TEST(RackExtension, RealtimeController_Sample)
   ASSERT_THROW(re.loadMoreSample("/custom_properties/prop_sample"), Exception);
 
   // make /Private/sample.data kHasErrors
-  re.setResourceLoadingContext("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kHasErrors));
+  re.setResourceLoadingContext("/Private/stereo_sample.data", resource::LoadingContext{}.status(resource::LoadStatus::kHasErrors));
 
   // load_sample_data (missing)
   re.setString("/custom_properties/prop_function", "noop"); // to force a change
@@ -960,12 +960,12 @@ TEST(RackExtension, RealtimeController_UserSample)
     .mdef(Config::user_sample(0, lua::jbox_user_sample_property{}.all_sample_parameters()))
     .mdef(Config::user_sample(1, lua::jbox_user_sample_property{}.sample_parameter("tune_cents")))
 
-    .sample_data("/Private/mono_sample.data", Resource::Sample{}.sample_rate(44100).channels(1).data(sampleMonoData))
-    .sample_data("/Private/stereo_sample.data", Resource::Sample{}.sample_rate(44100).channels(2).data(sampleStereoData))
+    .sample_data("/Private/mono_sample.data", resource::Sample{}.sample_rate(44100).channels(1).data(sampleMonoData))
+    .sample_data("/Private/stereo_sample.data", resource::Sample{}.sample_rate(44100).channels(2).data(sampleStereoData))
 
-    .resource_loading_context("/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kPartiallyResident).resident_size(2))
+    .resource_loading_context("/Private/stereo_sample.data", resource::LoadingContext{}.status(resource::LoadStatus::kPartiallyResident).resident_size(2))
 
-    .rtc(ConfigFile{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
+    .rtc(resource::File{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
                               "RackExtension_RealtimeController_UserSample.lua")});
 
   auto re = rack.newDevice(c);
@@ -1066,7 +1066,7 @@ TEST(RackExtension, RealtimeController_UserSample)
             re->fSample1->fJboxToString);
 
   // we load sample 1 again but with a missing item
-  re.loadUserSampleAsync("/user_samples/1/item", "/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kMissing));
+  re.loadUserSampleAsync("/user_samples/1/item", "/Private/stereo_sample.data", resource::LoadingContext{}.status(resource::LoadStatus::kMissing));
 
   rack.nextBatch();
 
@@ -1083,7 +1083,7 @@ TEST(RackExtension, RealtimeController_UserSample)
             re->fSample1->fJboxToString);
 
   // we load sample 1 again but with an error item
-  re.loadUserSampleAsync("/user_samples/1/item", "/Private/stereo_sample.data", Resource::LoadingContext{}.status(LoadStatus::kHasErrors));
+  re.loadUserSampleAsync("/user_samples/1/item", "/Private/stereo_sample.data", resource::LoadingContext{}.status(resource::LoadStatus::kHasErrors));
 
   rack.nextBatch();
 

@@ -29,7 +29,7 @@ using namespace mock;
 // Midi.NotExists
 TEST(Midi, NotExists)
 {
-  auto midiFile = FileManager::loadMidi(ConfigFile{"/not exists/foo.mid"});
+  auto midiFile = FileManager::loadMidi(resource::File{"/not exists/foo.mid"});
 
   ASSERT_EQ(std::nullopt, midiFile);
 }
@@ -75,7 +75,7 @@ TEST(Midi, Tempo)
 
   auto playMidi = [&tester](std::string iMidiFile, int iTrack, int iExpectedTempo, std::string iExpectedOutput) {
     tester.getSequencerTrack().reset(); // removes all notes from sequencer track
-    tester.loadMidi(ConfigFile{iMidiFile}, iTrack); // load midi notes
+    tester.loadMidi(resource::File{iMidiFile}, iTrack); // load midi notes
     ASSERT_EQ(iExpectedTempo, static_cast<int>(std::round(tester.rack().getTransportTempo())));
     tester.rack().setTransportTempo(187.5); // change tempo to 187.5 because it makes 1ppq == 1 sample == 1 fAtFrameIndex
     tester.nextBatch(); // we run 1 batch to make sure that everything is initialized properly (note stop generates 128 diffs)
@@ -149,7 +149,7 @@ TEST(Midi, Tempo)
   playMidi(Logic_2track_99tempo, 2, 99, expected_Reason_2track_99tempo_track2);
 
   // Make sure that there is an exception if we try to read a non existent track
-  ASSERT_THROW(tester.loadMidi(ConfigFile{Reason_1track_99tempo}, 3), Exception);
+  ASSERT_THROW(tester.loadMidi(resource::File{Reason_1track_99tempo}, 3), Exception);
 }
 
 

@@ -135,13 +135,13 @@ public: // used by regular code
   T* getInstance() const;
 
   void loadPatch(std::string const &iPatchPath);
-  void loadPatch(ConfigString const &iPatchString);
-  void loadPatch(ConfigFile const &iPatchFile);
-  void loadPatch(Resource::Patch const &iPatch);
+  void loadPatch(resource::String const &iPatchString);
+  void loadPatch(resource::File const &iPatchFile);
+  void loadPatch(resource::Patch const &iPatch);
 
-  Resource::Patch generatePatch() const;
+  resource::Patch generatePatch() const;
 
-  Resource::Patch const &getDefaultValuesPatch() const { return fDefaultValuesPatch; }
+  resource::Patch const &getDefaultValuesPatch() const { return fDefaultValuesPatch; }
 
   void reset() { loadPatch(fDefaultValuesPatch); }
 
@@ -149,17 +149,17 @@ public: // used by regular code
 
   void loadUserSampleAsync(std::string const &iPropertyPath,
                            std::string const &iResourcePath,
-                           std::optional<Resource::LoadingContext> iCtx = std::nullopt);
+                           std::optional<resource::LoadingContext> iCtx = std::nullopt);
 
   inline void loadUserSampleAsync(int iUserSampleIndex,
                                   std::string const &iResourcePath,
-                                  std::optional<Resource::LoadingContext> iCtx = std::nullopt)
+                                  std::optional<resource::LoadingContext> iCtx = std::nullopt)
   {
     loadUserSampleAsync(fmt::printf("/user_samples/%d/item", iUserSampleIndex), iResourcePath, iCtx);
   }
 
   inline void loadCurrentUserSampleAsync(std::string const &iResourcePath,
-                                         std::optional<Resource::LoadingContext> iCtx = std::nullopt)
+                                         std::optional<resource::LoadingContext> iCtx = std::nullopt)
   {
     loadUserSampleAsync(fUserSamplePropertyPaths[getNum<int>("/device_host/sample_context")], iResourcePath, iCtx);
   }
@@ -179,7 +179,7 @@ public: // used by regular code
     setNum<int>("/transport/pattern_start_pos", iPatternStartPos);
   }
 
-  void setResourceLoadingContext(std::string const &iResourcePath, Resource::LoadingContext const &iCtx) { fResourceLoadingContexts[iResourcePath] = iCtx; }
+  void setResourceLoadingContext(std::string const &iResourcePath, resource::LoadingContext const &iCtx) { fResourceLoadingContexts[iResourcePath] = iCtx; }
   void clearResourceLoadingContext(std::string const &iResourcePath) { fResourceLoadingContexts.erase(iResourcePath); }
 
   bool isSameValue(TJBox_Value const &lhs, TJBox_Value const &rhs) const;
@@ -323,8 +323,8 @@ protected:
 
 protected:
   Config fConfig;
-  Resource::Patch fDefaultValuesPatch{};
-  std::map<std::string, Resource::LoadingContext> fResourceLoadingContexts{};
+  resource::Patch fDefaultValuesPatch{};
+  std::map<std::string, resource::LoadingContext> fResourceLoadingContexts{};
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
   std::map<std::string, lua::gui_jbox_property> fGUIProperties{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};

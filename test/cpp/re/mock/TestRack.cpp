@@ -574,7 +574,7 @@ TEST(Rack, Diff)
 </JukeboxPatch>
 )";
 
-  re.loadPatch(ConfigString{patchString});
+  re.loadPatch(resource::String{patchString});
 
   rack.nextBatch();
 
