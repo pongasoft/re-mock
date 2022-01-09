@@ -26,8 +26,6 @@ using namespace mock;
 // MockDevices.Sample
 TEST(MockDevices, Sample)
 {
-  using sample = MockAudioDevice::Sample;
-
   auto s = MockAudioDevice::Sample::from(MockAudioDevice::StereoBuffer{}.fill(1.0, 2.0), 44100);
 
   ASSERT_TRUE(s.isStereo());
@@ -83,6 +81,50 @@ TEST(MockDevices, Sample)
   ASSERT_EQ(5, sub.getFrameCount());
   ASSERT_EQ(10, sub.getSampleCount());
   ASSERT_EQ(std::vector<TJBox_AudioSample>({4, 7, 10, 13, 16, 19, 6, 7, 8, 9}), sub.getData());
+
+}
+
+// MockDevices.Sample_trim
+TEST(MockDevices, Sample_trim)
+{
+  // mono case
+  {
+    auto sample = MockAudioDevice::Sample{}.channels(1).data({1, 2, 3, 4, 5});
+
+    ASSERT_EQ(sample, sample.trimLeft());
+    ASSERT_EQ(sample, sample.trimRight());
+    ASSERT_EQ(sample, sample.trim());
+
+    auto sample1 = MockAudioDevice::Sample{}.channels(1).data({0, 0, 0, 1, 2, 3, 4, 5, 0, 0, 0, 0});
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(1).data({1, 2, 3, 4, 5, 0, 0, 0, 0}), sample1.trimLeft());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(1).data({0, 0, 0, 1, 2, 3, 4, 5}), sample1.trimRight());
+    ASSERT_EQ(sample, sample1.trim());
+  }
+
+  // stereo case
+  {
+    auto sample = MockAudioDevice::Sample{}.channels(2).data({1, 2, 3, 4, 5, 6});
+
+    ASSERT_EQ(sample, sample.trimLeft());
+    ASSERT_EQ(sample, sample.trimRight());
+    ASSERT_EQ(sample, sample.trim());
+
+    auto sample1 = MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 0, 0});
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({1, 2, 3, 4, 5, 6, 0, 0, 0, 0}), sample1.trimLeft());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 2, 3, 4, 5, 6}), sample1.trimRight());
+    ASSERT_EQ(sample, sample1.trim());
+
+    auto sample2 = MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 0});
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 1, 2, 3, 4, 5, 6, 0, 0, 0}), sample2.trimLeft());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 1, 2, 3, 4, 5, 6, 0}), sample2.trimRight());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 1, 2, 3, 4, 5, 6, 0}), sample2.trim());
+
+    auto sample3 = MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 0, 2, 3, 4, 5, 0, 6, 0, 0, 0, 0});
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({1, 0, 2, 3, 4, 5, 0, 6, 0, 0, 0, 0}), sample3.trimLeft());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 0, 2, 3, 4, 5, 0, 6}), sample3.trimRight());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({1, 0, 2, 3, 4, 5, 0, 6}), sample3.trim());
+  }
+
 
 }
 

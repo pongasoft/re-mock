@@ -891,7 +891,45 @@ MockAudioDevice::Sample MockAudioDevice::Sample::trimLeft() const
 {
   auto iter = std::find_if(fData.begin(), fData.end(), [](auto s) { return !isSilent(s); });
   if(iter != fData.end())
+  {
     return subSample((iter - fData.begin()) / fChannels);
+  }
+  else
+    return clone();
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::trimRight
+//------------------------------------------------------------------------
+MockAudioDevice::Sample MockAudioDevice::Sample::trimRight() const
+{
+  auto end = std::find_if(fData.rbegin(), fData.rend(), [](auto s) { return !isSilent(s); });
+  if(end != fData.rend())
+  {
+    return subSample(0, (end.base() + (fChannels - 1) - fData.begin()) / fChannels);
+  }
+  else
+    return clone();
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::trim
+//------------------------------------------------------------------------
+MockAudioDevice::Sample MockAudioDevice::Sample::trim() const
+{
+  auto start = std::find_if(fData.begin(), fData.end(), [](auto s) { return !isSilent(s); });
+  if(start != fData.end())
+  {
+    auto end = std::find_if(fData.rbegin(), fData.rend(), [](auto s) { return !isSilent(s); });
+    if(end != fData.rend())
+    {
+      auto adjustedStart = (start - fData.begin()) / fChannels;
+      auto adjustedEnd = (end.base() + (fChannels - 1) - fData.begin()) / fChannels;
+      return subSample(adjustedStart, adjustedEnd - adjustedStart);
+    }
+    else
+      return subSample((start - fData.begin()) / fChannels);
+  }
   else
     return clone();
 }

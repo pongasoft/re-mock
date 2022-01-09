@@ -156,6 +156,8 @@ public:
     Sample getRightChannelSample() const;
 
     Sample trimLeft() const;
+    Sample trimRight() const;
+    Sample trim() const;
 
     std::string toString(size_t iFrameCount = -1) const;
 
