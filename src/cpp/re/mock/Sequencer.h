@@ -207,6 +207,9 @@ public:
                      int iAtFrameIndex,
                      int iBatchSize) const;
 
+  Time getFirstEventTime() const;
+  Time getLastEventTime() const;
+
 private:
   struct EventImpl
   {

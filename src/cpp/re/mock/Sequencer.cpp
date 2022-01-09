@@ -297,4 +297,22 @@ void Track::ensureSorted() const
 
 }
 
+//------------------------------------------------------------------------
+// Track::getFirstEventTime
+//------------------------------------------------------------------------
+Time Track::getFirstEventTime() const
+{
+  RE_MOCK_ASSERT(!fEvents.empty(), "no events");
+  return Time::from(getEvents().at(0).fAtPPQ).normalize(fTimeSignature);
+}
+
+//------------------------------------------------------------------------
+// Track::getLastEventTime
+//------------------------------------------------------------------------
+Time Track::getLastEventTime() const
+{
+  RE_MOCK_ASSERT(!fEvents.empty(), "no events");
+  return Time::from(getEvents().at(fEvents.size() - 1).fAtPPQ).normalize(fTimeSignature);
+}
+
 }

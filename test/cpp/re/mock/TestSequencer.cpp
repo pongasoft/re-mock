@@ -130,6 +130,26 @@ TEST(Duration, toPPQ)
     ASSERT_EQ(28480, sequencer::Duration(1, 1, 1, 100).toPPQ(ts).fCount);
   }}
 
+// Track.Usage
+TEST(Track, Usage)
+{
+  Track track{};
+
+  ASSERT_THROW(track.getFirstEventTime(), Exception);
+  ASSERT_THROW(track.getLastEventTime(), Exception);
+
+  track.event(sequencer::Time(3,1,1,0), []{});
+
+  ASSERT_EQ(sequencer::Time(3,1,1,0).toString(), track.getFirstEventTime().toString());
+  ASSERT_EQ(sequencer::Time(3,1,1,0).toString(), track.getLastEventTime().toString());
+
+  track.event(sequencer::Time(2,1,1,0), []{});
+
+  ASSERT_EQ(sequencer::Time(2,1,1,0).toString(), track.getFirstEventTime().toString());
+  ASSERT_EQ(sequencer::Time(3,1,1,0).toString(), track.getLastEventTime().toString());
+
+}
+
 // Sequencer.executeEvents
 TEST(Track, executeEvents)
 {
