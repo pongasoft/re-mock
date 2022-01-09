@@ -337,7 +337,7 @@ public:
 
   TJBox_Int64 getTransportPlayPos() const { return fTransport.getPlayPos(); }
   void setTransportPlayPos(TJBox_Int64 iPos) { fTransport.setPlayPos(iPos); }
-  void setTransportPlayPos(sequencer::Time iTime) { setTransportPlayPos(iTime.toPPQ(getTransportTimeSignature()).fCount); }
+  void setTransportPlayPos(sequencer::Time iTime) { setTransportPlayPos(iTime.toPPQ().count()); }
   void resetTransportPlayPos() { setTransportPlayPos(0); }
 
   TJBox_Float64 getTransportTempo() const { return fTransport.getTempo(); }
@@ -365,8 +365,8 @@ public:
   void setTransportLoopEndPos(TJBox_UInt64 iLoopEndPos) { fTransport.setLoopEndPos(iLoopEndPos); }
 
   void setTransportLoop(sequencer::Time iStart, sequencer::Time iEnd) {
-    setTransportLoopStartPos(iStart.toPPQ(getTransportTimeSignature()).fCount);
-    setTransportLoopEndPos(iEnd.toPPQ(getTransportTimeSignature()).fCount);
+    setTransportLoopStartPos(iStart.toPPQ().count());
+    setTransportLoopEndPos(iEnd.toPPQ().count());
   }
 
   void setTransportLoop(sequencer::Time iStart, sequencer::Duration iDuration) {

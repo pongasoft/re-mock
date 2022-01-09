@@ -25,7 +25,7 @@ namespace re::mock::sequencer {
 //------------------------------------------------------------------------
 // Time::normalize
 //------------------------------------------------------------------------
-Time &Time::normalize(TimeSignature iTimeSignature)
+Time &Time::normalize()
 {
   while(fTicks >= constants::kNumTicksPer16th)
   {
@@ -33,7 +33,7 @@ Time &Time::normalize(TimeSignature iTimeSignature)
     fTicks -= constants::kNumTicksPer16th;
   }
 
-  auto max16th = 16 / iTimeSignature.denominator();
+  auto max16th = 16 / fTimeSignature.denominator();
 
   while(f16th > max16th)
   {
@@ -41,25 +41,25 @@ Time &Time::normalize(TimeSignature iTimeSignature)
     f16th -= max16th;
   }
 
-  while(fBeats > iTimeSignature.numerator())
+  while(fBeats > fTimeSignature.numerator())
   {
     fBars++;
-    fBeats -= iTimeSignature.numerator();
+    fBeats -= fTimeSignature.numerator();
   }
 
   return *this;
 }
 
 //------------------------------------------------------------------------
-// Time::toPPQ
+// Time::toPPQCount
 //------------------------------------------------------------------------
-PPQ Time::toPPQ(TimeSignature iTimeSignature) const
+TJBox_Float64 Time::toPPQCount() const
 {
   auto ppBarResolution =
-    static_cast<TJBox_Float64>(4.0 * constants::kPPQResolution * iTimeSignature.numerator() / iTimeSignature.denominator());
+    static_cast<TJBox_Float64>(4.0 * constants::kPPQResolution * fTimeSignature.numerator() / fTimeSignature.denominator());
 
   return (fBars - 1) * ppBarResolution
-         + (fBeats - 1) * ppBarResolution / iTimeSignature.numerator()
+         + (fBeats - 1) * ppBarResolution / fTimeSignature.numerator()
          + (f16th - 1) * constants::kPPT16thResolution
          + (fTicks) * constants::kPPTickResolution
     ;
@@ -76,9 +76,9 @@ std::string Time::toString() const
 //------------------------------------------------------------------------
 // Time::from
 //------------------------------------------------------------------------
-Time Time::from(PPQ iPPQ)
+Time Time::from(PPQ iPPQ, TimeSignature iTimeSignature)
 {
-  return Time{}.ticks(iPPQ.fCount / constants::kPPTickResolution);
+  return Time{1,1,1,0,iTimeSignature}.ticks(iPPQ.count() / constants::kPPTickResolution).normalize();
 }
 
 //------------------------------------------------------------------------
@@ -86,10 +86,7 @@ Time Time::from(PPQ iPPQ)
 //------------------------------------------------------------------------
 Time operator+(Time const &iTime, Duration const &iDuration)
 {
-  return Time(iTime.bars() + iDuration.bars(),
-              iTime.beats() + iDuration.beats(),
-              iTime.sixteenth() + iDuration.sixteenth(),
-              iTime.ticks() + iDuration.ticks());
+  return Time::from(iTime.toPPQCount() + iDuration.toPPQCount(), iTime.signature());
 }
 
 //------------------------------------------------------------------------
@@ -97,10 +94,7 @@ Time operator+(Time const &iTime, Duration const &iDuration)
 //------------------------------------------------------------------------
 Duration operator+(Duration const &d1, Duration const &d2)
 {
-  return Duration(d1.bars() + d2.bars(),
-                  d1.beats() + d2.beats(),
-                  d1.sixteenth() + d2.sixteenth(),
-                  d1.ticks() + d2.ticks());
+  return Duration::from(d1.toPPQCount() + d2.toPPQCount(), d1.signature());
 }
 
 //------------------------------------------------------------------------
@@ -115,19 +109,54 @@ Duration operator*(Duration const &iDuration, TJBox_UInt32 iFactor)
 }
 
 //------------------------------------------------------------------------
-// Duration::toPPQResolution
+// Duration::normalize
 //------------------------------------------------------------------------
-PPQ Duration::toPPQ(TimeSignature iTimeSignature) const
+Duration &Duration::normalize()
+{
+  while(fTicks >= constants::kNumTicksPer16th)
+  {
+    f16th++;
+    fTicks -= constants::kNumTicksPer16th;
+  }
+
+  auto max16th = 16 / fTimeSignature.denominator();
+
+  while(f16th > max16th)
+  {
+    fBeats++;
+    f16th -= max16th;
+  }
+
+  while(fBeats > fTimeSignature.numerator())
+  {
+    fBars++;
+    fBeats -= fTimeSignature.numerator();
+  }
+
+  return *this;
+}
+
+//------------------------------------------------------------------------
+// Duration::from
+//------------------------------------------------------------------------
+Duration Duration::from(PPQ iPPQ, TimeSignature iTimeSignature)
+{
+  return Duration{0,0,0,0,iTimeSignature}.ticks(iPPQ.count() / constants::kPPTickResolution).normalize();
+}
+
+//------------------------------------------------------------------------
+// Duration::toPPQCount
+//------------------------------------------------------------------------
+TJBox_Float64 Duration::toPPQCount() const
 {
   auto ppBarResolution =
-    static_cast<TJBox_Float64>(4.0 * constants::kPPQResolution * iTimeSignature.numerator() / iTimeSignature.denominator());
+    static_cast<TJBox_Float64>(4.0 * constants::kPPQResolution * fTimeSignature.numerator() / fTimeSignature.denominator());
 
   return fBars * ppBarResolution
-         + fBeats * ppBarResolution / iTimeSignature.numerator()
+         + fBeats * ppBarResolution / fTimeSignature.numerator()
          + f16th * constants::kPPT16thResolution
          + fTicks * constants::kPPTickResolution
     ;
-
 }
 
 //------------------------------------------------------------------------
@@ -161,7 +190,7 @@ Track &Track::event(TJBox_Float64 iAtPPQ, Event iEvent)
 //------------------------------------------------------------------------
 Track &Track::noteOn(TJBox_UInt8 iNoteNumber, PPQ iTime, TJBox_UInt8 iNoteVelocity)
 {
-  event(iTime.fCount,
+  event(iTime.count(),
         [iNoteNumber, iNoteVelocity](Motherboard &iMotherboard, Batch const &iBatch) {
           // we don't start a note that will be turned off anyway
           if(iBatch.fType != Batch::Type::kLoopingStart)
@@ -176,7 +205,7 @@ Track &Track::noteOn(TJBox_UInt8 iNoteNumber, PPQ iTime, TJBox_UInt8 iNoteVeloci
 //------------------------------------------------------------------------
 Track &Track::noteOff(TJBox_UInt8 iNoteNumber, PPQ iTime)
 {
-  event(iTime.fCount,
+  event(iTime.count(),
         [iNoteNumber](Motherboard &iMotherboard, Batch const &iBatch) {
           iMotherboard.stopNoteIfOn(iNoteNumber);
         });
@@ -303,7 +332,7 @@ void Track::ensureSorted() const
 Time Track::getFirstEventTime() const
 {
   RE_MOCK_ASSERT(!fEvents.empty(), "no events");
-  return Time::from(getEvents().at(0).fAtPPQ).normalize(fTimeSignature);
+  return Time::from(getEvents().at(0).fAtPPQ, fTimeSignature);
 }
 
 //------------------------------------------------------------------------
@@ -312,7 +341,7 @@ Time Track::getFirstEventTime() const
 Time Track::getLastEventTime() const
 {
   RE_MOCK_ASSERT(!fEvents.empty(), "no events");
-  return Time::from(getEvents().at(fEvents.size() - 1).fAtPPQ).normalize(fTimeSignature);
+  return Time::from(getEvents().at(fEvents.size() - 1).fAtPPQ, fTimeSignature);
 }
 
 }

@@ -70,9 +70,9 @@ struct TransportTester
     transport.setPlaying(true);
     transport.setSongEndPos(1000000);
     transport.setTempo(fTempo);
-    transport.setLoopStartPos(fLoopStart.toPPQ(sequencer::TimeSignature{}).fCount);
-    transport.setLoopEndPos(fLoopEnd.toPPQ(sequencer::TimeSignature{}).fCount);
-    transport.setPlayPos(fStart.toPPQ(sequencer::TimeSignature{}).fCount);
+    transport.setLoopStartPos(fLoopStart.toPPQCount());
+    transport.setLoopEndPos(fLoopEnd.toPPQCount());
+    transport.setPlayPos(fStart.toPPQCount());
     transport.setLoopEnabled(fLoopEnabled);
 
     return transport;

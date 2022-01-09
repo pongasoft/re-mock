@@ -31,7 +31,11 @@ class Motherboard;
 namespace re::mock::sequencer {
 
 struct PPQ {
-  PPQ(TJBox_Float64 iCount = 0) : fCount{iCount} {}
+  PPQ(TJBox_Float64 iCount = 0) : fCount{iCount} { RE_MOCK_ASSERT( iCount >= 0); }
+
+  constexpr TJBox_Float64 count() const { return fCount; }
+
+private:
   TJBox_Float64 fCount{};
 };
 
@@ -54,10 +58,9 @@ private:
 class Time
 {
 public:
-  explicit Time(TJBox_UInt32 iBars = 1, TJBox_UInt32 iBeats = 1, TJBox_UInt32 i16th = 1, TJBox_UInt32 iTicks = 0) :
-    fBars{iBars}, fBeats{iBeats}, f16th{i16th}, fTicks{iTicks}
+  explicit Time(TJBox_UInt32 iBars = 1, TJBox_UInt32 iBeats = 1, TJBox_UInt32 i16th = 1, TJBox_UInt32 iTicks = 0, TimeSignature iTimeSignature = {}) :
+    fBars{iBars}, fBeats{iBeats}, f16th{i16th}, fTicks{iTicks}, fTimeSignature{iTimeSignature}
   {
-    RE_MOCK_ASSERT(fBars > 0 && fBeats > 0 && f16th > 0);
   }
 
   TJBox_UInt32 bars() const { return fBars; }
@@ -72,15 +75,22 @@ public:
   TJBox_UInt32 ticks() const { return fTicks; }
   Time &ticks(TJBox_UInt32 iTicks) { fTicks = iTicks; return *this; }
 
-  Time &normalize(TimeSignature iTimeSignature);
+  TimeSignature signature() const { return fTimeSignature; }
+  Time &signature(TimeSignature iTimeSignature) { fTimeSignature = iTimeSignature; return *this; }
 
-  PPQ toPPQ(TimeSignature iTimeSignature) const;
+  Time &normalize();
+
+  TJBox_Float64 toPPQCount() const;
+  PPQ toPPQ() const { return toPPQCount(); }
+
+  Time withOtherSignature(TimeSignature iTimeSignature) { return from(toPPQ(), iTimeSignature); }
 
   std::string toString() const;
 
-  static Time from(PPQ iPPQ);
+  static Time from(PPQ iPPQ, TimeSignature iTimeSignature = {});
 
 private:
+  TimeSignature fTimeSignature;
   TJBox_UInt32 fBars;
   TJBox_UInt32 fBeats;
   TJBox_UInt32 f16th;
@@ -90,8 +100,8 @@ private:
 class Duration
 {
 public:
-  constexpr explicit Duration(TJBox_UInt32 iBars = 0, TJBox_UInt32 iBeats = 0, TJBox_UInt32 i16th = 0, TJBox_UInt32 iTicks = 0) :
-    fBars{iBars}, fBeats{iBeats}, f16th{i16th}, fTicks{iTicks}
+  constexpr explicit Duration(TJBox_UInt32 iBars = 0, TJBox_UInt32 iBeats = 0, TJBox_UInt32 i16th = 0, TJBox_UInt32 iTicks = 0, TimeSignature iTimeSignature = {}) :
+    fBars{iBars}, fBeats{iBeats}, f16th{i16th}, fTicks{iTicks}, fTimeSignature{iTimeSignature}
   {
   }
 
@@ -107,7 +117,15 @@ public:
   TJBox_UInt32 ticks() const { return fTicks; }
   Duration &ticks(TJBox_UInt32 iTicks) { fTicks = iTicks; return *this; }
 
-  PPQ toPPQ(TimeSignature iTimeSignature) const;
+  TimeSignature signature() const { return fTimeSignature; }
+  Duration &signature(TimeSignature iTimeSignature) { fTimeSignature = iTimeSignature; return *this; }
+
+  Duration &normalize();
+
+  TJBox_Float64 toPPQCount() const;
+  PPQ toPPQ() const { return toPPQCount(); }
+
+  static Duration from(PPQ iPPQ, TimeSignature iTimeSignature = {});
 
   std::string toString() const;
 
@@ -116,6 +134,7 @@ public:
   static const Duration k1Sixteenth;
 
 private:
+  TimeSignature fTimeSignature;
   TJBox_UInt32 fBars;
   TJBox_UInt32 fBeats;
   TJBox_UInt32 f16th;
@@ -124,7 +143,9 @@ private:
 
 Time operator+(Time const &iTime, Duration const &iDuration);
 Duration operator+(Duration const &d1, Duration const &d2);
-Duration operator*(Duration const &iDuration, TJBox_UInt32 iFactor);
+
+template<typename Number>
+Duration operator*(Duration const &iDuration, Number iFactor) { return Duration::from(iDuration.toPPQCount() * iFactor, iDuration.signature()); }
 
 struct Note
 {
@@ -168,11 +189,11 @@ public:
   Track &after(Duration iDuration) { fCurrentTime = fCurrentTime + iDuration; return *this; }
 
   Track &noteOn(TJBox_UInt8 iNoteNumber, PPQ iTime, TJBox_UInt8 iNoteVelocity = 100);
-  inline Track &noteOn(TJBox_UInt8 iNoteNumber, Time iTime, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(iNoteNumber, iTime.toPPQ(fTimeSignature), iNoteVelocity); }
+  inline Track &noteOn(TJBox_UInt8 iNoteNumber, Time iTime, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(iNoteNumber, iTime.toPPQ(), iNoteVelocity); }
   Track &noteOn(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(iNoteNumber, fCurrentTime, iNoteVelocity); }
 
   Track &noteOff(TJBox_UInt8 iNoteNumber, PPQ iTime);
-  inline Track &noteOff(TJBox_UInt8 iNoteNumber, Time iTime) { return noteOff(iNoteNumber, iTime.toPPQ(fTimeSignature)); }
+  inline Track &noteOff(TJBox_UInt8 iNoteNumber, Time iTime) { return noteOff(iNoteNumber, iTime.toPPQ()); }
   Track &noteOff(TJBox_UInt8 iNoteNumber) { return noteOff(iNoteNumber, fCurrentTime); }
 
   Track &note(Note const &iNote);
@@ -184,14 +205,14 @@ public:
     return note(iNoteNumber, fCurrentTime, iDuration, iNoteVelocity);
   }
 
-  Track &event(Time iAt, Event iEvent) { return event(iAt.toPPQ(fTimeSignature) , std::move(iEvent)); };
+  Track &event(Time iAt, Event iEvent) { return event(iAt.toPPQ() , std::move(iEvent)); };
   Track &event(Time iAt, SimpleEvent iEvent) { return event(iAt, wrap(std::move(iEvent))); }
 
   Track &event(Event iEvent) { return event(fCurrentTime, std::move(iEvent)); }
   Track &event(SimpleEvent iEvent) { return event(wrap(std::move(iEvent))); }
 
-  inline Track &event(PPQ iAt, Event iEvent) { return event(iAt.fCount, std::move(iEvent)); }
-  inline Track &event(PPQ iAt, SimpleEvent iEvent) { return event(iAt.fCount, wrap(std::move(iEvent))); }
+  inline Track &event(PPQ iAt, Event iEvent) { return event(iAt.count(), std::move(iEvent)); }
+  inline Track &event(PPQ iAt, SimpleEvent iEvent) { return event(iAt.count(), wrap(std::move(iEvent))); }
 
   Track &onEveryBatch(Event iEvent);
   Track &onEveryBatch(SimpleEvent iEvent) { return onEveryBatch(wrap(iEvent)); }

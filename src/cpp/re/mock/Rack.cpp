@@ -361,9 +361,7 @@ rack::Duration Rack::toRackDuration(Duration iDuration)
     }
 
     rack::Duration operator()(sequencer::Duration d) {
-      auto ppq = d.toPPQ(sequencer::TimeSignature{fTransport->getTimeSignatureNumerator(),
-                                                  fTransport->getTimeSignatureDenominator()});
-      return rack::Duration { static_cast<long>(fTransport->computeNumBatches(ppq.fCount))};
+      return rack::Duration { static_cast<long>(fTransport->computeNumBatches(d.toPPQCount()))};
     }
 
     Transport *fTransport;
@@ -445,7 +443,7 @@ void Rack::setTransportPlaying(bool iPlaying)
 void Rack::setSongEnd(sequencer::Time iSongEnd)
 {
   fSongEnd = iSongEnd;
-  fTransport.setSongEndPos(iSongEnd.toPPQ(getTransportTimeSignature()).fCount);
+  fTransport.setSongEndPos(iSongEnd.toPPQCount());
 }
 
 //------------------------------------------------------------------------

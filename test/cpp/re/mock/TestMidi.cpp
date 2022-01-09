@@ -58,7 +58,7 @@ TEST(Midi, Tempo)
         {
           auto note = JBox_AsNoteEvent(diff);
           // with tempo == 187.5, it makes 1ppq == 1 sample == 1 fAtFrameIndex => we can simply add transportPlayPos and diff.fAtFrameIndex
-          auto time = sequencer::Time::from(transportPlayPos + diff.fAtFrameIndex).normalize(sequencer::TimeSignature{});
+          auto time = sequencer::Time::from(transportPlayPos + diff.fAtFrameIndex).normalize();
           fOutput += fmt::printf("%s | %d | %d\n", time.toString(), note.fNoteNumber, note.fVelocity);
         }
       }

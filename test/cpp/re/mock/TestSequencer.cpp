@@ -29,7 +29,7 @@ TEST(Time, normalize)
 {
   {
     // 1.5.1.0 at 4/4 is 2.1.1.0
-    auto time = Time().beats(5).normalize(TimeSignature(4, 4));
+    auto time = Time().beats(5).normalize();
     ASSERT_EQ(2, time.bars());
     ASSERT_EQ(1, time.beats());
     ASSERT_EQ(1, time.sixteenth());
@@ -37,62 +37,65 @@ TEST(Time, normalize)
   }
 
   // 1.5.1.1000 at 4/4 is 2.2.1.40
-  ASSERT_EQ("2.2.1.40", Time(1,5,1,1000).normalize(TimeSignature(4, 4)).toString());
+  ASSERT_EQ("2.2.1.40", Time(1,5,1,1000).normalize().toString());
 
   // 1.5.1.1000 at 4/16 is 3.1.1.40
-  ASSERT_EQ("3.1.1.40", Time(1,5,1,1000).normalize(TimeSignature(4, 16)).toString());
+  ASSERT_EQ("3.1.1.40", Time(1,5,1,1000,TimeSignature(4, 16)).normalize().toString());
 
   // 1.1.3.0 at 4/16 is 1.3.1.0
-  ASSERT_EQ("1.3.1.0", Time(1,1,3).normalize(TimeSignature(4, 16)).toString());
+  ASSERT_EQ("1.3.1.0", Time(1,1,3,0,TimeSignature(4, 16)).normalize().toString());
 
-  // 1.5.1.1000 at 5/16 is 3.1.1.40
-  ASSERT_EQ("2.4.1.40", Time(1,5,1,1000).normalize(TimeSignature(5, 16)).toString());
+  // 1.5.1.1000 at 5/16 is 2.4.1.40
+  ASSERT_EQ("2.4.1.40", Time(1,5,1,1000,TimeSignature(5, 16)).normalize().toString());
+  ASSERT_EQ("2.4.1.40", Time(1,5,1,1000).signature(TimeSignature(5, 16)).normalize().toString());
+
+  // Conversion: Time(1,5,1,1000) == Time(1,5,1,1000, 4/4) == 2.2.1.40
+  ASSERT_EQ("5.1.1.40", Time(1,5,1,1000).withOtherSignature(TimeSignature(5, 16)).toString());
 }
 
 // Time.toPPQ
 TEST(Time, toPPQ)
 {
   {
-    // 4/4
-    auto ts = TimeSignature(4,4);
-    ASSERT_EQ(0, Time().toPPQ(ts).fCount);
-    ASSERT_EQ(0, Time(1, 1, 1, 0).toPPQ(ts).fCount);
-    ASSERT_EQ(1600, Time(1, 1, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(5440, Time(1, 1, 2, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(20800, Time(1, 2, 2, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(82240, Time(2, 2, 2, 100).toPPQ(ts).fCount);
+    // 4/4 (default)
+    ASSERT_EQ(0, Time().toPPQCount());
+    ASSERT_EQ(0, Time(1, 1, 1, 0).toPPQCount());
+    ASSERT_EQ(1600, Time(1, 1, 1, 100).toPPQCount());
+    ASSERT_EQ(5440, Time(1, 1, 2, 100).toPPQCount());
+    ASSERT_EQ(20800, Time(1, 2, 2, 100).toPPQCount());
+    ASSERT_EQ(82240, Time(2, 2, 2, 100).toPPQCount());
 
-    ASSERT_EQ("2.2.2.100", Time::from(82240).normalize(ts).toString());
+    ASSERT_EQ("2.2.2.100", Time::from(82240).normalize().toString());
 
-    ASSERT_EQ(Time(1, 1, 1, 100000).toPPQ(ts).fCount, Time(1, 1, 1, 100000).normalize(ts).toPPQ(ts).fCount);
+    ASSERT_EQ(Time(1, 1, 1, 100000).toPPQCount(), Time(1, 1, 1, 100000).normalize().toPPQCount());
   }
   {
     // 5/8
     auto ts = TimeSignature(5,8);
-    ASSERT_EQ(0, Time(1, 1, 1, 0).toPPQ(ts).fCount);
-    ASSERT_EQ(1600, Time(1, 1, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(5440, Time(1, 1, 2, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(13120, Time(1, 2, 2, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(51520, Time(2, 2, 2, 100).toPPQ(ts).fCount);
+    ASSERT_EQ(0, Time(1, 1, 1, 0, ts).toPPQCount());
+    ASSERT_EQ(1600, Time(1, 1, 1, 100, ts).toPPQCount());
+    ASSERT_EQ(5440, Time(1, 1, 2, 100, ts).toPPQCount());
+    ASSERT_EQ(13120, Time(1, 2, 2, 100, ts).toPPQCount());
+    ASSERT_EQ(51520, Time(2, 2, 2, 100, ts).toPPQCount());
 
-    ASSERT_EQ(Time(1, 1, 1, 100000).toPPQ(ts).fCount, Time(1, 1, 1, 100000).normalize(ts).toPPQ(ts).fCount);
+    ASSERT_EQ(Time(1, 1, 1, 100000, ts).toPPQCount(), Time(1, 1, 1, 100000, ts).normalize().toPPQCount());
   }
   {
     // 5/16
     auto ts = TimeSignature(5, 16);
-    ASSERT_EQ(0, Time(1, 1, 1, 0).toPPQ(ts).fCount);
-    ASSERT_EQ(1600, Time(1, 1, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(5440, Time(1, 1, 2, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(9280, Time(1, 2, 2, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(28480, Time(2, 2, 2, 100).toPPQ(ts).fCount);
+    ASSERT_EQ(0, Time(1, 1, 1, 0, ts).toPPQCount());
+    ASSERT_EQ(1600, Time(1, 1, 1, 100, ts).toPPQCount());
+    ASSERT_EQ(5440, Time(1, 1, 2, 100, ts).toPPQCount());
+    ASSERT_EQ(9280, Time(1, 2, 2, 100, ts).toPPQCount());
+    ASSERT_EQ(28480, Time(2, 2, 2, 100, ts).toPPQCount());
 
-    ASSERT_EQ("2.3.1.100", Time(2, 2, 2, 100).normalize(ts).toString());
-    ASSERT_EQ("2.3.1.100", Time::from(28480).normalize(ts).toString());
+    ASSERT_EQ("2.3.1.100", Time(2, 2, 2, 100, ts).normalize().toString());
+    ASSERT_EQ("2.3.1.100", Time::from(28480, ts).toString());
 
 
-    ASSERT_EQ(28480, Time(2, 2, 2, 100).toPPQ(ts).fCount);
-    auto time = Time(1, 1, 1, 50) + sequencer::Duration(1, 1, 1, 50);
-    ASSERT_EQ(28480, time.toPPQ(ts).fCount);
+    ASSERT_EQ(28480, Time(2, 2, 2, 100, ts).toPPQCount());
+    auto time = Time(1, 1, 1, 50, ts) + sequencer::Duration(1, 1, 1, 50, ts);
+    ASSERT_EQ(28480, time.toPPQCount());
   }
 }
 
@@ -100,34 +103,33 @@ TEST(Time, toPPQ)
 TEST(Duration, toPPQ)
 {
   {
-    // 4/4
-    auto ts = TimeSignature(4,4);
-    ASSERT_EQ(0, sequencer::Duration().toPPQ(ts).fCount);
-    ASSERT_EQ(0, sequencer::Duration(0, 0, 0, 0).toPPQ(ts).fCount);
-    ASSERT_EQ(1600, sequencer::Duration(0, 0, 0, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(5440, sequencer::Duration(0, 0, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(20800, sequencer::Duration(0, 1, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(82240, sequencer::Duration(1, 1, 1, 100).toPPQ(ts).fCount);
+    // 4/4 (default)
+    ASSERT_EQ(0, sequencer::Duration().toPPQCount());
+    ASSERT_EQ(0, sequencer::Duration(0, 0, 0, 0).toPPQCount());
+    ASSERT_EQ(1600, sequencer::Duration(0, 0, 0, 100).toPPQCount());
+    ASSERT_EQ(5440, sequencer::Duration(0, 0, 1, 100).toPPQCount());
+    ASSERT_EQ(20800, sequencer::Duration(0, 1, 1, 100).toPPQCount());
+    ASSERT_EQ(82240, sequencer::Duration(1, 1, 1, 100).toPPQCount());
   }
 
   {
     // 5/8
     auto ts = TimeSignature(5,8);
-    ASSERT_EQ(0, sequencer::Duration(0, 0, 0, 0).toPPQ(ts).fCount);
-    ASSERT_EQ(1600, sequencer::Duration(0, 0, 0, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(5440, sequencer::Duration(0, 0, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(13120, sequencer::Duration(0, 1, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(51520, sequencer::Duration(1, 1, 1, 100).toPPQ(ts).fCount);
+    ASSERT_EQ(0, sequencer::Duration(0, 0, 0, 0, ts).toPPQCount());
+    ASSERT_EQ(1600, sequencer::Duration(0, 0, 0, 100, ts).toPPQCount());
+    ASSERT_EQ(5440, sequencer::Duration(0, 0, 1, 100, ts).toPPQCount());
+    ASSERT_EQ(13120, sequencer::Duration(0, 1, 1, 100, ts).toPPQCount());
+    ASSERT_EQ(51520, sequencer::Duration(1, 1, 1, 100, ts).toPPQCount());
   }
 
   {
     // 5/16
     auto ts = TimeSignature(5,16);
-    ASSERT_EQ(0, sequencer::Duration(0, 0, 0, 0).toPPQ(ts).fCount);
-    ASSERT_EQ(1600, sequencer::Duration(0, 0, 0, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(5440, sequencer::Duration(0, 0, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(9280, sequencer::Duration(0, 1, 1, 100).toPPQ(ts).fCount);
-    ASSERT_EQ(28480, sequencer::Duration(1, 1, 1, 100).toPPQ(ts).fCount);
+    ASSERT_EQ(0, sequencer::Duration(0, 0, 0, 0, ts).toPPQCount());
+    ASSERT_EQ(1600, sequencer::Duration(0, 0, 0, 100, ts).toPPQCount());
+    ASSERT_EQ(5440, sequencer::Duration(0, 0, 1, 100, ts).toPPQCount());
+    ASSERT_EQ(9280, sequencer::Duration(0, 1, 1, 100, ts).toPPQCount());
+    ASSERT_EQ(28480, sequencer::Duration(1, 1, 1, 100, ts).toPPQCount());
   }}
 
 // Track.Usage
@@ -213,16 +215,16 @@ TEST(Track, executeEvents)
   // at 44100, 1 batch is 44.582313 ppq
 
   // sequencer::Time(1,1,1,100) | PPQ = 1600 | Batch 35 [1560, 1605) | Frame Index (1600 - 1560) / (1605 - 1560) * 64 = 56
-  ASSERT_EQ(1600, sequencer::Time(1,1,1,100).toPPQ(TimeSignature()).fCount);
+  ASSERT_EQ(1600, sequencer::Time(1,1,1,100).toPPQCount());
 
   // sequencer::Time(1,1,1,50) | PPQ = 800 | Batch 17 [758, 802) | Frame Index (800 - 758) / (802 - 758) * 64 = 61
-  ASSERT_EQ(800, sequencer::Time(1,1,1,50).toPPQ(TimeSignature()).fCount);
+  ASSERT_EQ(800, sequencer::Time(1,1,1,50).toPPQCount());
 
   // sequencer::Duration(0,0,1,0) | PPQ = 3840
-  ASSERT_EQ(3840, sequencer::Duration(0,0,1,0).toPPQ(TimeSignature()).fCount);
+  ASSERT_EQ(3840, sequencer::Duration(0,0,1,0).toPPQCount());
 
   // sequencer::Duration(0,0,0,200) | PPQ = 3200
-  ASSERT_EQ(3200, sequencer::Duration(0,0,0,200).toPPQ(TimeSignature()).fCount);
+  ASSERT_EQ(3200, sequencer::Duration(0,0,0,200).toPPQCount());
 
   tester.getSequencerTrack()
     .onEveryBatch(checkEveryBatch)
