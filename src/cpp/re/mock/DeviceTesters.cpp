@@ -429,6 +429,33 @@ MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextBatch(MockDevice::N
 }
 
 //------------------------------------------------------------------------
+// ExtensionInstrumentTester::play
+//------------------------------------------------------------------------
+MockAudioDevice::Sample ExtensionInstrumentTester::play(tester::Timeline iTimeline)
+{
+  fDst->fSample.clear();
+  iTimeline.play();
+  return fDst->fSample;
+}
+
+//------------------------------------------------------------------------
+// ExtensionInstrumentTester::play
+//------------------------------------------------------------------------
+MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration iDuration, std::optional<tester::Timeline> iTimeline)
+{
+  fDst->fSample.clear();
+  if(iTimeline)
+    iTimeline->play(iDuration);
+  else
+    newTimeline().play(iDuration);
+  auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
+  if(fDst->fSample.getFrameCount() > frameCount)
+    return fDst->fSample.subSample(0, frameCount);
+  else
+    return fDst->fSample;
+}
+
+//------------------------------------------------------------------------
 // ExtensionNotePlayerTester::ExtensionNotePlayerTester
 //------------------------------------------------------------------------
 ExtensionNotePlayerTester::ExtensionNotePlayerTester(Config const &iDeviceConfig, int iSampleRate) :

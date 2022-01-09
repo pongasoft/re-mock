@@ -297,6 +297,8 @@ public:
   ExtensionInstrumentTester &setNoteEvents(MockDevice::NoteEvents iNoteEvents);
 
   MockAudioDevice::StereoBuffer nextBatch(MockDevice::NoteEvents iNoteEvents = {});
+  MockAudioDevice::Sample play(tester::Timeline iTimeline);
+  MockAudioDevice::Sample play(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
 
   inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
   inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }
@@ -316,8 +318,6 @@ public:
 
   inline Rack::ExtensionDevice<Instrument> &device() { return fInstrument; }
   inline Rack::ExtensionDevice<Instrument> const &device() const { return fInstrument; }
-
-  MockAudioDevice::Sample play(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
 
 protected:
   Rack::ExtensionDevice<Instrument> fInstrument;
@@ -368,22 +368,6 @@ Rack::ExtensionDevice<Device> DeviceTester::getExtensionDevice()
 {
   return fRack.getDevice<Device>(fDevice.getInstanceId());
 }
-
-//------------------------------------------------------------------------
-// InstrumentTester<Instrument>::play
-//------------------------------------------------------------------------
-template<typename Instrument>
-MockAudioDevice::Sample InstrumentTester<Instrument>::play(Duration iDuration, std::optional<tester::Timeline> iTimeline)
-{
-  fDst->fSample.clear();
-  if(iTimeline)
-    iTimeline->play(iDuration);
-  else
-    newTimeline().play(iDuration);
-  return fDst->fSample;
-}
-
-
 
 }
 
