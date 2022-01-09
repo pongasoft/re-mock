@@ -464,18 +464,14 @@ TEST(Timeline, Usage)
     .event([&tester]() { ASSERT_EQ(44, tester.device()->fTransportPlayPos); })
     .play();
 
+  // play() stops the transport and call nextBatch to propagate
   // see PPQAccumulator.next test for values: 0 / 44 / 89 / 134
-  // only propagated to device on nextBatch
-  ASSERT_EQ(89, tester.device()->fTransportPlayPos);
-  ASSERT_TRUE(tester.device()->fTransportPlaying);
+  ASSERT_EQ(134, tester.device()->fTransportPlayPos);
+  ASSERT_FALSE(tester.device()->fTransportPlaying);
 
-  // but rack already updated
   ASSERT_FALSE(tester.rack().getTransportPlaying());
   ASSERT_EQ(134, tester.rack().getTransportPlayPos());
 
-  tester.nextBatch(); // propagate to device on nextBatch
-  ASSERT_EQ(134, tester.device()->fTransportPlayPos);
-  ASSERT_FALSE(tester.device()->fTransportPlaying);
   ASSERT_EQ(128, tester.device()->fNoteEvents.size()); // all notes are reset
 }
 

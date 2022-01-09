@@ -43,6 +43,10 @@ TEST(Midi, Tempo)
 
     void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
     {
+      // ignoring stop batch
+      if(iDiffCount > 100)
+        return;
+
       auto const transport = JBox_GetMotherboardObjectRef("/transport");
       auto const transportPlayPos = JBox_GetNumber(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlayPos));
 
@@ -58,11 +62,8 @@ TEST(Midi, Tempo)
           fOutput += fmt::printf("%s | %d | %d\n", time.toString(), note.fNoteNumber, note.fVelocity);
         }
       }
-
-      fBatchCount++;
     }
 
-    int fBatchCount{};
     std::string fOutput{};
   };
 
@@ -73,12 +74,13 @@ TEST(Midi, Tempo)
 
   auto tester = InstrumentTester<Device>(c, 48000);
 
+  tester.nextBatch();
+
   auto playMidi = [&tester](std::string iMidiFile, int iTrack, int iExpectedTempo, std::string iExpectedOutput) {
     tester.getSequencerTrack().reset(); // removes all notes from sequencer track
     tester.loadMidi(resource::File{iMidiFile}, iTrack); // load midi notes
     ASSERT_EQ(iExpectedTempo, static_cast<int>(std::round(tester.rack().getTransportTempo())));
     tester.rack().setTransportTempo(187.5); // change tempo to 187.5 because it makes 1ppq == 1 sample == 1 fAtFrameIndex
-    tester.nextBatch(); // we run 1 batch to make sure that everything is initialized properly (note stop generates 128 diffs)
     tester.device()->fOutput = ""; // clear output
     tester.rack().setTransportPlayPos(0); // reset transport position
 

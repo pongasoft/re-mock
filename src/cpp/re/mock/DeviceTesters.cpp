@@ -578,9 +578,16 @@ void Timeline::execute(std::optional<Duration> iDuration) const
 //------------------------------------------------------------------------
 void Timeline::play(std::optional<Duration> iDuration) const
 {
-  fTester->transportStart();
+  if(!fTester->rack().getTransportPlaying())
+    fTester->transportStart();
+
   execute(iDuration);
-  fTester->transportStop();
+
+  if(fTester->rack().getTransportPlaying())
+  {
+    fTester->transportStop();
+    fTester->rack().nextBatch(); // propagate the stop
+  }
 }
 
 //------------------------------------------------------------------------

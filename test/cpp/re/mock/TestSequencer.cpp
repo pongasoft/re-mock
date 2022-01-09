@@ -139,6 +139,9 @@ TEST(Track, executeEvents)
 
     void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
     {
+      if(iDiffCount > 100) // skipping note reset
+        return;
+
       auto const transport = JBox_GetMotherboardObjectRef("/transport");
       fTransportPlaying = JBox_GetBoolean(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlaying));
       fTransportPlayPos = JBox_GetNumber(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlayPos));
@@ -243,6 +246,9 @@ TEST(Track, looping)
 
     void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
     {
+      if(iDiffCount > 100) // skipping note reset
+        return;
+
       auto const transport = JBox_GetMotherboardObjectRef("/transport");
       fTransportPlaying = JBox_GetBoolean(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlaying));
       fTransportPlayPos = JBox_GetNumber(JBox_LoadMOMPropertyByTag(transport, kJBox_TransportPlayPos));
