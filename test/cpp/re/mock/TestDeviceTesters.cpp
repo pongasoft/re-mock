@@ -172,7 +172,7 @@ TEST(InstrumentTester, TimelineUsage)
   tester.newTimeline()
     .event([&tester]() { tester.device()->fBuffer = MockAudioDevice::buffer(1.0, 2.0); })
 
-    .nextBatch()
+    .after1Batch()
 
       // device is not wired yet!
     .event([&tester]() { ASSERT_EQ(tester.dst()->fBuffer, MockAudioDevice::buffer(0, 0)); })
@@ -181,7 +181,7 @@ TEST(InstrumentTester, TimelineUsage)
     .event([&tester]() { tester.wireMainOut(MAUSrc::LEFT_SOCKET, MAUSrc::RIGHT_SOCKET); })
     .event([&tester]() { tester.device()->fBuffer = MockAudioDevice::buffer(3.0, 4.0); })
 
-    .nextBatch()
+    .after1Batch()
 
       // device is fully wired
     .event([&tester]() { ASSERT_EQ(tester.dst()->fBuffer, MockAudioDevice::buffer(3.0, 4.0)); })
@@ -390,7 +390,7 @@ TEST(Timeline, Usage)
     .onEveryBatch(checkEveryBatch)
     .event([&checkBatch](long iAtBatch) { checkBatch(0, iAtBatch); return true; })
     .event([&tester]() { ASSERT_EQ(0, tester.device()->fBatchCount); })
-    .nextBatch()
+    .after1Batch()
     .event([&checkBatch](long iAtBatch) { checkBatch(1, iAtBatch); return true; })
     .event([&tester]() { ASSERT_EQ(1, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_EQ(128, tester.device()->fNoteEvents.size()); }) // initial setup
@@ -413,7 +413,7 @@ TEST(Timeline, Usage)
     .event([&checkBatch](long iAtBatch) { checkBatch(0, iAtBatch); return true; })
     .note(Midi::A_440, sequencer::Duration::k1Beat) // note On at batch 0 | note off at batch 345
 
-    .nextBatch() // 1
+    .after1Batch() // 1
     .event([&checkBatch](long iAtBatch) { checkBatch(1, iAtBatch); return true; })
     .event([&tester]() { ASSERT_EQ(1, tester.device()->fBatchCount); })
     .event([&tester]() {
@@ -423,7 +423,7 @@ TEST(Timeline, Usage)
       ASSERT_EQ(0, tester.device()->fNoteEvents[0].fAtFrameIndex);
     })
 
-    .nextBatch() // 2
+    .after1Batch() // 2
     .event([&checkBatch](long iAtBatch) { checkBatch(2, iAtBatch); return true; })
     .event([&tester]() { ASSERT_EQ(2, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_EQ(0, tester.device()->fNoteEvents.size()); })
@@ -433,7 +433,7 @@ TEST(Timeline, Usage)
     .event([&tester]() { ASSERT_EQ(345, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_EQ(0, tester.device()->fNoteEvents.size()); })
 
-    .nextBatch() // 346
+    .after1Batch() // 346
     .event([&checkBatch](long iAtBatch) { checkBatch(346, iAtBatch); return true; })
     .event([&tester]() { ASSERT_EQ(346, tester.device()->fBatchCount); })
     .event([&tester]() {
@@ -455,12 +455,12 @@ TEST(Timeline, Usage)
   // testing play (uses transportStart / transportStop)
   tester.newTimeline()
     .event([&checkBatch](long iAtBatch) { checkBatch(0, iAtBatch); return true; })
-    .nextBatch()
+    .after1Batch()
     .event([&checkBatch](long iAtBatch) { checkBatch(1, iAtBatch); return true; })
     .event([&tester]() { ASSERT_EQ(1, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_TRUE(tester.device()->fTransportPlaying); })
     .event([&tester]() { ASSERT_EQ(0, tester.device()->fTransportPlayPos); })
-    .nextBatch()
+    .after1Batch()
     .event([&tester]() { ASSERT_EQ(44, tester.device()->fTransportPlayPos); })
     .play();
 

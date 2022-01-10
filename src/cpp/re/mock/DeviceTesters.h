@@ -45,7 +45,7 @@ public:
 public:
   Timeline &after(Duration iDuration);
 
-  Timeline &nextBatch() { return after(rack::Duration{1}); }
+  Timeline &after1Batch() { return after(rack::Duration{1}); }
 
   Timeline &event(Event iEvent) { return event(fCurrentBath, std::move(iEvent)); }
   Timeline &event(SimpleEvent iEvent) { return event(fCurrentBath, std::move(iEvent)); }
