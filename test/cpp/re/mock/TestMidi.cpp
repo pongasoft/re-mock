@@ -77,15 +77,15 @@ TEST(Midi, Tempo)
   tester.nextBatch();
 
   auto playMidi = [&tester](std::string iMidiFile, int iTrack, int iExpectedTempo, std::string iExpectedOutput) {
-    tester.getSequencerTrack().reset(); // removes all notes from sequencer track
-    tester.loadMidi(resource::File{iMidiFile}, iTrack); // load midi notes
+    tester.sequencerTrack().reset(); // removes all notes from sequencer track
+    tester.importMidi(resource::File{iMidiFile}, iTrack); // import midi notes
     ASSERT_EQ(iExpectedTempo, static_cast<int>(std::round(tester.rack().getTransportTempo())));
     tester.rack().setTransportTempo(187.5); // change tempo to 187.5 because it makes 1ppq == 1 sample == 1 fAtFrameIndex
     tester.device()->fOutput = ""; // clear output
     tester.rack().setTransportPlayPos(0); // reset transport position
 
     // play for 2 bars
-    tester.play(sequencer::Duration::k1Bar * 2);
+    tester.play(sequencer::Duration::k1Bar_4x4 * 2);
 
     ASSERT_EQ(iExpectedOutput, tester.device()->fOutput);
   };
@@ -151,7 +151,7 @@ TEST(Midi, Tempo)
   playMidi(Logic_2track_99tempo, 2, 99, expected_Reason_2track_99tempo_track2);
 
   // Make sure that there is an exception if we try to read a non existent track
-  ASSERT_THROW(tester.loadMidi(resource::File{Reason_1track_99tempo}, 3), Exception);
+  ASSERT_THROW(tester.importMidi(resource::File{Reason_1track_99tempo}, 3), Exception);
 }
 
 

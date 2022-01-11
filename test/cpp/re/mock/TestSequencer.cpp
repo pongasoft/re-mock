@@ -226,7 +226,7 @@ TEST(Track, executeEvents)
   // sequencer::Duration(0,0,0,200) | PPQ = 3200
   ASSERT_EQ(3200, sequencer::Duration(0,0,0,200).toPPQCount());
 
-  tester.getSequencerTrack()
+  tester.sequencerTrack()
     .onEveryBatch(checkEveryBatch)
 
     // equivalent to Time{1,1,1,100}
@@ -246,7 +246,7 @@ TEST(Track, executeEvents)
     .note(62, sequencer::Duration{0,0,0,200}, 103)
     ;
 
-  tester.newTimeline().play(sequencer::Duration::k1Beat);
+  tester.newTimeline().play(sequencer::TimeSignature{}.oneBeat());
 
   // 345: see Duration.Conversion test
   ASSERT_EQ(345, checkEveryBatchCount);
@@ -331,7 +331,7 @@ TEST(Track, looping)
 
   // we test looping position first
   tester.rack().setTransportLoopEnabled(true);
-  tester.rack().setTransportLoop(sequencer::Time(2,1,1,0), sequencer::Duration::k1Beat);
+  tester.rack().setTransportLoop(sequencer::Time(2,1,1,0), sequencer::TimeSignature{}.oneBeat());
   tester.rack().setTransportPlayPos(sequencer::Time(2,1,1,0));
 
   tester.newTimeline().play(sequencer::Duration(0,12,0,0));
@@ -362,10 +362,10 @@ Looping: batch=3790,pos 76762 => 61447
   tester.rack().setTransportLoopEnabled(true);
 
   // now we use notes
-  tester.getSequencerTrack()
-    .note(60, sequencer::Time(1,4,4,120), sequencer::Duration::k1Sixteenth)
-    .note(61, sequencer::Time(2,1,2,0), sequencer::Duration::k1Sixteenth)
-    .note(62, sequencer::Time(2,1,4,120), sequencer::Duration::k1Sixteenth)
+  tester.sequencerTrack()
+    .note(60, sequencer::Time(1,4,4,120), sequencer::TimeSignature{}.one16th())
+    .note(61, sequencer::Time(2,1,2,0), sequencer::TimeSignature{}.one16th())
+    .note(62, sequencer::Time(2,1,4,120), sequencer::TimeSignature{}.one16th())
     .note(63, sequencer::Time(1,4,4,120), sequencer::Duration(0,1,1,0))
     ;
 

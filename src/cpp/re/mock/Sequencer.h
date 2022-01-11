@@ -39,6 +39,8 @@ private:
   TJBox_Float64 fCount{};
 };
 
+class Duration;
+
 struct TimeSignature
 {
   constexpr TimeSignature(int iNumerator = 4, int iDenominator = 4) : fNumerator{iNumerator}, fDenominator{iDenominator}
@@ -50,6 +52,10 @@ struct TimeSignature
   constexpr int numerator() const { return fNumerator; }
   constexpr int denominator() const { return fDenominator; }
 
+  Duration oneBar() const;
+  Duration oneBeat() const;
+  Duration one16th() const;
+
 private:
   int fNumerator;
   int fDenominator;
@@ -59,7 +65,7 @@ class Time
 {
 public:
   explicit Time(TJBox_UInt32 iBars = 1, TJBox_UInt32 iBeats = 1, TJBox_UInt32 i16th = 1, TJBox_UInt32 iTicks = 0, TimeSignature iTimeSignature = {}) :
-    fBars{iBars}, fBeats{iBeats}, f16th{i16th}, fTicks{iTicks}, fTimeSignature{iTimeSignature}
+    fTimeSignature{iTimeSignature}, fBars{iBars}, fBeats{iBeats}, f16th{i16th}, fTicks{iTicks}
   {
   }
 
@@ -101,7 +107,7 @@ class Duration
 {
 public:
   constexpr explicit Duration(TJBox_UInt32 iBars = 0, TJBox_UInt32 iBeats = 0, TJBox_UInt32 i16th = 0, TJBox_UInt32 iTicks = 0, TimeSignature iTimeSignature = {}) :
-    fBars{iBars}, fBeats{iBeats}, f16th{i16th}, fTicks{iTicks}, fTimeSignature{iTimeSignature}
+    fTimeSignature{iTimeSignature}, fBars{iBars}, fBeats{iBeats}, f16th{i16th}, fTicks{iTicks}
   {
   }
 
@@ -129,9 +135,9 @@ public:
 
   std::string toString() const;
 
-  static const Duration k1Bar;
-  static const Duration k1Beat;
-  static const Duration k1Sixteenth;
+  static const Duration k1Bar_4x4;
+  static const Duration k1Beat_4x4;
+  static const Duration k1Sixteenth_4x4;
 
 private:
   TimeSignature fTimeSignature;

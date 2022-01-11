@@ -135,7 +135,7 @@ TEST(Duration, Conversion)
   ASSERT_EQ(100, rack.toRackDuration(rack::Duration{100}).fBatches);
   ASSERT_EQ(2, rack.toRackDuration(sample::Duration{100}).fBatches);
 
-  ASSERT_EQ(345, rack.toRackDuration(sequencer::Duration::k1Beat).fBatches);
+  ASSERT_EQ(345, rack.toRackDuration(sequencer::Duration::k1Beat_4x4).fBatches);
 
 }
 
@@ -150,7 +150,7 @@ TEST(InstrumentTester, Usage)
   tester.device()->fBuffer = MockAudioDevice::buffer(1.0, 2.0);
 
   // device is not wired yet!
-  ASSERT_EQ(tester.nextBatch(), MockAudioDevice::buffer(0, 0));
+  ASSERT_EQ(tester.nextBatch({}), MockAudioDevice::buffer(0, 0));
 
   // wire main outputs
   tester.wireMainOut(MAUSrc::LEFT_SOCKET, MAUSrc::RIGHT_SOCKET);
@@ -158,7 +158,7 @@ TEST(InstrumentTester, Usage)
   tester.device()->fBuffer = MockAudioDevice::buffer(3.0, 4.0);
 
   // device is fully wired
-  ASSERT_EQ(tester.nextBatch(), MockAudioDevice::buffer(3.0, 4.0));
+  ASSERT_EQ(tester.nextBatch({}), MockAudioDevice::buffer(3.0, 4.0));
 }
 
 // InstrumentTester.Usage
@@ -200,7 +200,7 @@ TEST(NotePlayerTester, Usage)
 
   ASSERT_EQ(MockDevice::NoteEvents{}, tester.device()->fNoteEvents);
 
-  ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.nextBatch());
+  ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.nextBatch({}));
   ASSERT_EQ(MockDevice::NoteEvents{}.allNotesOff(), tester.device()->fNoteEvents);
 
   ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(Midi::A_440), tester.nextBatch(MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440)));
@@ -214,7 +214,7 @@ TEST(NotePlayerTester, Usage)
     m.setNoteInEvent(70, 120, 3);
   });
 
-  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(70, 120, 3), tester.nextBatch());
+  ASSERT_EQ(MockDevice::NoteEvents{}.noteOn(70, 120, 3), tester.nextBatch({}));
 
   // bypass note player (does not receive notes anymore)
   tester.setBypassed(true);
@@ -394,7 +394,7 @@ TEST(Timeline, Usage)
     .event([&checkBatch](long iAtBatch) { checkBatch(1, iAtBatch); return true; })
     .event([&tester]() { ASSERT_EQ(1, tester.device()->fBatchCount); })
     .event([&tester]() { ASSERT_EQ(128, tester.device()->fNoteEvents.size()); }) // initial setup
-    .after(sequencer::Duration::k1Beat) // 344 batches (see Duration.Conversion test)
+    .after(sequencer::Duration::k1Beat_4x4) // 344 batches (see Duration.Conversion test)
     .event([&checkBatch](long iAtBatch) { checkBatch(346, iAtBatch); return true; })
     .event([&tester]() { ASSERT_EQ(346, tester.device()->fBatchCount); })
     .execute();
@@ -411,7 +411,7 @@ TEST(Timeline, Usage)
   tester.newTimeline()
     .onEveryBatch(checkEveryBatch)
     .event([&checkBatch](long iAtBatch) { checkBatch(0, iAtBatch); return true; })
-    .note(Midi::A_440, sequencer::Duration::k1Beat) // note On at batch 0 | note off at batch 345
+    .note(Midi::A_440, sequencer::Duration::k1Beat_4x4) // note On at batch 0 | note off at batch 345
 
     .after1Batch() // 1
     .event([&checkBatch](long iAtBatch) { checkBatch(1, iAtBatch); return true; })

@@ -233,6 +233,15 @@ TEST(Transport, nextBatchFailing)
   // and despite all my best efforts, I can still find a use case that fails: when the sequencer starts at 0 it works
   // fine and produces the right set of play_pos but when it starts at 61440 the reset is not just offset. I don't
   // understand what I am doing wrong... So for now, it will have to wait...
+
+  // Update: 2022/01/11: "One thing I found that might help is that the PPQ position calculations are not only
+  // done using float/double - the step forward for each batch goes via / is truncated to fixed point integers
+  // with decimals in 7 bits, i.e. 1.0 == 128.
+  //
+  // The doc says this is part of the design, to get deterministic and equal step forward in fractional PPQ
+  // between different sequencers which are at different absolute positions. I guess this means sequencers
+  // within rack devices, but maybe also components of the main sequencer in Reason stand-alone."
+
   std::vector<int> expected_48000_99_0 = {
     0, 34, 68, 101, 135, 169, 203, 237, 270, 304, 338, 372, 405, 439, 473, 507, 541, 574, 608, 642, 676, 710, 743, 777,
     811, 845, 879, 912, 946, 980, 1014, 1048, 1081, 1115, 1149, 1183, 1216, 1250, 1284, 1318, 1352, 1385, 1419, 1453,

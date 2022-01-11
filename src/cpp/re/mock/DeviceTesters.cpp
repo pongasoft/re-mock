@@ -197,12 +197,27 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MNPDst> &iDst)
 //------------------------------------------------------------------------
 // DeviceTester::nextBatches
 //------------------------------------------------------------------------
-void DeviceTester::nextBatches(Duration iDuration)
+void DeviceTester::nextBatches(Duration iDuration, std::optional<tester::Timeline> iTimeline)
 {
-  auto duration = fRack.toRackDuration(iDuration);
+  if(iTimeline)
+    iTimeline->execute(iDuration);
+  else
+  {
+    auto duration = fRack.toRackDuration(iDuration);
+    for(int i = 0; i < duration.fBatches; i++)
+      fRack.nextBatch();
+  }
+}
 
-  for(int i = 0; i < duration.fBatches; i++)
-    fRack.nextBatch();
+//------------------------------------------------------------------------
+// DeviceTester::play
+//------------------------------------------------------------------------
+void DeviceTester::play(Duration iDuration, std::optional<tester::Timeline> iTimeline)
+{
+  if(iTimeline)
+    iTimeline->play(iDuration);
+  else
+    newTimeline().play(iDuration);
 }
 
 //------------------------------------------------------------------------
@@ -234,9 +249,9 @@ void DeviceTester::saveSample(MockAudioDevice::Sample const &iSample, resource::
 }
 
 //------------------------------------------------------------------------
-// DeviceTester::loadMidi
+// DeviceTester::importMidi
 //------------------------------------------------------------------------
-void DeviceTester::loadMidi(resource::File const &iMidiFile, int iTrack, bool iImportTempo)
+void DeviceTester::importMidi(resource::File const &iMidiFile, int iTrack, bool iImportTempo)
 {
   auto midiFile = FileManager::loadMidi(iMidiFile).value();
 
@@ -409,16 +424,6 @@ void ExtensionInstrumentTester::wireMainOut(std::optional<std::string> iLeftOutS
 }
 
 //------------------------------------------------------------------------
-// ExtensionEffectTester::setNoteEvents
-//------------------------------------------------------------------------
-ExtensionInstrumentTester & ExtensionInstrumentTester::setNoteEvents(MockDevice::NoteEvents iNoteEvents)
-{
-  fDevice.setNoteInEvents(iNoteEvents.events());
-  return *this;
-}
-
-
-//------------------------------------------------------------------------
 // ExtensionInstrumentTester::nextBatch
 //------------------------------------------------------------------------
 MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextBatch(MockDevice::NoteEvents iNoteEvents)
@@ -429,9 +434,33 @@ MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextBatch(MockDevice::N
 }
 
 //------------------------------------------------------------------------
-// ExtensionInstrumentTester::play
+// ExtensionInstrumentTester::bounce
 //------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionInstrumentTester::play(tester::Timeline iTimeline)
+MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTimeline)
+{
+  fDst->fSample.clear();
+  iTimeline.execute();
+  return fDst->fSample;
+}
+
+//------------------------------------------------------------------------
+// ExtensionInstrumentTester::bounce
+//------------------------------------------------------------------------
+MockAudioDevice::Sample ExtensionInstrumentTester::bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline)
+{
+  fDst->fSample.clear();
+  nextBatches(iDuration, iTimeline);
+  auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
+  if(fDst->fSample.getFrameCount() > frameCount)
+    return fDst->fSample.subSample(0, frameCount);
+  else
+    return fDst->fSample;
+}
+
+//------------------------------------------------------------------------
+// ExtensionInstrumentTester::bouncePlay
+//------------------------------------------------------------------------
+MockAudioDevice::Sample ExtensionInstrumentTester::bouncePlay(tester::Timeline iTimeline)
 {
   fDst->fSample.clear();
   iTimeline.play();
@@ -439,15 +468,12 @@ MockAudioDevice::Sample ExtensionInstrumentTester::play(tester::Timeline iTimeli
 }
 
 //------------------------------------------------------------------------
-// ExtensionInstrumentTester::play
+// ExtensionInstrumentTester::bouncePlay
 //------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionInstrumentTester::play(Duration iDuration, std::optional<tester::Timeline> iTimeline)
+MockAudioDevice::Sample ExtensionInstrumentTester::bouncePlay(Duration iDuration, std::optional<tester::Timeline> iTimeline)
 {
   fDst->fSample.clear();
-  if(iTimeline)
-    iTimeline->play(iDuration);
-  else
-    newTimeline().play(iDuration);
+  play(iDuration, iTimeline);
   auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
   if(fDst->fSample.getFrameCount() > frameCount)
     return fDst->fSample.subSample(0, frameCount);

@@ -156,11 +156,19 @@ public:
   inline void transportStart() { fRack.transportStart(); }
   inline void transportStop() { fRack.transportStop(); }
 
-  sequencer::Track &getSequencerTrack() const { return fDevice.getSequencerTrack(); }
+  void setNoteEvents(MockDevice::NoteEvents iNoteEvents) { fDevice.setNoteInEvents(iNoteEvents.events()); }
+
+  sequencer::Track &sequencerTrack() const { return fDevice.getSequencerTrack(); }
 
   tester::Timeline newTimeline() { return tester::Timeline(this); }
 
-  void nextBatches(Duration iDuration);
+  inline void nextBatch() { fRack.nextBatch(); }
+
+  void nextBatches(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
+  inline void nextBatches(tester::Timeline iTimeline) { iTimeline.execute(); }
+
+  void play(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
+  inline void play(tester::Timeline iTimeline) { iTimeline.play(); }
 
   MockAudioDevice::Sample loadSample(resource::File const &iSampleFile) const;
   MockAudioDevice::Sample loadSample(std::string const &iSampleResource) const;
@@ -168,7 +176,7 @@ public:
 
   void deviceReset() { fDevice.reset(); }
 
-  void loadMidi(resource::File const &iMidiFile, int iTrack = -1, bool iImportTempo = true);
+  void importMidi(resource::File const &iMidiFile, int iTrack = -1, bool iImportTempo = true);
 
   friend class re::mock::tester::Timeline;
 
@@ -201,17 +209,18 @@ public:
   inline Rack::ExtensionDevice<Helper> &device() { return fHelper; }
   inline Rack::ExtensionDevice<Helper> const &device() const { return fHelper; }
 
-  void nextBatch() { fRack.nextBatch(); }
-
 protected:
   Rack::ExtensionDevice<Helper> fHelper;
 };
 
+/**
+ * Base tester class to test an effect (`device_type="creative_fx"` or `device_type="studio_fx"` in `info.lua`).
+ * You should instantiate the proper subclass: StudioEffectTester or CreativeEffectTester
+ */
 class ExtensionEffectTester : public DeviceTester
 {
 public:
   using optional_duration_t = std::optional<Duration>;
-  using before_frame_hook_t = std::function<void(int)>;
 
 public:
   explicit ExtensionEffectTester(Config const &iDeviceConfig, int iSampleRate);
@@ -219,6 +228,7 @@ public:
   void wireMainIn(std::optional<std::string> iLeftInSocketName, std::optional<std::string> iRightInSocketName);
   void wireMainOut(std::optional<std::string> iLeftOutSocketName, std::optional<std::string> iRightOutSocketName);
 
+  using DeviceTester::nextBatch;
   MockAudioDevice::StereoBuffer nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer);
   void nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
 
@@ -231,6 +241,7 @@ public:
                                         std::optional<tester::Timeline> iTimeline = std::nullopt) {
     return processSample(loadSample(iSampleFile), iTail, std::move(iTimeline));
   }
+
   MockAudioDevice::Sample processSample(std::string const &iSampleResource,
                                         optional_duration_t iTail = std::nullopt,
                                         std::optional<tester::Timeline> iTimeline = std::nullopt) {
@@ -294,11 +305,12 @@ public:
 
   void wireMainOut(std::optional<std::string> iLeftOutSocketName, std::optional<std::string> iRightOutSocketName);
 
-  ExtensionInstrumentTester &setNoteEvents(MockDevice::NoteEvents iNoteEvents);
-
-  MockAudioDevice::StereoBuffer nextBatch(MockDevice::NoteEvents iNoteEvents = {});
-  MockAudioDevice::Sample play(tester::Timeline iTimeline);
-  MockAudioDevice::Sample play(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
+  using DeviceTester::nextBatch;
+  MockAudioDevice::StereoBuffer nextBatch(MockDevice::NoteEvents iNoteEvents);
+  MockAudioDevice::Sample bounce(tester::Timeline iTimeline);
+  MockAudioDevice::Sample bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
+  MockAudioDevice::Sample bouncePlay(tester::Timeline iTimeline);
+  MockAudioDevice::Sample bouncePlay(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
 
   inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
   inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }
@@ -328,7 +340,8 @@ class ExtensionNotePlayerTester : public DeviceTester
 public:
   explicit ExtensionNotePlayerTester(Config const &iDeviceConfig, int iSampleRate);
 
-  MockDevice::NoteEvents nextBatch(MockDevice::NoteEvents iSourceEvents = {});
+  using DeviceTester::nextBatch;
+  MockDevice::NoteEvents nextBatch(MockDevice::NoteEvents iSourceEvents);
 
   bool isBypassed() const { return fDevice.isNotePlayerBypassed(); }
   void setBypassed(bool iBypassed) { fDevice.setNotePlayerBypassed(iBypassed); }

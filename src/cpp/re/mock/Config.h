@@ -140,8 +140,8 @@ struct Config
   explicit Config(DeviceType iDeviceType) { fInfo.device_type(iDeviceType); }
   explicit Config(Info const &iInfo) :fInfo{iInfo} {}
 
-  bool debug() const { return fDebug; }
-  Config &debug(bool iDebug = true) { fDebug = iDebug; return *this; }
+  bool debug_config() const { return fDebugConfig; }
+  Config &debug_config(bool iDebug = true) { fDebugConfig = iDebug; return *this; }
 
   bool traceEnabled() const { return fTraceEnabled; }
   Config &enable_trace() { fTraceEnabled = true; return *this; }
@@ -235,7 +235,7 @@ protected:
 
   using AnyConfigResource = std::variant<ConfigResource::Patch, ConfigResource::Blob, ConfigResource::Sample>;
 
-  bool fDebug{};
+  bool fDebugConfig{};
   bool fTraceEnabled{true};
   Info fInfo{};
   std::optional<std::string> fDeviceRootDir{};
@@ -255,7 +255,7 @@ struct DeviceConfig
   explicit DeviceConfig(DeviceType iDeviceType) : fConfig{iDeviceType} {}
   explicit DeviceConfig(Info const &iInfo) : fConfig{iInfo} {}
 
-  bool debug() const { return fConfig.debug(); }
+  bool debug() const { return fConfig.debug_config(); }
   Info const &info() const { return fConfig.info(); }
   std::optional<std::string> device_root_dir() const { return fConfig.device_root_dir(); };
   std::optional<std::string> device_resources_dir() const { return fConfig.device_resources_dir(); };
@@ -266,7 +266,7 @@ struct DeviceConfig
   std::optional<resource::Blob> findBlobResource(std::string const &iResourcePath) const { return fConfig.findBlobResource(iResourcePath); }
   std::optional<resource::Sample> findSampleResource(std::string const &iResourcePath) const { return fConfig.findSampleResource(iResourcePath); }
 
-  DeviceConfig &debug(bool iDebug = true) { fConfig.debug(iDebug); return *this; }
+  DeviceConfig &debug_config(bool iDebug = true) { fConfig.debug_config(iDebug); return *this; }
 
   DeviceConfig &enable_trace() { fConfig.enable_trace(); return *this; }
   DeviceConfig &disable_trace() { fConfig.disable_trace(); return *this; }

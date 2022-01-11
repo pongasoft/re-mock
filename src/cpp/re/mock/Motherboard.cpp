@@ -373,7 +373,7 @@ void Motherboard::init()
   for(auto &v: fConfig.fMotherboardDefs)
     std::visit(defVisitor, v);
 
-  if(fConfig.fDebug)
+  if(fConfig.fDebugConfig)
   {
     std::cout << "---- MotherboardDef -----\n";
     std::cout << defVisitor.fCode << "\n";
@@ -386,7 +386,7 @@ void Motherboard::init()
   for(auto &v: fConfig.fRealtimeControllers)
     std::visit(rtcVisitor, v);
 
-  if(fConfig.fDebug)
+  if(fConfig.fDebugConfig)
   {
     std::cout << "---- RealtimeController -----\n";
     std::cout << rtcVisitor.fCode << "\n";

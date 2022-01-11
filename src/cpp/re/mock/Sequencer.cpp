@@ -222,9 +222,9 @@ Track &Track::note(Note const &iNote)
   return *this;
 }
 
-const Duration Duration::k1Bar(1,0,0,0);
-const Duration Duration::k1Beat(0,1,0,0);
-const Duration Duration::k1Sixteenth(0,0,1,0);
+const Duration Duration::k1Bar_4x4(1,0,0,0);
+const Duration Duration::k1Beat_4x4(0,1,0,0);
+const Duration Duration::k1Sixteenth_4x4(0,0,1,0);
 
 //------------------------------------------------------------------------
 // Track::executeEvents
@@ -342,6 +342,30 @@ Time Track::getLastEventTime() const
 {
   RE_MOCK_ASSERT(!fEvents.empty(), "no events");
   return Time::from(getEvents().at(fEvents.size() - 1).fAtPPQ, fTimeSignature);
+}
+
+//------------------------------------------------------------------------
+// TimeSignature::oneBar
+//------------------------------------------------------------------------
+Duration TimeSignature::oneBar() const
+{
+  return Duration(1,0,0,0,*this);
+}
+
+//------------------------------------------------------------------------
+// TimeSignature::oneBeat
+//------------------------------------------------------------------------
+Duration TimeSignature::oneBeat() const
+{
+  return Duration(0,1,0,0,*this);
+}
+
+//------------------------------------------------------------------------
+// TimeSignature::one16th
+//------------------------------------------------------------------------
+Duration TimeSignature::one16th() const
+{
+  return Duration(0,0,1,0,*this);
 }
 
 }
