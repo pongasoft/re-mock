@@ -353,16 +353,18 @@ rack::Duration Rack::toRackDuration(Duration iDuration)
 
     rack::Duration operator()(time::Duration d) {
       auto batches = std::ceil(d.fMilliseconds * fTransport->getSampleRate() / 1000.0 / kNumSamplesPerBatch);
-      return rack::Duration { static_cast<long>(batches)};
+      return rack::Duration { static_cast<size_t>(batches)};
     }
 
     rack::Duration operator()(sample::Duration d) {
-      return rack::Duration{ static_cast<long>(std::ceil(d.fFrames / static_cast<double>(kNumSamplesPerBatch))) };
+      return rack::Duration{ static_cast<size_t>(std::ceil(d.fFrames / static_cast<double>(kNumSamplesPerBatch))) };
     }
 
     rack::Duration operator()(sequencer::Duration d) {
-      return rack::Duration { static_cast<long>(fTransport->computeNumBatches(d.toPPQCount()))};
+      return rack::Duration { static_cast<size_t>(fTransport->computeNumBatches(d.toPPQCount()))};
     }
+
+    rack::Duration operator()(timeline::Duration d) { return rack::Duration{std::numeric_limits<size_t>::max()}; }
 
     Transport *fTransport;
   };
@@ -377,17 +379,22 @@ sample::Duration Rack::toSampleDuration(Duration iDuration)
 {
   struct visitor
   {
-    sample::Duration operator()(rack::Duration d) { return sample::Duration{d.fBatches * constants::kBatchSize}; }
+    sample::Duration operator()(rack::Duration d) { return sample::Duration{static_cast<TJBox_AudioFramePos>(d.fBatches * constants::kBatchSize)}; }
 
     sample::Duration operator()(time::Duration d) {
       auto frames = std::ceil(d.fMilliseconds * fTransport->getSampleRate() / 1000.0);
-      return sample::Duration{ static_cast<long>(frames)};
+      return sample::Duration{ static_cast<TJBox_AudioFramePos>(frames)};
     }
 
     sample::Duration operator()(sample::Duration d) { return d; }
 
     sample::Duration operator()(sequencer::Duration d) {
-      return sample::Duration { fRack->toRackDuration(d).fBatches * constants::kBatchSize};
+      return sample::Duration { static_cast<TJBox_AudioFramePos>(fRack->toRackDuration(d).fBatches * constants::kBatchSize)};
+    }
+
+    sample::Duration operator()(timeline::Duration d) {
+      RE_MOCK_ASSERT(false, "Cannot determine sample duration with infinite timeline");
+      return sample::Duration { 0 };
     }
 
     Rack *fRack;

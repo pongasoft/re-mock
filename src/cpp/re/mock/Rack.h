@@ -34,14 +34,20 @@ struct Duration { float fMilliseconds{}; };
 }
 
 namespace sample {
-struct Duration { long fFrames{}; };
+struct Duration { TJBox_AudioFramePos fFrames{}; };
 }
 
 namespace rack {
-struct Duration { long fBatches{}; };
+struct Duration { size_t fBatches{}; };
 }
 
-using Duration = std::variant<time::Duration, sample::Duration, rack::Duration, sequencer::Duration>;
+namespace timeline {
+/**
+ * This duration indicates that it is driven by the timeline itself (returns `false` when done) */
+struct Duration {};
+}
+
+using Duration = std::variant<time::Duration, sample::Duration, rack::Duration, sequencer::Duration, timeline::Duration>;
 
 class Rack
 {

@@ -356,25 +356,50 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
   res.fSampleRate = fRack.getSampleRate();
   res.fData.reserve(iSample.fData.size() + tailInFrames);
 
-  MockAudioDevice::StereoBuffer input{};
-  MockAudioDevice::StereoBuffer output{};
-
   auto numFramesToProcess = iSample.fData.size() / iSample.fChannels;
 
   auto totalNumFrames = numFramesToProcess + tailInFrames;
   auto ptr = iSample.fData.data();
 
-  iTimeline->onEveryBatch([this, &totalNumFrames, &numFramesToProcess, &input, &output, &ptr, stereo = iSample.isStereo(), &res]() {
-    auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, constants::kBatchSize);
-    auto numFramesToProcessInThisBatch = std::min<size_t>(numFramesToProcess, numFramesInThisBatch);
+  iTimeline->onEveryBatch([this, &totalNumFrames, &numFramesToProcess, &ptr, stereo = iSample.isStereo(), &res](long iAtBatch) {
 
-    if(numFramesToProcessInThisBatch > 0)
+    // onEveryBatch is called BEFORE the call to nextBatch, so we process the result on the next iteration
+    if(iAtBatch > 0)
     {
-      if(numFramesToProcessInThisBatch < constants::kBatchSize)
+      auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, constants::kBatchSize);
+      auto numFramesToProcessInThisBatch = std::min<size_t>(numFramesToProcess, numFramesInThisBatch);
+
+      // fill the output buffer
+      auto &output = fDst->fBuffer;
+
+      for(size_t i = 0; i < numFramesInThisBatch; i++)
+      {
+        res.fData.emplace_back(output.fLeft[i]);
+        if(stereo)
+          res.fData.emplace_back(output.fRight[i]);
+      }
+
+      totalNumFrames -= numFramesInThisBatch;
+      numFramesToProcess -= numFramesToProcessInThisBatch;
+    }
+
+    // we are done!
+    if(totalNumFrames == 0)
+      return false;
+
+    // we fill the input buffer to be processed in the next batch
+    auto &input = fSrc->fBuffer;
+
+    auto numFramesToProcessInNextBatch = std::min<size_t>(numFramesToProcess,
+                                                          std::min<size_t>(totalNumFrames, constants::kBatchSize));
+
+    if(numFramesToProcessInNextBatch > 0)
+    {
+      if(numFramesToProcessInNextBatch < constants::kBatchSize)
         input.fill(0, 0);
 
       // fill the input buffer
-      for(size_t i = 0; i < numFramesToProcessInThisBatch; i++)
+      for(size_t i = 0; i < numFramesToProcessInNextBatch; i++)
       {
         input.fLeft[i] = *ptr++;
         if(stereo)
@@ -384,22 +409,10 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
     else
       input.fill(0, 0);
 
-    // process this batch
-    nextBatch(input, output);
-
-    // fill the output buffer
-    for(size_t i = 0; i < numFramesInThisBatch; i++)
-    {
-      res.fData.emplace_back(output.fLeft[i]);
-      if(stereo)
-        res.fData.emplace_back(output.fRight[i]);
-    }
-
-    totalNumFrames -= numFramesInThisBatch;
-    numFramesToProcess -= numFramesToProcessInThisBatch;
+    return true;
   });
 
-  iTimeline->execute(sample::Duration{static_cast<long>(totalNumFrames)});
+  iTimeline->execute(timeline::Duration{});
 
   return res;
 }
@@ -439,7 +452,7 @@ MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextBatch(MockDevice::N
 MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTimeline)
 {
   fDst->fSample.clear();
-  iTimeline.execute();
+  iTimeline.play();
   return fDst->fSample;
 }
 
@@ -447,30 +460,6 @@ MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTime
 // ExtensionInstrumentTester::bounce
 //------------------------------------------------------------------------
 MockAudioDevice::Sample ExtensionInstrumentTester::bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline)
-{
-  fDst->fSample.clear();
-  nextBatches(iDuration, iTimeline);
-  auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
-  if(fDst->fSample.getFrameCount() > frameCount)
-    return fDst->fSample.subSample(0, frameCount);
-  else
-    return fDst->fSample;
-}
-
-//------------------------------------------------------------------------
-// ExtensionInstrumentTester::bouncePlay
-//------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionInstrumentTester::bouncePlay(tester::Timeline iTimeline)
-{
-  fDst->fSample.clear();
-  iTimeline.play();
-  return fDst->fSample;
-}
-
-//------------------------------------------------------------------------
-// ExtensionInstrumentTester::bouncePlay
-//------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionInstrumentTester::bouncePlay(Duration iDuration, std::optional<tester::Timeline> iTimeline)
 {
   fDst->fSample.clear();
   play(iDuration, iTimeline);
@@ -551,7 +540,7 @@ Timeline &Timeline::transportStop()
 //------------------------------------------------------------------------
 // Timeline::event
 //------------------------------------------------------------------------
-Timeline &Timeline::event(long iAtBatch, Timeline::Event iEvent)
+Timeline &Timeline::event(size_t iAtBatch, Timeline::Event iEvent)
 {
   if(!iEvent)
     iEvent = kNoOp;
@@ -591,15 +580,31 @@ void Timeline::ensureSorted() const
 
   fSorted = true;
 }
-
 //------------------------------------------------------------------------
 // Timeline::execute
 //------------------------------------------------------------------------
-void Timeline::execute(std::optional<Duration> iDuration) const
+void Timeline::execute(bool iWithTransport, std::optional<Duration> iDuration) const
+{
+  if(iWithTransport && fTester->fTransportEnabled && !fTester->rack().getTransportPlaying())
+    fTester->transportStart();
+
+  executeEvents(iDuration);
+
+  if(iWithTransport && fTester->rack().getTransportPlaying())
+  {
+    fTester->transportStop();
+    fTester->rack().nextBatch(); // propagate the stop
+  }
+}
+
+//------------------------------------------------------------------------
+// Timeline::executeEvents
+//------------------------------------------------------------------------
+void Timeline::executeEvents(std::optional<Duration> iDuration) const
 {
   auto &rack = fTester->rack();
 
-  auto batches = iDuration ? rack.toRackDuration(*iDuration).fBatches : (fEvents.size() > 0 ? fCurrentBath + 1 : fCurrentBath);
+  size_t batches = iDuration ? rack.toRackDuration(*iDuration).fBatches : (fEvents.size() > 0 ? fCurrentBath + 1 : fCurrentBath);
 
   auto const &events = getEvents();
 
@@ -622,24 +627,6 @@ void Timeline::execute(std::optional<Duration> iDuration) const
     }
 
     rack.nextBatch();
-  }
-
-}
-
-//------------------------------------------------------------------------
-// Timeline::play
-//------------------------------------------------------------------------
-void Timeline::play(std::optional<Duration> iDuration) const
-{
-  if(!fTester->rack().getTransportPlaying())
-    fTester->transportStart();
-
-  execute(iDuration);
-
-  if(fTester->rack().getTransportPlaying())
-  {
-    fTester->transportStop();
-    fTester->rack().nextBatch(); // propagate the stop
   }
 }
 

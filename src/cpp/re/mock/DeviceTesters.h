@@ -27,7 +27,6 @@
 namespace re::mock {
 
 class DeviceTester;
-class ExtensionEffectTester;
 
 namespace tester {
 
@@ -61,22 +60,23 @@ public:
   Timeline &notes(MockDevice::NoteEvents iNoteEvents);
   Timeline &note(TJBox_UInt8 iNoteNumber, Duration iDuration, TJBox_UInt8 iNoteVelocity = 100);
 
-  void execute(std::optional<Duration> iDuration = std::nullopt) const;
-  void play(std::optional<Duration> iDuration = std::nullopt) const;
+  void execute(bool iWithTransport, std::optional<Duration> iDuration = std::nullopt) const;
+  inline void execute(std::optional<Duration> iDuration = std::nullopt) const { execute(false, iDuration); }
+  inline void play(std::optional<Duration> iDuration = std::nullopt) const { execute(true, iDuration); }
 
   friend class re::mock::DeviceTester;
 
 private:
   Timeline(DeviceTester *iTester) : fTester{iTester} {}
 
-  Timeline &event(long iAtBatch, Event iEvent);
-  inline Timeline &event(long iAtBatch, SimpleEvent iEvent) { return event(iAtBatch, wrap(std::move(iEvent))); }
+  Timeline &event(size_t iAtBatch, Event iEvent);
+  inline Timeline &event(size_t iAtBatch, SimpleEvent iEvent) { return event(iAtBatch, wrap(std::move(iEvent))); }
 
 private:
   struct EventImpl
   {
     int fId;
-    long fAtBatch;
+    size_t fAtBatch;
     Event fEvent;
   };
 
@@ -85,9 +85,11 @@ protected:
 
   std::vector<EventImpl> const &getEvents() const { ensureSorted(); return fEvents; }
 
+  void executeEvents(std::optional<Duration> iDuration) const;
+
 private:
   DeviceTester *fTester;
-  long fCurrentBath{};
+  size_t fCurrentBath{};
   std::vector<EventImpl> fEvents{};
   mutable bool fSorted{true};
   int fLastEventId{};
@@ -155,6 +157,10 @@ public:
 
   inline void transportStart() { fRack.transportStart(); }
   inline void transportStop() { fRack.transportStop(); }
+  inline void transportReset() { fRack.setTransportPlayPos(0); }
+
+  inline void enableTransport() { fTransportEnabled = true; }
+  inline void disableTransport() { fTransportEnabled = false; }
 
   void setNoteEvents(MockDevice::NoteEvents iNoteEvents) { fDevice.setNoteInEvents(iNoteEvents.events()); }
 
@@ -187,6 +193,7 @@ protected:
   Rack fRack;
   Rack::Extension fDevice;
   Config fDeviceConfig;
+  bool fTransportEnabled{true};
 };
 
 /**
@@ -309,8 +316,6 @@ public:
   MockAudioDevice::StereoBuffer nextBatch(MockDevice::NoteEvents iNoteEvents);
   MockAudioDevice::Sample bounce(tester::Timeline iTimeline);
   MockAudioDevice::Sample bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
-  MockAudioDevice::Sample bouncePlay(tester::Timeline iTimeline);
-  MockAudioDevice::Sample bouncePlay(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
 
   inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
   inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }

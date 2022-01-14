@@ -62,34 +62,53 @@ TEST(StudioEffectTester, Usage)
 // StudioEffectTester.Sample
 TEST(StudioEffectTester, Sample)
 {
-  auto c = MAUPst::CONFIG.clone().device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"));
-  StudioEffectTester<MAUPst> tester(c);
-  tester.wireMainIn(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
-  tester.wireMainOut(MAUPst::LEFT_SOCKET, MAUPst::RIGHT_SOCKET);
+  class Device : public MAUPst
+  {
+  public:
+    explicit Device(int iSampleRate) : MAUPst(iSampleRate) {}
+    void renderBatch(TJBox_PropertyDiff const *iPropertyDiffs, TJBox_UInt32 iDiffCount) override
+    {
+      MAUPst::renderBatch(iPropertyDiffs, iDiffCount);
+      fBatchCount++;
+    }
+    int fBatchCount{};
+  };
+  auto c = DeviceConfig<Device>::fromSkeleton(DeviceType::kStudioFX)
+    .mdef(Config::stereo_audio_out())
+    .mdef(Config::stereo_audio_in())
+    .device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"));
+
+  StudioEffectTester<Device> tester(c);
+  tester.wireMainIn(MockAudioDevice::LEFT_SOCKET, MockAudioDevice::RIGHT_SOCKET);
+  tester.wireMainOut(MockAudioDevice::LEFT_SOCKET, MockAudioDevice::RIGHT_SOCKET);
 
   auto sinePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
   auto sine = tester.loadSample(resource::File{sinePath});
 
   {
+    tester.device()->fBatchCount = 0;
     auto processedSine = tester.processSample(resource::File{sinePath});
 
     // processedSine should be sine (since MAUPst is pass through)
     ASSERT_EQ(sine.fChannels, processedSine.fChannels);
     ASSERT_EQ(sine.fSampleRate, tester.rack().getSampleRate());
     ASSERT_EQ(sine.fData, processedSine.fData);
+    ASSERT_EQ(2, tester.device()->fBatchCount); // 100 = 64 + 36
   }
 
   {
+    tester.device()->fBatchCount = 0;
     auto processedSine = tester.processSample("/re/mock/audio/sine.wav", sample::Duration{30});
     auto expectedSine = sine; // sine (100 samples) + tail of 30 samples
     for(int i = 0; i < 30; i++)
       expectedSine.fData.emplace_back(0);
     ASSERT_EQ(expectedSine, processedSine);
+    ASSERT_EQ(3, tester.device()->fBatchCount); // 130 = 64 + 64 + 2
   }
 
   {
     std::vector<int> batches{};
-
+    tester.device()->fBatchCount = 0;
     auto processedSine = tester.processSample(resource::File{sinePath},
                                               time::Duration{1},
                                               tester.newTimeline().onEveryBatch([&batches](long f) { batches.emplace_back(f); return true; }));
@@ -100,7 +119,10 @@ TEST(StudioEffectTester, Sample)
       expectedSine.fData.emplace_back(0);
 
     ASSERT_EQ(expectedSine, processedSine);
-    ASSERT_EQ(std::vector<int>({0, 1, 2}), batches); // 145 samples = 3 batches
+    // onEveryBatch is executed in the order of registration:
+    // the one that terminates the timeline is called AFTER this one, so this one is called one more time
+    ASSERT_EQ(std::vector<int>({0, 1, 2, 3}), batches);
+    ASSERT_EQ(3, tester.device()->fBatchCount); // 145 = 64 + 64 + 17
   }
 }
 
