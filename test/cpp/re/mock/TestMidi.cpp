@@ -74,9 +74,8 @@ TEST(Midi, Tempo)
 
   auto tester = InstrumentTester<Device>(c, 48000);
 
-  tester.nextBatch();
-
   auto playMidi = [&tester](std::string iMidiFile, int iTrack, int iExpectedTempo, std::string iExpectedOutput) {
+    tester.nextBatch(); // clearing "all notes stop" batch
     tester.sequencerTrack().reset(); // removes all notes from sequencer track
     tester.importMidi(resource::File{iMidiFile}, iTrack); // import midi notes
     ASSERT_EQ(iExpectedTempo, static_cast<int>(std::round(tester.rack().getTransportTempo())));

@@ -284,6 +284,24 @@ void DeviceTester::importMidi(resource::File const &iMidiFile, int iTrack, bool 
 }
 
 //------------------------------------------------------------------------
+// DeviceTester::transportStart
+//------------------------------------------------------------------------
+void DeviceTester::transportStart()
+{
+  if(fTransportEnabled && !fRack.getTransportPlaying())
+    fRack.transportStart();
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::transportStop
+//------------------------------------------------------------------------
+void DeviceTester::transportStop()
+{
+  if(fRack.getTransportPlaying())
+    fRack.transportStop();
+}
+
+//------------------------------------------------------------------------
 // ExtensionEffectTester::ExtensionEffectTester
 //------------------------------------------------------------------------
 ExtensionEffectTester::ExtensionEffectTester(Config const &iDeviceConfig, int iSampleRate) :
@@ -524,7 +542,7 @@ Timeline &Timeline::after(Duration iDuration)
 //------------------------------------------------------------------------
 Timeline &Timeline::transportStart()
 {
-  event([this]() { fTester->transportStart(); });
+  event([this]() { fTester->rack().transportStart(); });
   return *this;
 }
 
@@ -533,7 +551,7 @@ Timeline &Timeline::transportStart()
 //------------------------------------------------------------------------
 Timeline &Timeline::transportStop()
 {
-  event([this]() { fTester->transportStop(); });
+  event([this]() { fTester->rack().transportStop(); });
   return *this;
 }
 
@@ -585,25 +603,30 @@ void Timeline::ensureSorted() const
 //------------------------------------------------------------------------
 void Timeline::execute(bool iWithTransport, std::optional<Duration> iDuration) const
 {
-  if(iWithTransport && fTester->fTransportEnabled && !fTester->rack().getTransportPlaying())
-    fTester->transportStart();
+  auto batchCountBefore = fTester->rack().getBatchCount();
 
-  executeEvents(iDuration);
+  if(iWithTransport)
+    fTester->transportStart(); // no op if transport disabled
 
-  if(iWithTransport && fTester->rack().getTransportPlaying())
-  {
+  auto completedBatchCount = executeEvents(iDuration);
+
+  if(iWithTransport)
     fTester->transportStop();
-    fTester->rack().nextBatch(); // propagate the stop
-  }
+
+  auto batchCountAfter = fTester->rack().getBatchCount();
+
+  RE_MOCK_ASSERT(completedBatchCount == batchCountAfter - batchCountBefore,
+                 "Timeline should not call nextBatch() directly (or indirectly). Use after() api instead.");
 }
 
 //------------------------------------------------------------------------
 // Timeline::executeEvents
 //------------------------------------------------------------------------
-void Timeline::executeEvents(std::optional<Duration> iDuration) const
+size_t Timeline::executeEvents(std::optional<Duration> iDuration) const
 {
   auto &rack = fTester->rack();
 
+  size_t batchCount = 0;
   size_t batches = iDuration ? rack.toRackDuration(*iDuration).fBatches : (fEvents.size() > 0 ? fCurrentBath + 1 : fCurrentBath);
 
   auto const &events = getEvents();
@@ -615,19 +638,22 @@ void Timeline::executeEvents(std::optional<Duration> iDuration) const
     for(auto &event: fOnEveryBatchEvents)
     {
       if(!event(batch))
-        return; // terminate execution if returns false
+        return batchCount; // terminate execution if returns false
     }
 
     while(sortedEvents != events.end() && sortedEvents->fAtBatch == batch)
     {
       if(!sortedEvents->fEvent(batch))
-        return; // terminate execution if event returns false
+        return batchCount; // terminate execution if event returns false
 
       sortedEvents++;
     }
 
     rack.nextBatch();
+    batchCount++;
   }
+
+  return batchCount;
 }
 
 //------------------------------------------------------------------------

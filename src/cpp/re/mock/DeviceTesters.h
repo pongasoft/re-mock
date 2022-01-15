@@ -85,7 +85,7 @@ protected:
 
   std::vector<EventImpl> const &getEvents() const { ensureSorted(); return fEvents; }
 
-  void executeEvents(std::optional<Duration> iDuration) const;
+  size_t executeEvents(std::optional<Duration> iDuration) const;
 
 private:
   DeviceTester *fTester;
@@ -155,12 +155,12 @@ public:
 
   void unwire(Rack::ExtensionDevice<MNPDst> &iDst);
 
-  inline void transportStart() { fRack.transportStart(); }
-  inline void transportStop() { fRack.transportStop(); }
+  void transportStart();
+  void transportStop();
   inline void transportReset() { fRack.setTransportPlayPos(0); }
 
   inline void enableTransport() { fTransportEnabled = true; }
-  inline void disableTransport() { fTransportEnabled = false; }
+  inline void disableTransport() { transportStop(); fTransportEnabled = false; }
 
   void setNoteEvents(MockDevice::NoteEvents iNoteEvents) { fDevice.setNoteInEvents(iNoteEvents.events()); }
 

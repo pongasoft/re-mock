@@ -74,6 +74,7 @@ void Rack::nextBatch()
   }
 
   fTransport.nextBatch();
+  fBatchCount++;
 }
 
 //------------------------------------------------------------------------

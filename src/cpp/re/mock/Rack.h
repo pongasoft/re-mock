@@ -384,6 +384,8 @@ public:
   sequencer::Time getSongEnd() const { return fSongEnd; }
   void setSongEnd(sequencer::Time iSongEnd);
 
+  inline size_t getBatchCount() const { return fBatchCount; }
+
   static Motherboard &currentMotherboard();
 
   template<typename Device>
@@ -401,6 +403,7 @@ protected:
 protected:
   int fSampleRate;
   Transport fTransport;
+  size_t fBatchCount{};
   sequencer::Time fSongEnd{101,1,1,0}; // same default as Reason, not exported to device
   ObjectManager<std::shared_ptr<ExtensionImpl>> fExtensions{};
 };

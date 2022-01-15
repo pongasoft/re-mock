@@ -486,15 +486,25 @@ TEST(Timeline, Usage)
     .event([&tester]() { ASSERT_EQ(44, tester.device()->fTransportPlayPos); })
     .play();
 
-  // play() stops the transport and call nextBatch to propagate
+  // play() stops the transport and does NOT call nextBatch to propagate
   // see PPQAccumulator.next test for values: 0 / 44 / 89 / 134
-  ASSERT_EQ(134, tester.device()->fTransportPlayPos);
-  ASSERT_FALSE(tester.device()->fTransportPlaying);
+  ASSERT_EQ(89, tester.device()->fTransportPlayPos);
+  ASSERT_TRUE(tester.device()->fTransportPlaying);
 
+  // the rack has the proper values
   ASSERT_FALSE(tester.rack().getTransportPlaying());
   ASSERT_EQ(134, tester.rack().getTransportPlayPos());
 
+  // propagate the values to the device including the "all notes stop" event
+  tester.nextBatch();
+
+  ASSERT_EQ(134, tester.device()->fTransportPlayPos);
+  ASSERT_FALSE(tester.device()->fTransportPlaying);
   ASSERT_EQ(128, tester.device()->fNoteEvents.size()); // all notes are reset
+
+  // check for invalid usage: events in the timeline should NOT call nextBatch
+  ASSERT_THROW(tester.newTimeline().event([&tester]{ tester.nextBatch(); }).execute(), Exception);
+  ASSERT_THROW(tester.newTimeline().event([&tester]{ tester.nextBatch(); }).play(), Exception);
 }
 
 }
