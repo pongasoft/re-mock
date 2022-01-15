@@ -126,6 +126,8 @@ public:
     Sample &stereo() { return channels(2); }
     Sample &sample_rate(TJBox_UInt32 s) { fSampleRate = s; return *this; }
     Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
+    Sample &reserveFromSampleCount(size_t iSampleCount) { fData.reserve(iSampleCount); return *this; }
+    Sample &reserveFromFrameCount(TJBox_AudioFramePos iFrameCount) { return reserveFromSampleCount(iFrameCount * fChannels); }
 
     Sample clone() const { return *this; }
     void clear() { fData.clear(); }
@@ -221,8 +223,20 @@ public:
 
   static const DeviceConfig<MAUSrc> CONFIG;
 
+  Sample fSample;
+  size_t fTailInFrames{};
+  bool fUseSample{false};
+
+protected:
+  void renderBuffer();
+  void renderSample();
+
 protected:
   StereoSocket fOutSocket{};
+
+  size_t fNumFramesToProcess{};
+  size_t fTotalNumFrames{};
+  TJBox_AudioSample *fPtr{};
 };
 
 /**
@@ -235,8 +249,8 @@ public:
 
   static const DeviceConfig<MAUDst> CONFIG;
 
-public:
-  Sample fSample{};
+  Sample fSample;
+  bool fUseSample{false};
 
 protected:
   StereoSocket fInSocket{};

@@ -239,7 +239,7 @@ public:
   MockAudioDevice::StereoBuffer nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer);
   void nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
 
-  MockAudioDevice::Sample processSample(MockAudioDevice::Sample const &iSample,
+  MockAudioDevice::Sample processSample(MockAudioDevice::Sample iSample,
                                         std::optional<Duration> iTail = std::nullopt,
                                         std::optional<tester::Timeline> iTimeline = std::nullopt);
 

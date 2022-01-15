@@ -204,7 +204,7 @@ void DeviceTester::nextBatches(Duration iDuration, std::optional<tester::Timelin
   else
   {
     auto duration = fRack.toRackDuration(iDuration);
-    for(int i = 0; i < duration.fBatches; i++)
+    for(size_t i = 0; i < duration.fBatches; i++)
       fRack.nextBatch();
   }
 }
@@ -357,7 +357,7 @@ void ExtensionEffectTester::nextBatch(MockAudioDevice::StereoBuffer const &iInpu
 //------------------------------------------------------------------------
 // ExtensionEffectTester::processSample
 //------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sample const &iSample,
+MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sample iSample,
                                                              optional_duration_t iTail,
                                                              std::optional<tester::Timeline> iTimeline)
 {
@@ -369,70 +369,27 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
   if(!iTimeline)
     iTimeline = newTimeline();
 
-  MockAudioDevice::Sample res{};
-  res.fChannels = iSample.fChannels;
-  res.fSampleRate = fRack.getSampleRate();
-  res.fData.reserve(iSample.fData.size() + tailInFrames);
+  // account for tail
+  auto totalNumFrames = iSample.getFrameCount() + tailInFrames;
 
-  auto numFramesToProcess = iSample.fData.size() / iSample.fChannels;
+  // initializes the sample result
+  fDst->fUseSample = true;
+  fDst->fSample.clear();
+  fDst->fSample.channels(iSample.getChannels()).sample_rate(iSample.getSampleRate()).reserveFromFrameCount(totalNumFrames);
 
-  auto totalNumFrames = numFramesToProcess + tailInFrames;
-  auto ptr = iSample.fData.data();
+  // set the sample to process
+  fSrc->fSample = std::move(iSample);
+  fSrc->fUseSample = true;
+  fSrc->fTailInFrames = tailInFrames;
 
-  iTimeline->onEveryBatch([this, &totalNumFrames, &numFramesToProcess, &ptr, stereo = iSample.isStereo(), &res](long iAtBatch) {
+  // timeline will run until the sample is completed
+  iTimeline->onEveryBatch([this](long iAtBatch) { return fSrc->fUseSample; }).play(timeline::Duration{});
 
-    // onEveryBatch is called BEFORE the call to nextBatch, so we process the result on the next iteration
-    if(iAtBatch > 0)
-    {
-      auto numFramesInThisBatch = std::min<size_t>(totalNumFrames, constants::kBatchSize);
-      auto numFramesToProcessInThisBatch = std::min<size_t>(numFramesToProcess, numFramesInThisBatch);
-
-      // fill the output buffer
-      auto &output = fDst->fBuffer;
-
-      for(size_t i = 0; i < numFramesInThisBatch; i++)
-      {
-        res.fData.emplace_back(output.fLeft[i]);
-        if(stereo)
-          res.fData.emplace_back(output.fRight[i]);
-      }
-
-      totalNumFrames -= numFramesInThisBatch;
-      numFramesToProcess -= numFramesToProcessInThisBatch;
-    }
-
-    // we are done!
-    if(totalNumFrames == 0)
-      return false;
-
-    // we fill the input buffer to be processed in the next batch
-    auto &input = fSrc->fBuffer;
-
-    auto numFramesToProcessInNextBatch = std::min<size_t>(numFramesToProcess,
-                                                          std::min<size_t>(totalNumFrames, constants::kBatchSize));
-
-    if(numFramesToProcessInNextBatch > 0)
-    {
-      if(numFramesToProcessInNextBatch < constants::kBatchSize)
-        input.fill(0, 0);
-
-      // fill the input buffer
-      for(size_t i = 0; i < numFramesToProcessInNextBatch; i++)
-      {
-        input.fLeft[i] = *ptr++;
-        if(stereo)
-          input.fRight[i] = *ptr++;
-      }
-    }
-    else
-      input.fill(0, 0);
-
-    return true;
-  });
-
-  iTimeline->execute(timeline::Duration{});
-
-  return res;
+  fDst->fUseSample = false;
+  if(fDst->fSample.getFrameCount() > totalNumFrames)
+    return fDst->fSample.subSample(0, totalNumFrames);
+  else
+    return fDst->fSample;
 }
 
 //------------------------------------------------------------------------
@@ -479,9 +436,12 @@ MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTime
 //------------------------------------------------------------------------
 MockAudioDevice::Sample ExtensionInstrumentTester::bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline)
 {
-  fDst->fSample.clear();
-  play(iDuration, iTimeline);
   auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
+  fDst->fSample.clear();
+  fDst->fUseSample = true;
+  fDst->fSample.reserveFromFrameCount(frameCount);
+  play(iDuration, std::move(iTimeline));
+  fDst->fUseSample = false;
   if(fDst->fSample.getFrameCount() > frameCount)
     return fDst->fSample.subSample(0, frameCount);
   else

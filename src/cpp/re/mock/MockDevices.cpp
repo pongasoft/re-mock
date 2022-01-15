@@ -267,7 +267,61 @@ MAUSrc::MAUSrc(int iSampleRate) :
 //------------------------------------------------------------------------
 void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 {
+  if(fUseSample)
+    renderSample();
+  else
+    renderBuffer();
+}
+
+//------------------------------------------------------------------------
+// MAUSrc::renderBuffer
+//------------------------------------------------------------------------
+void MAUSrc::renderBuffer()
+{
   copyBuffer(fBuffer, fOutSocket);
+}
+
+//------------------------------------------------------------------------
+// MAUSrc::renderSample
+//------------------------------------------------------------------------
+void MAUSrc::renderSample()
+{
+  if(!fPtr)
+  {
+    fPtr = fSample.fData.data();
+    fNumFramesToProcess = fSample.getFrameCount();
+    fTotalNumFrames = fNumFramesToProcess + fTailInFrames;
+  }
+
+  auto numFramesInThisBatch = std::min<size_t>(fTotalNumFrames, constants::kBatchSize);
+  auto numFramesToProcessInThisBatch = std::min<size_t>(fNumFramesToProcess, numFramesInThisBatch);
+
+  if(numFramesToProcessInThisBatch > 0)
+  {
+    if(numFramesToProcessInThisBatch < constants::kBatchSize)
+      fBuffer.fill(0, 0);
+
+    // fill the input buffer
+    for(size_t i = 0; i < numFramesToProcessInThisBatch; i++)
+    {
+      fBuffer.fLeft[i] = *fPtr++;
+      if(fSample.isStereo())
+        fBuffer.fRight[i] = *fPtr++;
+    }
+  }
+  else
+    fBuffer.fill(0, 0);
+
+  renderBuffer();
+
+  fTotalNumFrames -= numFramesInThisBatch;
+  fNumFramesToProcess -= numFramesToProcessInThisBatch;
+
+  if(fTotalNumFrames == 0)
+  {
+    fPtr = nullptr;
+    fUseSample = false;
+  }
 }
 
 //------------------------------------------------------------------------
@@ -292,7 +346,7 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 {
   fBuffer.fill(0, 0);
 
-  if(copyBuffer(fInSocket, fBuffer))
+  if(copyBuffer(fInSocket, fBuffer) && fUseSample)
     fSample.append(fBuffer);
 }
 
@@ -813,15 +867,14 @@ MockAudioDevice::Sample MockAudioDevice::Sample::getRightChannelSample() const
 //------------------------------------------------------------------------
 MockAudioDevice::Sample &MockAudioDevice::Sample::append(StereoBuffer const &iAudioBuffer, size_t iFrameCount)
 {
-  RE_MOCK_ASSERT(isStereo());
-
   auto size = std::min<size_t>(iFrameCount, constants::kBatchSize);
-  fData.reserve(fData.size() + size);
+  reserveFromSampleCount(fData.size() + size * fChannels);
 
   for(size_t i = 0; i < size; i++)
   {
     fData.emplace_back(iAudioBuffer.fLeft[i]);
-    fData.emplace_back(iAudioBuffer.fRight[i]);
+    if(isStereo())
+      fData.emplace_back(iAudioBuffer.fRight[i]);
   }
   return *this;
 }
@@ -832,7 +885,7 @@ MockAudioDevice::Sample &MockAudioDevice::Sample::append(StereoBuffer const &iAu
 MockAudioDevice::Sample &MockAudioDevice::Sample::append(Sample const &iOtherSample, size_t iFrameCount)
 {
   auto sampleCount = std::min<size_t>(iFrameCount, iOtherSample.getFrameCount()) * fChannels;
-  fData.reserve(fData.size() + sampleCount);
+  reserveFromSampleCount(fData.size() + sampleCount);
   std::copy(std::begin(iOtherSample.fData), std::begin(iOtherSample.fData) + sampleCount, std::back_inserter(fData));
   return *this;
 }
