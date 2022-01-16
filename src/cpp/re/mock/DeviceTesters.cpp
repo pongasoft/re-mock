@@ -373,7 +373,7 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
   auto const totalNumFrames = iSample.getFrameCount() + tailInFrames;
 
   // initializes the sample producer
-  fDst->produceSample(iSample.getChannels(), iSample.getSampleRate(), totalNumFrames);
+  fDst->produceSample(iSample.getChannels(), iSample.getSampleRate());
 
   // set the sample to process
   fSrc->consumeSample(std::move(iSample));
@@ -436,7 +436,7 @@ MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTime
 MockAudioDevice::Sample ExtensionInstrumentTester::bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline)
 {
   auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
-  fDst->produceSample(2, fRack.getSampleRate(), frameCount);
+  fDst->produceSample();
   play(iDuration, std::move(iTimeline));
   auto producer = fDst->stopProducingSample();
   if(producer->getSample().getFrameCount() > frameCount)

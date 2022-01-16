@@ -126,8 +126,6 @@ public:
     Sample &stereo() { return channels(2); }
     Sample &sample_rate(TJBox_UInt32 s) { fSampleRate = s; return *this; }
     Sample &data(std::vector<TJBox_AudioSample> d) { fData = std::move(d); return *this; }
-    Sample &reserveFromSampleCount(size_t iSampleCount) { fData.reserve(iSampleCount); return *this; }
-    Sample &reserveFromFrameCount(TJBox_AudioFramePos iFrameCount) { return reserveFromSampleCount(iFrameCount * fChannels); }
 
     Sample clone() const { return *this; }
     void clear() { fData.clear(); }
@@ -172,6 +170,9 @@ public:
     friend bool operator==(Sample const &lhs, Sample const &rhs);
     friend bool operator!=(Sample const &lhs, Sample const &rhs) { return !(rhs == lhs); }
     friend Sample operator+(Sample const &lhs, Sample const &rhs) { return lhs.clone().append(rhs); }
+
+  private:
+    void maybeGrowExponentially(size_t iNewCapacity);
   };
 
   class SampleConsumer
@@ -190,7 +191,9 @@ public:
   class SampleProducer
   {
   public:
-    SampleProducer(TJBox_UInt32 iChannels, TJBox_UInt32 iSampleRate, TJBox_AudioFramePos iFrameCount = -1);
+    SampleProducer(TJBox_UInt32 iChannels, TJBox_UInt32 iSampleRate);
+    explicit SampleProducer(Sample const &iSample);
+    explicit SampleProducer(Sample &&iSample);
 
     void produce(StereoBuffer const &iBuffer) { fSample.append(iBuffer); }
 
@@ -274,8 +277,10 @@ public:
 
   static const DeviceConfig<MAUDst> CONFIG;
 
-  void produceSample(TJBox_UInt32 iChannels, TJBox_Int32 iSampleRate, TJBox_AudioFramePos iFrameCount);
-  void produceSample() { produceSample(2, -1, -1); }
+  void produceSample(Sample const &iSample);
+  void produceSample(Sample &&iSample);
+  void produceSample(TJBox_UInt32 iChannels, TJBox_UInt32 iSampleRate);
+  void produceSample() { produceSample(2, fSampleRate); }
 
   std::shared_ptr<SampleProducer> stopProducingSample();
 
