@@ -119,9 +119,7 @@ TEST(StudioEffectTester, Sample)
       expectedSine.fData.emplace_back(0);
 
     ASSERT_EQ(expectedSine, processedSine);
-    // onEveryBatch is executed in the order of registration:
-    // the one that terminates the timeline is called AFTER this one, so this one is called one more time
-    ASSERT_EQ(std::vector<int>({0, 1, 2, 3}), batches);
+    ASSERT_EQ(std::vector<int>({0, 1, 2}), batches);
     ASSERT_EQ(3, tester.device()->fBatchCount); // 145 = 64 + 64 + 17
   }
 }

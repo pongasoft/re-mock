@@ -174,6 +174,33 @@ public:
     friend Sample operator+(Sample const &lhs, Sample const &rhs) { return lhs.clone().append(rhs); }
   };
 
+  class SampleConsumer
+  {
+  public:
+    explicit SampleConsumer(Sample const &iSample);
+    explicit SampleConsumer(Sample &&iSample);
+
+    bool consume(StereoBuffer &oBuffer);
+
+  private:
+    Sample fSample;
+    decltype(std::vector<TJBox_AudioSample>{}.cbegin()) fPtr;
+  };
+
+  class SampleProducer
+  {
+  public:
+    SampleProducer(TJBox_UInt32 iChannels, TJBox_UInt32 iSampleRate, TJBox_AudioFramePos iFrameCount = -1);
+
+    void produce(StereoBuffer const &iBuffer) { fSample.append(iBuffer); }
+
+    Sample const &getSample() const { return fSample; }
+    Sample &&getSample() { return std::move(fSample); }
+
+  private:
+    Sample fSample;
+  };
+
   static StereoBuffer buffer(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample);
   static StereoBuffer buffer(buffer_type const &iLeftBuffer, buffer_type const &iRightBuffer);
 
@@ -214,7 +241,7 @@ public:
 };
 
 /**
- * Audio source mock device. Copy `fBuffer` to output. */
+ * Audio source mock device. Copy `fBuffer` to output. Optionally consume sample. */
 class MAUSrc : public MockAudioDevice
 {
 public:
@@ -223,9 +250,10 @@ public:
 
   static const DeviceConfig<MAUSrc> CONFIG;
 
-  Sample fSample;
-  size_t fTailInFrames{};
-  bool fUseSample{false};
+  void consumeSample(Sample const &iSample);
+  void consumeSample(Sample &&iSample);
+  void consumeSample(std::shared_ptr<SampleConsumer> iSampleConsumer) { fSampleConsumer = std::move(iSampleConsumer); }
+  bool isSampleConsumed() const { return fSampleConsumer == nullptr; }
 
 protected:
   void renderBuffer();
@@ -233,14 +261,11 @@ protected:
 
 protected:
   StereoSocket fOutSocket{};
-
-  size_t fNumFramesToProcess{};
-  size_t fTotalNumFrames{};
-  TJBox_AudioSample *fPtr{};
+  std::shared_ptr<SampleConsumer> fSampleConsumer{};
 };
 
 /**
- * Audio destination mock device. Copy input to `fBuffer` and append to `fSample`. */
+ * Audio destination mock device. Copy input to `fBuffer`. Optionally produce a sample (concatenate buffers). */
 class MAUDst : public MockAudioDevice
 {
 public:
@@ -249,11 +274,16 @@ public:
 
   static const DeviceConfig<MAUDst> CONFIG;
 
-  Sample fSample;
-  bool fUseSample{false};
+  void produceSample(TJBox_UInt32 iChannels, TJBox_Int32 iSampleRate, TJBox_AudioFramePos iFrameCount);
+  void produceSample() { produceSample(2, -1, -1); }
+
+  std::shared_ptr<SampleProducer> stopProducingSample();
+
+  Sample const &getProducedSample() const { RE_MOCK_ASSERT(fSampleProducer != nullptr); return fSampleProducer->getSample(); }
 
 protected:
   StereoSocket fInSocket{};
+  std::shared_ptr<SampleProducer> fSampleProducer{};
 };
 
 /**

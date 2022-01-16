@@ -267,7 +267,7 @@ MAUSrc::MAUSrc(int iSampleRate) :
 //------------------------------------------------------------------------
 void MAUSrc::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 {
-  if(fUseSample)
+  if(fSampleConsumer)
     renderSample();
   else
     renderBuffer();
@@ -282,46 +282,35 @@ void MAUSrc::renderBuffer()
 }
 
 //------------------------------------------------------------------------
+// MAUSrc::consumeSample
+//------------------------------------------------------------------------
+void MAUSrc::consumeSample(MockAudioDevice::Sample const &iSample)
+{
+  fSampleConsumer = std::make_shared<SampleConsumer>(iSample);
+}
+
+//------------------------------------------------------------------------
+// MAUSrc::consumeSample
+//------------------------------------------------------------------------
+void MAUSrc::consumeSample(MockAudioDevice::Sample &&iSample)
+{
+  fSampleConsumer = std::make_shared<SampleConsumer>(std::move(iSample));
+}
+
+//------------------------------------------------------------------------
 // MAUSrc::renderSample
 //------------------------------------------------------------------------
 void MAUSrc::renderSample()
 {
-  if(!fPtr)
+  RE_MOCK_INTERNAL_ASSERT(fSampleConsumer != nullptr);
+
+  if(!fSampleConsumer->consume(fBuffer))
   {
-    fPtr = fSample.fData.data();
-    fNumFramesToProcess = fSample.getFrameCount();
-    fTotalNumFrames = fNumFramesToProcess + fTailInFrames;
-  }
-
-  auto numFramesInThisBatch = std::min<size_t>(fTotalNumFrames, constants::kBatchSize);
-  auto numFramesToProcessInThisBatch = std::min<size_t>(fNumFramesToProcess, numFramesInThisBatch);
-
-  if(numFramesToProcessInThisBatch > 0)
-  {
-    if(numFramesToProcessInThisBatch < constants::kBatchSize)
-      fBuffer.fill(0, 0);
-
-    // fill the input buffer
-    for(size_t i = 0; i < numFramesToProcessInThisBatch; i++)
-    {
-      fBuffer.fLeft[i] = *fPtr++;
-      if(fSample.isStereo())
-        fBuffer.fRight[i] = *fPtr++;
-    }
-  }
-  else
     fBuffer.fill(0, 0);
+    fSampleConsumer = nullptr;
+  }
 
   renderBuffer();
-
-  fTotalNumFrames -= numFramesInThisBatch;
-  fNumFramesToProcess -= numFramesToProcessInThisBatch;
-
-  if(fTotalNumFrames == 0)
-  {
-    fPtr = nullptr;
-    fUseSample = false;
-  }
 }
 
 //------------------------------------------------------------------------
@@ -336,7 +325,6 @@ const DeviceConfig<MAUDst> MAUDst::CONFIG =
 MAUDst::MAUDst(int iSampleRate) :
   MockAudioDevice(iSampleRate), fInSocket{StereoSocket::input()}
 {
-  fSample.stereo().sample_rate(fSampleRate);
 }
 
 //------------------------------------------------------------------------
@@ -346,8 +334,28 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 {
   fBuffer.fill(0, 0);
 
-  if(copyBuffer(fInSocket, fBuffer) && fUseSample)
-    fSample.append(fBuffer);
+  if(copyBuffer(fInSocket, fBuffer) && fSampleProducer)
+    fSampleProducer->produce(fBuffer);
+}
+
+//------------------------------------------------------------------------
+// MAUDst::produceSample
+//------------------------------------------------------------------------
+void MAUDst::produceSample(TJBox_UInt32 iChannels, TJBox_Int32 iSampleRate, TJBox_AudioFramePos iFrameCount)
+{
+  fSampleProducer = std::make_shared<MockAudioDevice::SampleProducer>(iChannels,
+                                                                      iSampleRate < 0 ? fSampleRate : iSampleRate,
+                                                                      iFrameCount);
+}
+
+//------------------------------------------------------------------------
+// MAUDst::stopProducingSample
+//------------------------------------------------------------------------
+std::shared_ptr<MockAudioDevice::SampleProducer> MAUDst::stopProducingSample()
+{
+  auto res = fSampleProducer;
+  fSampleProducer = nullptr;
+  return res;
 }
 
 //------------------------------------------------------------------------
@@ -985,6 +993,74 @@ MockAudioDevice::Sample MockAudioDevice::Sample::trim() const
   }
   else
     return clone();
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::SampleProducer::SampleProducer
+//------------------------------------------------------------------------
+MockAudioDevice::SampleProducer::SampleProducer(TJBox_UInt32 iChannels,
+                                                TJBox_UInt32 iSampleRate,
+                                                TJBox_AudioFramePos iFrameCount)
+                                                : fSample{iChannels, iSampleRate}
+{
+  if(iFrameCount > 0)
+    fSample.reserveFromFrameCount(iFrameCount);
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::SampleConsumer::SampleConsumer
+//------------------------------------------------------------------------
+MockAudioDevice::SampleConsumer::SampleConsumer(MockAudioDevice::Sample const &iSample)
+: fSample(iSample), fPtr{fSample.fData.cbegin()}
+{
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::SampleConsumer::SampleConsumer
+//------------------------------------------------------------------------
+MockAudioDevice::SampleConsumer::SampleConsumer(MockAudioDevice::Sample &&iSample)
+  : fSample(std::move(iSample)), fPtr{fSample.fData.cbegin()}
+{
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::SampleConsumer::consume
+//------------------------------------------------------------------------
+bool MockAudioDevice::SampleConsumer::consume(MockAudioDevice::StereoBuffer &oBuffer)
+{
+  auto end = fSample.fData.end();
+
+  if(fPtr == end)
+    return false;
+
+  auto stereo = fSample.isStereo();
+
+  auto left = oBuffer.fLeft.data();
+  auto right = oBuffer.fRight.data();
+
+  for(int i = 0; i < oBuffer.fLeft.size(); i++)
+  {
+    if(fPtr == end)
+    {
+      *left = 0;
+      *right = 0;
+    }
+    else
+    {
+      *left = *fPtr++;
+      if(stereo)
+      {
+        RE_MOCK_ASSERT(fPtr != end, "Invalid sample data");
+        *right = *fPtr++;
+      }
+      else
+        *right = 0;
+    }
+    left++;
+    right++;
+  }
+
+  return true;
 }
 
 namespace impl {

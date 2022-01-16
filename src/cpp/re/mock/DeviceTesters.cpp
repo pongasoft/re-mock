@@ -361,7 +361,7 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
                                                              optional_duration_t iTail,
                                                              std::optional<tester::Timeline> iTimeline)
 {
-  size_t tailInFrames = 0;
+  TJBox_AudioFramePos tailInFrames = 0;
 
   if(iTail)
     tailInFrames = fRack.toSampleDuration(*iTail).fFrames;
@@ -370,26 +370,24 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
     iTimeline = newTimeline();
 
   // account for tail
-  auto totalNumFrames = iSample.getFrameCount() + tailInFrames;
+  auto const totalNumFrames = iSample.getFrameCount() + tailInFrames;
 
-  // initializes the sample result
-  fDst->fUseSample = true;
-  fDst->fSample.clear();
-  fDst->fSample.channels(iSample.getChannels()).sample_rate(iSample.getSampleRate()).reserveFromFrameCount(totalNumFrames);
+  // initializes the sample producer
+  fDst->produceSample(iSample.getChannels(), iSample.getSampleRate(), totalNumFrames);
 
   // set the sample to process
-  fSrc->fSample = std::move(iSample);
-  fSrc->fUseSample = true;
-  fSrc->fTailInFrames = tailInFrames;
+  fSrc->consumeSample(std::move(iSample));
 
-  // timeline will run until the sample is completed
-  iTimeline->onEveryBatch([this](long iAtBatch) { return fSrc->fUseSample; }).play(timeline::Duration{});
+  // timeline: once the sample is consumed, the tail will be automatically processed (fSrc fills buffer with 0)
+  iTimeline->play(sample::Duration{totalNumFrames});
 
-  fDst->fUseSample = false;
-  if(fDst->fSample.getFrameCount() > totalNumFrames)
-    return fDst->fSample.subSample(0, totalNumFrames);
+  // done with producing
+  auto producer = fDst->stopProducingSample();
+
+  if(producer->getSample().getFrameCount() > totalNumFrames)
+    return producer->getSample().subSample(0, totalNumFrames);
   else
-    return fDst->fSample;
+    return std::move(producer->getSample());
 }
 
 //------------------------------------------------------------------------
@@ -426,9 +424,10 @@ MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextBatch(MockDevice::N
 //------------------------------------------------------------------------
 MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTimeline)
 {
-  fDst->fSample.clear();
+  fDst->produceSample();
   iTimeline.play();
-  return fDst->fSample;
+  auto producer = fDst->stopProducingSample();
+  return std::move(producer->getSample());
 }
 
 //------------------------------------------------------------------------
@@ -437,15 +436,13 @@ MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTime
 MockAudioDevice::Sample ExtensionInstrumentTester::bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline)
 {
   auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
-  fDst->fSample.clear();
-  fDst->fUseSample = true;
-  fDst->fSample.reserveFromFrameCount(frameCount);
+  fDst->produceSample(2, fRack.getSampleRate(), frameCount);
   play(iDuration, std::move(iTimeline));
-  fDst->fUseSample = false;
-  if(fDst->fSample.getFrameCount() > frameCount)
-    return fDst->fSample.subSample(0, frameCount);
+  auto producer = fDst->stopProducingSample();
+  if(producer->getSample().getFrameCount() > frameCount)
+    return producer->getSample().subSample(0, frameCount);
   else
-    return fDst->fSample;
+    return std::move(producer->getSample());
 }
 
 //------------------------------------------------------------------------
