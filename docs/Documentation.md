@@ -19,13 +19,13 @@ By controlling precisely the main event loop, it becomes easy to set the device 
 
 ### `DeviceConfig`
 
-In order to instantiate a rack extension you need to first build a `DeviceConfig` for it. Although the configuration object can be manually created (for very simple devices) it is strongly recommended using the convenient API `DeviceConfig<T>::fromJBoxExport(std::string const &iDeviceRootFolder)`: this API automatically loads the 3 main lua files describing the rack extension (`info.lua`, `motherboard_def.lua` and `relatime_controller.lua`) and populates the configuration from it.
+In order to instantiate a rack extension, first a `DeviceConfig` needs to be built for it. Although the configuration object can be manually created (for very simple devices) it is strongly recommended using the convenient API `DeviceConfig<T>::fromJBoxExport(std::string const &iDeviceRootFolder)`: this API automatically loads the 3 main lua files describing the rack extension (`info.lua`, `motherboard_def.lua` and `relatime_controller.lua`) and populates the configuration from it.
 
 > #### Note
 > * `T` is the cpp class representing the main instance of the device. For example `CVerySimpleSampler`.
 > * When using `re-cmake`, `iDeviceRootFolder` is the convenient "define" `RE_CMAKE_PROJECT_DIR`
 
-Once `DeviceConfig` is instantiated you can further configure it by using a builder pattern (all apis return the object itself)
+Once `DeviceConfig` is instantiated it can be further configured it by using a builder pattern (all apis return the object itself)
 
 ```cpp
 auto c = DeviceConfig<Device>::fromJBoxExport(RE_CMAKE_PROJECT_DIR)
@@ -63,24 +63,32 @@ Each tester creates a basic test infrastructure for each type of device:
 
 1. a rack (`Rack` concept) is created and the device to test is automatically added to it
 2. the individual tester creates more devices and wire them to the device to test (see each tester for details)
-3. the rack can be accessed directly via the `DeviceTester::rack()` api in case there is a (rare) need
+3. the rack can be accessed directly via the `DeviceTester::rack()` api in case there is a need
 4. each tester provides a `device()` api which gives access to the device under test thus allowing:
    - direct manipulation of the device itself (using the arrow notation) (ex: `tester.device()->xxx`)
+     ```cpp
+     tester.device()->fLastSampleZoneIndex; // for CVerySimpleSampler (would need to be made public to work)
+     ```
    - manipulation of the properties of the device in the motherboard, simulating user input or automation 
      (ex: `tester.device().setBool("/custom_properties/my_bool_prop", true);`)
 
-This base class has many methods to wire/unwire other devices and offers 2 primary set of APIs to manage the event loop:
+This base class has many methods to wire/unwire other devices and offers 3 primary set of APIs to manage the event loop:
 
-* `nextBatches` which advances the event loop without having the transport playing (equivalent to loading a Rack Extension in Recon/Reason while not pressing "Play")
+* `nextBatches` which advances the event loop without having the transport playing (equivalent to loading a Rack Extension in Recon/Reason and "using" it while never pressing "Play")
 * `play` which advances the event loop while having the transport playing
 
-> ### Note
-> `play` is (conceptually) a wrapper around
->  ```cpp
->  tester.transportStart();
->  tester.nextBatches(...);
->  tester.transportStop();
->  ```
+    > ### Note
+    > `play` is (conceptually) a wrapper around
+    >  ```cpp
+    >  tester.transportStart();
+    >  tester.nextBatches(...);
+    >  tester.transportStop();
+    >  ```
+    
+    > ### Note
+    > The transport can be disabled (`DeviceTester::disableTransport`), in which case, `play` behaves like `nextBatches`
+
+* `newTimeline()` to create a Timeline (see below)
 
 #### HelperTester
 
@@ -91,28 +99,24 @@ device.
 
 #### StudioEffectTester and CreativeEffectTester
 
-These testers are used when the device is an effect (`StudioEffectTester` for `device_type="studio_fx"`, 
-resp. `CreativeEffectTester` for `device_type="creative_fx"` in `info.lua`). 
+These testers are used when the device is an effect (`StudioEffectTester` for `device_type="studio_fx"`, resp. `CreativeEffectTester` for `device_type="creative_fx"` in `info.lua`). 
 
 Because an effect is designed to process audio, these testers automatically creates:
 
 - a source of audio of type `MAUSrc` (accessible via `tester.src()`)
 - a destination of audio of type `MAUDst` (accessible via `tester.dst()`)
 
-After instantiating the tester, you need to wire your main in/out sockets by calling `tester.wireMainIn(...)` and 
-`tester.wireMainOut(...)`. This allows you to control exactly when the wiring happens (for example if you want to test
-the device when nothing is connected).
+After instantiating the tester, the main in/out sockets needs to be wired by calling `tester.wireMainIn(...)` and `tester.wireMainOut(...)`. This allows exact control on when the wiring happens (for example if the use case calls for testing the device when nothing is connected).
 
-Note that the `wireMainIn` (resp. `wireMainOut`) api uses `std::optional` in the event you only have one socket to 
+Note that the `wireMainIn` (resp. `wireMainOut`) api uses `std::optional` in the event there is only one socket to 
 wire (mono device).
 
 The tester provides a shortcut to get (resp. set) the bypass state of the effect (`getBypassState` resp. `setBypassState`).
 
-This tester provides another convenient `nextBatch` api which automatically injects the audio stereo buffer (64 samples) in the 
-input (main in) and returns the audio stereo buffer (64 samples) from the output (main out). In other words:
+This tester adds a convenient `nextBatch` api which automatically injects the audio stereo buffer (64 samples) in the input (main in) and returns the audio stereo buffer (64 samples) from the output (main out). In other words:
 
 ```cpp
-auto inputBuffer = ...;
+auto inputBuffer = ...; // fill the buffer with data
 
 // this convenient api
 auto outputBuffer = tester.nextBatch(inputBuffer);
@@ -123,12 +127,11 @@ tester.rack().nextBatch();
 auto outputBuffer = tester.dst()->fBuffer;
 ```
 
-The `nextBatch` api is very fine-grained since it deals with only 1 (rack) frame at a time (64 samples). This tester offers a higher level api which lets you deal with an entire sample (including adding an optional tail so that the device runs past the end of the sample).
+The `nextBatch` api is very fine-grained since it deals with only 1 batch at a time (64 samples). This tester offers a higher level api to deal with an entire sample (including adding an optional tail so that the device runs past the end of the sample).
 
 ```cpp
 auto sinePath = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "sine.wav");
-auto sine = tester.loadSample(resource::File{sinePath});
-auto processedSine = tester.processSample(resource::File{sinePath}); // you can optionally add a "tail" (check API)
+auto processedSine = tester.processSample(resource::File{sinePath}); // optionally add a "tail" (check API)
 
 auto processedSinePath = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "processed_sine.wav");
 auto expectedProcessedSine = tester.loadSample(resource::File{processedSinePath});
@@ -144,11 +147,11 @@ Because an instrument is designed to generate sound, this tester automatically c
 
 - a destination of audio of type `MAUDst` (accessible via `tester.dst()`)
 
-After instantiating the tester, you need to wire your out sockets by calling `tester.wireMainOut(...)`. This allows you to control exactly when the wiring happens (for example if you want to test the device when nothing is connected).
+After instantiating the tester, the out sockets needs to be wired by calling `tester.wireMainOut(...)`. This allows exact control on when the wiring happens (for example if the use case calls for testing the device when nothing is connected).
 
-Note that the `wireMainOut` api uses `std::optional` in the event you only have one socket to wire (mono device).
+Note that the `wireMainOut` api uses `std::optional` in the event there is only one socket to wire (mono device).
 
-The tester provides an additional convenient `nextBatch` api which lets you provide note events and returns the audio stereo buffer (64 samples) from the output (main out). In other words:
+This tester adds a convenient `nextBatch` api which provides note events and returns the audio stereo buffer (64 samples) from the output (main out). In other words:
 
 ```cpp
 auto noteEvents = MockNotePlayer::NoteEvents{}.noteOn(Midi::A_440);
@@ -162,11 +165,11 @@ tester.rack().nextBatch();
 auto outputBuffer = tester.dst()->fBuffer;
 ```
 
-The `nextBatch` api is very fine-grained since it deals with only 1 (rack) frame at a time (64 samples).
-This tester offers a higher level api which lets you bounce the output of the instrument for a given duration (it returns a sample).
+The `nextBatch` api is very fine-grained since it deals with only 1 batch at a time (64 samples).
+This tester offers a higher level api to bounce the output of the instrument for a given duration (it returns a sample `MockAudioDevice::Sample`).
 
 ```cpp
-auto sample = tester.bounce(time::Duration{1000},
+auto sample = tester.bounce(time::Duration{1000}, // bounce for 1 second
                             tester.newTimeline()
                               .note(Midi::A(3), sequencer::Duration(0,1,0,0))); // hold A3 for 1 beat
 
@@ -177,7 +180,7 @@ ASSERT_EQ(expectedSample, sample); // compare the 2 samples
 ```
 
 > ### Note
-> `bounce` runs the event loop without playing the transport whereas `bouncePlay` start and stop the transport
+> `bounce` runs the event loop while playing the transport. If this is not desired, simply call `tester.disableTransport()` before.
 
 #### NotePlayerTester
 
@@ -190,7 +193,7 @@ Because a note player is designed to generate notes (while potentially being in 
 
 The tester provides a shortcut to get (resp. set) the bypass state of the note player (`isBypassed` resp. `setBypassed`).
 
-The tester provides a convenient `nextBatch` api which lets you provide note events (from a potential previous note player) and returns the note events generated by the note player under test. In other words:
+The tester adds a convenient `nextBatch` api which injects note events (from a potential previous note player) and returns the note events generated by the note player under test. In other words:
 
 ```cpp
 auto noteEvents = MockNotePlayer::NoteEvents{}.noteOn(69);
@@ -205,15 +208,15 @@ auto events = tester.dst()->fNoteEvents;
 ```
 
 > ### Note
-> TODO: The `nextBatch` api is very fine-grained since it deals with only 1 (rack) frame at a time (64 samples). At this time no other convenient API is provided, but it should be possible to add some API that processes multiple batches and return a Midi file (`smf::MidiFile`).
+> TODO: The `nextBatch` api is very fine-grained since it deals with only 1 batch at a time (64 samples). At this time no other convenient API is provided, but it should be possible to add some API that processes multiple batches and return a Midi file (`smf::MidiFile`).
 
 ### Accessing the device under test
 
-The device under test is always accessible via `tester.device()` and you can access either the motherboard/properties side of it, or directly the device instance (the one created by `JBox_Export_CreateNativeObject`).
+The device under test is always accessible via `tester.device()` and it is possible to access either the motherboard/properties side of it, or directly the device instance (the one created by `JBox_Export_CreateNativeObject`).
 
 #### Accessing properties
 
-Using the _dot_ notation, you have access to many convenient apis to directly read or write the device motherboard properties. For example:
+Using the _dot_ notation gives access to many convenient apis in order to directly read or write the device motherboard properties. For example:
 
 ```cpp
  // returns the gain property value as a number (TJBox_Float64)
@@ -223,7 +226,7 @@ Using the _dot_ notation, you have access to many convenient apis to directly re
  auto p = tester.device().getNum<int>("/custom_properties/my_int_prop");
 ```
 
-A lower level api lets you access the device via the Jukebox api (although it is far more verbose):
+A lower level api allows accessing the device via the Jukebox api (although it is far more verbose):
 ```cpp
 tester.device().use([] {
   auto customProperties = JBox_GetMotherboardObjectRef("/custom_properties");
@@ -233,11 +236,11 @@ tester.device().use([] {
 ```
 
 > #### Note
-> Since the Jukebox API is "device" free (meaning there is no way to know on which device the call is supposed to be directed to), you need to wrap it in a `device.use([]{/* access Jukebox here */});` statement.
+> Since the Jukebox API is "device" free (meaning there is no way to know on which device the call is supposed to be directed to), it is required to wrap it in a `device.use([]{/* access Jukebox here */});` statement.
 
 #### Accessing the implementation
 
-Using the _arrow_ notation, you have access to the implementation class directly (the one created by `JBox_Export_CreateNativeObject` and used in `JBox_Export_RenderRealtime` as the private state).
+Using the _arrow_ notation gives access to the implementation class directly (the one created by `JBox_Export_CreateNativeObject` and used in `JBox_Export_RenderRealtime` as the private state).
 
 ```cpp
 tester.device()->fMyProperty;
@@ -247,11 +250,11 @@ tester.device().getNativeObjectRW<Device>("/custom_properties/instance")->fMyPro
 ```
 
 ### How to test sockets?
-In general, for each additional socket not handled by the given tester, you can add a `MockDevice` to test it:
+In general, for each additional socket not handled by the given tester, a `MockDevice` can be added to test it:
 
 #### Testing a Stereo Audio Input socket
 
-You can use a `MAUSrc` mock device which is a source of stereo audio value (set `fBuffer` to the value you want to be made available to your audio input prior to calling `nextBatch`).
+Use a `MAUSrc` mock device which is a source of stereo audio value (set `fBuffer` to the value to be made available to the audio input prior to calling `nextBatch`).
 
 Example:
 ```cpp
@@ -265,9 +268,28 @@ auSrc->fBuffer = MockAudioDevice::buffer(0.5, 0.6);
 tester.nextBatch(...);
 ```
 
+This mock device also offers a `consumeSample()` api to consume a full sample. For example:
+
+```cpp
+auto auSrc = tester.wireNewAUSrc("aui_left", "aui_right");
+
+auSrc->consumeSample(tester.loadSample(<path to sample>));
+
+// next batches => the device reads the input from the provided sample for the duration (or timeline) provided
+tester.nextBatch(...);
+```
+
+> ### Tip
+> If the sample must be processed in full, this alternate form can be used (instead of calling `nextBatches()`)
+>  ```cpp
+>  tester.newTimeline()
+>    .onEveryBatch([&auSrc](long iAtBatch) { return auSrc->isSampleConsumed(); })
+>    .play(timeline::Duration{});
+>  ```
+
 #### Testing a Stereo Audio Output socket
 
-You can use a `MAUDst` mock device which is a destination of stereo audio value (its `fBuffer` is populated by whatever buffer it received during `nextBatch`).
+Use a `MAUDst` mock device which is a destination of stereo audio value (its `fBuffer` is populated by whatever buffer it received during `nextBatch`).
 
 Example:
 ```cpp
@@ -282,9 +304,27 @@ tester.nextBatch(...);
 ASSERT_EQ(MockAudioDevice::buffer(0.5 / 2.0, 0.6 / 2.0), auDst->fBuffer);
 ```
 
+This mock device also offers a `produceSample()` api to produce a full sample. For example:
+
+```cpp
+auto auDst = tester.wireNewAUDst("auo_left", "auo_right");
+
+// tell auDst to accumulate the output into a sample
+auDst->produceSample();
+
+// next batches => the device accumulates the result in the sample producer for the duration (or timeline) provided
+tester.nextBatches(...);
+
+// we are done
+auto p = auDst->stopProducingSample();
+
+// Check that the sample generated is what is wanted (for example load a reference sample from disk)
+ASSERT_EQ(tester.loadSample(<expected sample>), p->getSample());
+```
+
 #### Testing a CV Input socket
 
-You can use a `MCVSrc` mock device which is a source of CV value (set `fValue` to the value you want to be made available on your cv input prior to calling `nextBatch`).
+Use a `MCVSrc` mock device which is a source of CV value (set `fValue` to the value that needs to be made available on the cv input prior to calling `nextBatch`).
 
 Example:
 ```cpp
@@ -300,7 +340,7 @@ tester.nextBatch(...);
 
 #### Testing a CV Output socket
 
-You can use a `MCVDst` mock device which is a destination of CV value (its `fValue` is populated by whatever value it received during `nextBatch`).
+Use a `MCVDst` mock device which is a destination of CV value (its `fValue` is populated by whatever value it received during `nextBatch`).
 
 Example:
 ```cpp
@@ -316,11 +356,11 @@ ASSERT_FLOAT_EQ(<expected value>, cvDst->fValue);
 
 ### Accessing the rack
 
-The tester lets you access the main device under test with `tester.device()` and the rack with `tester.rack()`. The rack (`Rack`) is actually the main class that models the full system (the concept of testers is merely a wrapper around the rack to provide higher level APIs designed to facilitate testing a single device). You need to access the rack when you want to access system level properties, like the tempo, the play position, etc...
+The tester allows access to the main device under test with `tester.device()` and to the rack with `tester.rack()`. The rack (`Rack`) is actually the main class that models the full system (the concept of testers is merely a wrapper around the rack to provide higher level APIs designed to facilitate testing a single device). The rack gives access to system level properties, like the tempo, the play position, etc... which are independent of the main device.
 
 ### The sequencer track
 
-Each device has a sequencer track. You can access the sequencer track of the device under test with the shortcut `tester.sequencerTrack()`. This lets you add events like you would on the sequencer track in Reason/Recon. The class `sequencer::Track` has a builder pattern API to help in adding events:
+Each device has a sequencer track. Accessing the sequencer track of the device under test is done with the shortcut `tester.sequencerTrack()`. This allows to add events like on the sequencer track in Reason/Recon. The class `sequencer::Track` has a builder pattern API to help in adding events:
 
 ```cpp
 tester.sequencerTrack()
@@ -334,7 +374,7 @@ This would add an A3 note (with a velocity of 99) at 2.1.1.0 for 120 ticks and a
 > #### Note
 > This code will generate 4 events: 2 "note on" events and 2 "note off" events
 
-Note that the API is not limited to adding notes as you can also add any kind of generic events like modifying a property. For example:
+Note that the API is not limited to adding notes as it is possible to add any kind of generic events like modifying a property. For example:
 
 ```cpp
 tester.sequencerTrack()
@@ -376,7 +416,22 @@ tester.setNoteInEvents(MockDevice::NoteEvents{}.noteOff(Midi::C(4)));
 tester.nextBatches(sequencer::Duration::k1Beat_4x4 * 2); // 2 bars is 8 beats so 8 - 6 = 2
 ```
 
-Similarly to the sequencer track, you can add any kind of generic (not note related) events.
+Similarly to the sequencer track, any kind of generic (not note related) events can be added.
+
+Once the timeline is created, it can be executed by calling either `execute()` or `play()`, the difference being that `play` starts the transport when it starts and stops it when it ends.
+
+Although the timeline can be executed directly, it is also part of several other convenient APIs. For example,
+
+```cpp
+// assuming tester is an InstrumentTester
+auto timeline = tester.newTimeline()
+  .event([&tester]() { tester.device().setNum("/custom_property/gain", 0.7)});
+  .after(sequencer::Duration::k1Beat_4x4)
+  .event([&tester]() { tester.device().setNum("/custom_property/gain", 0.5)});
+
+// runs the bounce operation for 1 bar while setting the gain property to 0.7 when it starts and to 0.5 after 1 beat
+tester.bounce(sequencer::Duration::k1Bar_4x4, timeline);
+```
 
 ### Next
 
