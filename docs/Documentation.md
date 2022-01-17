@@ -316,10 +316,10 @@ auDst->produceSample();
 tester.nextBatches(...);
 
 // we are done
-auto p = auDst->stopProducingSample();
+auto sample = auDst->getSample();
 
 // Check that the sample generated is what is wanted (for example load a reference sample from disk)
-ASSERT_EQ(tester.loadSample(<expected sample>), p->getSample());
+ASSERT_EQ(tester.loadSample(<expected sample>), *sample);
 ```
 
 #### Testing a CV Input socket

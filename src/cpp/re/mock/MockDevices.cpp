@@ -334,24 +334,8 @@ void MAUDst::renderBatch(const TJBox_PropertyDiff *, TJBox_UInt32)
 {
   fBuffer.fill(0, 0);
 
-  if(copyBuffer(fInSocket, fBuffer) && fSampleProducer)
-    fSampleProducer->produce(fBuffer);
-}
-
-//------------------------------------------------------------------------
-// MAUDst::produceSample
-//------------------------------------------------------------------------
-void MAUDst::produceSample(Sample const &iSample)
-{
-  fSampleProducer = std::make_shared<MockAudioDevice::SampleProducer>(iSample);
-}
-
-//------------------------------------------------------------------------
-// MAUDst::produceSample
-//------------------------------------------------------------------------
-void MAUDst::produceSample(Sample &&iSample)
-{
-  fSampleProducer = std::make_shared<MockAudioDevice::SampleProducer>(std::move(iSample));
+  if(copyBuffer(fInSocket, fBuffer) && fSample)
+    fSample->append(fBuffer);
 }
 
 //------------------------------------------------------------------------
@@ -359,17 +343,15 @@ void MAUDst::produceSample(Sample &&iSample)
 //------------------------------------------------------------------------
 void MAUDst::produceSample(TJBox_UInt32 iChannels, TJBox_UInt32 iSampleRate)
 {
-  fSampleProducer = std::make_shared<MockAudioDevice::SampleProducer>(iChannels, fSampleRate);
+  fSample = std::make_unique<Sample>(Sample{}.channels(iChannels).sample_rate(fSampleRate));
 }
 
 //------------------------------------------------------------------------
-// MAUDst::stopProducingSample
+// MAUDst::getSample
 //------------------------------------------------------------------------
-std::shared_ptr<MockAudioDevice::SampleProducer> MAUDst::stopProducingSample()
+std::unique_ptr<MockAudioDevice::Sample> MAUDst::getSample()
 {
-  auto res = fSampleProducer;
-  fSampleProducer = nullptr;
-  return res;
+  return std::move(fSample);
 }
 
 //------------------------------------------------------------------------
@@ -1019,30 +1001,6 @@ void MockAudioDevice::Sample::maybeGrowExponentially(size_t iNewCapacity)
     auto oldCapacity = fData.capacity();
     fData.reserve(iNewCapacity);
   }
-}
-
-//------------------------------------------------------------------------
-// MockAudioDevice::SampleProducer::SampleProducer
-//------------------------------------------------------------------------
-MockAudioDevice::SampleProducer::SampleProducer(TJBox_UInt32 iChannels, TJBox_UInt32 iSampleRate)
-                                                : fSample{iChannels, iSampleRate}
-{
-}
-
-//------------------------------------------------------------------------
-// MockAudioDevice::SampleProducer::SampleProducer
-//------------------------------------------------------------------------
-MockAudioDevice::SampleProducer::SampleProducer(Sample const &iSample)
-  : fSample{iSample}
-{
-}
-
-//------------------------------------------------------------------------
-// MockAudioDevice::SampleProducer::SampleProducer
-//------------------------------------------------------------------------
-MockAudioDevice::SampleProducer::SampleProducer(Sample &&iSample)
-  : fSample{std::move(iSample)}
-{
 }
 
 //------------------------------------------------------------------------

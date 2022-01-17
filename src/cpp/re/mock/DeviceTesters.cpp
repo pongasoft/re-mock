@@ -382,12 +382,12 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
   iTimeline->play(sample::Duration{totalNumFrames});
 
   // done with producing
-  auto producer = fDst->stopProducingSample();
+  auto sample = fDst->getSample();
 
-  if(producer->getSample().getFrameCount() > totalNumFrames)
-    return producer->getSample().subSample(0, totalNumFrames);
+  if(sample->getFrameCount() > totalNumFrames)
+    return sample->subSample(0, totalNumFrames);
   else
-    return std::move(producer->getSample());
+    return *sample;
 }
 
 //------------------------------------------------------------------------
@@ -426,8 +426,7 @@ MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTime
 {
   fDst->produceSample();
   iTimeline.play();
-  auto producer = fDst->stopProducingSample();
-  return std::move(producer->getSample());
+  return *fDst->getSample();
 }
 
 //------------------------------------------------------------------------
@@ -438,11 +437,11 @@ MockAudioDevice::Sample ExtensionInstrumentTester::bounce(Duration iDuration, st
   auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
   fDst->produceSample();
   play(iDuration, std::move(iTimeline));
-  auto producer = fDst->stopProducingSample();
-  if(producer->getSample().getFrameCount() > frameCount)
-    return producer->getSample().subSample(0, frameCount);
+  auto sample = fDst->getSample();
+  if(sample->getFrameCount() > frameCount)
+    return sample->subSample(0, frameCount);
   else
-    return std::move(producer->getSample());
+    return *sample;
 }
 
 //------------------------------------------------------------------------

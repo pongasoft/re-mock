@@ -188,22 +188,6 @@ public:
     decltype(std::vector<TJBox_AudioSample>{}.cbegin()) fPtr;
   };
 
-  class SampleProducer
-  {
-  public:
-    SampleProducer(TJBox_UInt32 iChannels, TJBox_UInt32 iSampleRate);
-    explicit SampleProducer(Sample const &iSample);
-    explicit SampleProducer(Sample &&iSample);
-
-    void produce(StereoBuffer const &iBuffer) { fSample.append(iBuffer); }
-
-    Sample const &getSample() const { return fSample; }
-    Sample &&getSample() { return std::move(fSample); }
-
-  private:
-    Sample fSample;
-  };
-
   static StereoBuffer buffer(TJBox_AudioSample iLeftSample, TJBox_AudioSample iRightSample);
   static StereoBuffer buffer(buffer_type const &iLeftBuffer, buffer_type const &iRightBuffer);
 
@@ -277,18 +261,15 @@ public:
 
   static const DeviceConfig<MAUDst> CONFIG;
 
-  void produceSample(Sample const &iSample);
-  void produceSample(Sample &&iSample);
   void produceSample(TJBox_UInt32 iChannels, TJBox_UInt32 iSampleRate);
   void produceSample() { produceSample(2, fSampleRate); }
 
-  std::shared_ptr<SampleProducer> stopProducingSample();
-
-  Sample const &getProducedSample() const { RE_MOCK_ASSERT(fSampleProducer != nullptr); return fSampleProducer->getSample(); }
+  std::unique_ptr<Sample> getSample();
+  Sample const &peekSample() const { RE_MOCK_ASSERT(fSample != nullptr); return *fSample; }
 
 protected:
   StereoSocket fInSocket{};
-  std::shared_ptr<SampleProducer> fSampleProducer{};
+  std::unique_ptr<Sample> fSample{};
 };
 
 /**
