@@ -176,8 +176,8 @@ public:
   void play(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
   inline void play(tester::Timeline iTimeline) { iTimeline.play(); }
 
-  MockAudioDevice::Sample loadSample(resource::File const &iSampleFile) const;
-  MockAudioDevice::Sample loadSample(std::string const &iSampleResource) const;
+  std::unique_ptr<MockAudioDevice::Sample> loadSample(resource::File const &iSampleFile) const;
+  std::unique_ptr<MockAudioDevice::Sample> loadSample(std::string const &iSampleResource) const;
   void saveSample(MockAudioDevice::Sample const &iSample, resource::File const &iToFile) const;
 
   void deviceReset() { fDevice.reset(); }
@@ -239,20 +239,20 @@ public:
   MockAudioDevice::StereoBuffer nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer);
   void nextBatch(MockAudioDevice::StereoBuffer const &iInputBuffer, MockAudioDevice::StereoBuffer &oOutputBuffer);
 
-  MockAudioDevice::Sample processSample(MockAudioDevice::Sample iSample,
-                                        std::optional<Duration> iTail = std::nullopt,
-                                        std::optional<tester::Timeline> iTimeline = std::nullopt);
+  std::unique_ptr<MockAudioDevice::Sample> processSample(MockAudioDevice::Sample const &iSample,
+                                                         std::optional<Duration> iTail = std::nullopt,
+                                                         std::optional<tester::Timeline> iTimeline = std::nullopt);
 
-  MockAudioDevice::Sample processSample(resource::File const &iSampleFile,
-                                        std::optional<Duration> iTail = std::nullopt,
-                                        std::optional<tester::Timeline> iTimeline = std::nullopt) {
-    return processSample(loadSample(iSampleFile), iTail, std::move(iTimeline));
+  std::unique_ptr<MockAudioDevice::Sample> processSample(resource::File const &iSampleFile,
+                                                         std::optional<Duration> iTail = std::nullopt,
+                                                         std::optional<tester::Timeline> iTimeline = std::nullopt) {
+    return processSample(*loadSample(iSampleFile), iTail, std::move(iTimeline));
   }
 
-  MockAudioDevice::Sample processSample(std::string const &iSampleResource,
-                                        optional_duration_t iTail = std::nullopt,
-                                        std::optional<tester::Timeline> iTimeline = std::nullopt) {
-    return processSample(loadSample(iSampleResource), iTail, std::move(iTimeline));
+  std::unique_ptr<MockAudioDevice::Sample> processSample(std::string const &iSampleResource,
+                                                         optional_duration_t iTail = std::nullopt,
+                                                         std::optional<tester::Timeline> iTimeline = std::nullopt) {
+    return processSample(*loadSample(iSampleResource), iTail, std::move(iTimeline));
   }
 
   TJBox_OnOffBypassStates getBypassState() const { return fDevice.getEffectBypassState(); }
@@ -314,8 +314,8 @@ public:
 
   using DeviceTester::nextBatch;
   MockAudioDevice::StereoBuffer nextBatch(MockDevice::NoteEvents iNoteEvents);
-  MockAudioDevice::Sample bounce(tester::Timeline iTimeline);
-  MockAudioDevice::Sample bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
+  std::unique_ptr<MockAudioDevice::Sample> bounce(tester::Timeline iTimeline);
+  std::unique_ptr<MockAudioDevice::Sample> bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
 
   inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
   inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }

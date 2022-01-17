@@ -223,21 +223,21 @@ void DeviceTester::play(Duration iDuration, std::optional<tester::Timeline> iTim
 //------------------------------------------------------------------------
 // DeviceTester::loadSample
 //------------------------------------------------------------------------
-MockAudioDevice::Sample DeviceTester::loadSample(resource::File const &iSampleFile) const
+std::unique_ptr<MockAudioDevice::Sample> DeviceTester::loadSample(resource::File const &iSampleFile) const
 {
   auto sample = FileManager::loadSample(iSampleFile);
-  RE_MOCK_ASSERT(sample != std::nullopt, "Could not load sample [%s]", iSampleFile.fFilename);
-  return MockAudioDevice::Sample::from(*sample);
+  RE_MOCK_ASSERT(sample != nullptr, "Could not load sample [%s]", iSampleFile.fFilename);
+  return MockAudioDevice::Sample::from(std::move(sample));
 }
 
 //------------------------------------------------------------------------
 // DeviceTester::loadSample
 //------------------------------------------------------------------------
-MockAudioDevice::Sample DeviceTester::loadSample(std::string const &iSampleResource) const
+std::unique_ptr<MockAudioDevice::Sample> DeviceTester::loadSample(std::string const &iSampleResource) const
 {
   auto sample = fDeviceConfig.findSampleResource(iSampleResource);
-  RE_MOCK_ASSERT(sample != std::nullopt, "Could not load sample resource [%s]", iSampleResource);
-  return MockAudioDevice::Sample::from(*sample);
+  RE_MOCK_ASSERT(sample != nullptr, "Could not load sample resource [%s]", iSampleResource);
+  return MockAudioDevice::Sample::from(std::move(sample));
 }
 
 //------------------------------------------------------------------------
@@ -253,14 +253,14 @@ void DeviceTester::saveSample(MockAudioDevice::Sample const &iSample, resource::
 //------------------------------------------------------------------------
 void DeviceTester::importMidi(resource::File const &iMidiFile, int iTrack, bool iImportTempo)
 {
-  auto midiFile = FileManager::loadMidi(iMidiFile).value();
+  auto midiFile = FileManager::loadMidi(iMidiFile);
 
   // import tempo from midi file
   if(iImportTempo)
   {
-    for(int track = 0; track < midiFile.size(); track++)
+    for(int track = 0; track < midiFile->size(); track++)
     {
-      auto &events = midiFile[track];
+      auto &events = (*midiFile)[track];
       for(int i = 0; i < events.size(); i++)
       {
         auto &event = events[i];
@@ -274,13 +274,13 @@ void DeviceTester::importMidi(resource::File const &iMidiFile, int iTrack, bool 
 
   if(iTrack == -1)
   {
-    midiFile.joinTracks();
+    midiFile->joinTracks();
     iTrack = 0;
   }
 
-  RE_MOCK_ASSERT(iTrack < midiFile.size(), "Cannot read track [%d]: not enough tracks in midifile (%ld)", iTrack, midiFile.size());
+  RE_MOCK_ASSERT(iTrack < midiFile->size(), "Cannot read track [%d]: not enough tracks in midifile (%ld)", iTrack, midiFile->size());
 
-  fDevice.loadMidiNotes(midiFile[iTrack]);
+  fDevice.loadMidiNotes((*midiFile)[iTrack]);
 }
 
 //------------------------------------------------------------------------
@@ -357,9 +357,9 @@ void ExtensionEffectTester::nextBatch(MockAudioDevice::StereoBuffer const &iInpu
 //------------------------------------------------------------------------
 // ExtensionEffectTester::processSample
 //------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sample iSample,
-                                                             optional_duration_t iTail,
-                                                             std::optional<tester::Timeline> iTimeline)
+std::unique_ptr<MockAudioDevice::Sample> ExtensionEffectTester::processSample(MockAudioDevice::Sample const &iSample,
+                                                                              optional_duration_t iTail,
+                                                                              std::optional<tester::Timeline> iTimeline)
 {
   TJBox_AudioFramePos tailInFrames = 0;
 
@@ -376,7 +376,7 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
   fDst->produceSample(iSample.getChannels(), iSample.getSampleRate());
 
   // set the sample to process
-  fSrc->consumeSample(std::move(iSample));
+  fSrc->consumeSample(iSample);
 
   // timeline: once the sample is consumed, the tail will be automatically processed (fSrc fills buffer with 0)
   iTimeline->play(sample::Duration{totalNumFrames});
@@ -385,9 +385,8 @@ MockAudioDevice::Sample ExtensionEffectTester::processSample(MockAudioDevice::Sa
   auto sample = fDst->getSample();
 
   if(sample->getFrameCount() > totalNumFrames)
-    return sample->subSample(0, totalNumFrames);
-  else
-    return *sample;
+    sample->subSample(0, totalNumFrames);
+  return sample;
 }
 
 //------------------------------------------------------------------------
@@ -422,26 +421,25 @@ MockAudioDevice::StereoBuffer ExtensionInstrumentTester::nextBatch(MockDevice::N
 //------------------------------------------------------------------------
 // ExtensionInstrumentTester::bounce
 //------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionInstrumentTester::bounce(tester::Timeline iTimeline)
+std::unique_ptr<MockAudioDevice::Sample> ExtensionInstrumentTester::bounce(tester::Timeline iTimeline)
 {
   fDst->produceSample();
   iTimeline.play();
-  return *fDst->getSample();
+  return fDst->getSample();
 }
 
 //------------------------------------------------------------------------
 // ExtensionInstrumentTester::bounce
 //------------------------------------------------------------------------
-MockAudioDevice::Sample ExtensionInstrumentTester::bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline)
+std::unique_ptr<MockAudioDevice::Sample> ExtensionInstrumentTester::bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline)
 {
   auto const frameCount = fRack.toSampleDuration(iDuration).fFrames;
   fDst->produceSample();
   play(iDuration, std::move(iTimeline));
   auto sample = fDst->getSample();
   if(sample->getFrameCount() > frameCount)
-    return sample->subSample(0, frameCount);
-  else
-    return *sample;
+    sample->subSample(0, frameCount);
+  return sample;
 }
 
 //------------------------------------------------------------------------

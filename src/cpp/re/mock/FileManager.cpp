@@ -87,50 +87,50 @@ bool FileManager::fileExists(resource::File const &iFile)
 //------------------------------------------------------------------------
 // FileManager::loadBlob
 //------------------------------------------------------------------------
-std::optional<resource::Blob> FileManager::loadBlob(resource::File const &iFile)
+std::unique_ptr<resource::Blob> FileManager::loadBlob(resource::File const &iFile)
 {
   auto size = fileSize(iFile);
   if(size > -1)
   {
-    resource::Blob blob{};
-    blob.fData.reserve(size);
-    auto readSize = impl::loadFile(iFile, blob.fData);
+    auto blob = std::make_unique<resource::Blob>();
+    blob->fData.reserve(size);
+    auto readSize = impl::loadFile(iFile, blob->fData);
     RE_MOCK_ASSERT(readSize == size);
     return blob;
   }
-  return std::nullopt;
+  return nullptr;
 }
 
 //------------------------------------------------------------------------
 // FileManager::loadMidi
 //------------------------------------------------------------------------
-std::optional<smf::MidiFile> FileManager::loadMidi(resource::File const &iFile, bool iConvertToReasonPPQ)
+std::unique_ptr<smf::MidiFile> FileManager::loadMidi(resource::File const &iFile, bool iConvertToReasonPPQ)
 {
-  smf::MidiFile midiFile;
-  midiFile.read(iFile.fFilename);
-  if(!midiFile.status())
+  auto midiFile = std::make_unique<smf::MidiFile>();
+  midiFile->read(iFile.fFilename);
+  if(!midiFile->status())
   {
     RE_MOCK_LOG_ERROR("Error opening midi file [%s]", iFile.fFilename);
-    return std::nullopt;
+    return nullptr;
   }
 
   // convert to RE native PPQ resolution
-  if(iConvertToReasonPPQ && midiFile.getTicksPerQuarterNote() != constants::kPPQResolution)
+  if(iConvertToReasonPPQ && midiFile->getTicksPerQuarterNote() != constants::kPPQResolution)
   {
-    RE_MOCK_ASSERT(midiFile.getTicksPerQuarterNote() != 0);
+    RE_MOCK_ASSERT(midiFile->getTicksPerQuarterNote() != 0);
 
-    auto f = constants::kPPQResolution / midiFile.getTicksPerQuarterNote();
+    auto f = constants::kPPQResolution / midiFile->getTicksPerQuarterNote();
 
-    for(int track = 0; track < midiFile.size(); track++)
+    for(int track = 0; track < midiFile->size(); track++)
     {
-      auto &events = midiFile[track];
+      auto &events = (*midiFile)[track];
       for(int i = 0; i < events.size(); i++)
       {
         events[i].tick *= f;
       }
     }
 
-    midiFile.setTicksPerQuarterNote(constants::kPPQResolution);
+    midiFile->setTicksPerQuarterNote(constants::kPPQResolution);
   }
   return midiFile;
 }
@@ -248,10 +248,10 @@ bool saveSample(Container const &iBuffer, SndfileHandle &iFileHandle)
 //------------------------------------------------------------------------
 // FileManager::loadSample
 //------------------------------------------------------------------------
-std::optional<resource::Sample> FileManager::loadSample(resource::File const &iFile)
+std::unique_ptr<resource::Sample> FileManager::loadSample(resource::File const &iFile)
 {
   if(!FileManager::fileExists(iFile))
-    return std::nullopt;
+    return nullptr;
 
   SndfileHandle sndFile(iFile.fFilename.c_str());
 
@@ -261,16 +261,16 @@ std::optional<resource::Sample> FileManager::loadSample(resource::File const &iF
                       iFile.fFilename.c_str(),
                       sndFile.error(),
                       sndFile.strError());
-    return std::nullopt;
+    return nullptr;
   }
 
-  resource::Sample sample{};
-  sample.fData.reserve(sndFile.frames() * sndFile.channels());
+  auto sample = std::make_unique<resource::Sample>();
+  sample->fData.reserve(sndFile.frames() * sndFile.channels());
 
-  if(impl::loadSample(sndFile, sample.fData) >= 0)
+  if(impl::loadSample(sndFile, sample->fData) >= 0)
   {
-    sample.fSampleRate = sndFile.samplerate();
-    sample.fChannels = sndFile.channels();
+    sample->fSampleRate = sndFile.samplerate();
+    sample->fChannels = sndFile.channels();
     return sample;
   }
   else
@@ -279,7 +279,7 @@ std::optional<resource::Sample> FileManager::loadSample(resource::File const &iF
                       iFile.fFilename.c_str(),
                       sndFile.error(),
                       sndFile.strError());
-    return std::nullopt;
+    return nullptr;
   }
 }
 

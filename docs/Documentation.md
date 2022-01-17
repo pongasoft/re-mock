@@ -136,7 +136,7 @@ auto processedSine = tester.processSample(resource::File{sinePath}); // optional
 auto processedSinePath = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "processed_sine.wav");
 auto expectedProcessedSine = tester.loadSample(resource::File{processedSinePath});
 
-ASSERT_EQ(expectedProcessedSine, processedSine); // compare the 2 samples
+ASSERT_EQ(*expectedProcessedSine, *processedSine); // compare the 2 samples
 ```
 
 #### InstrumentTester
@@ -176,7 +176,7 @@ auto sample = tester.bounce(time::Duration{1000}, // bounce for 1 second
 auto path = fmt::path(RE_CMAKE_PROJECT_DIR, "test", "resources", "audio", "instrument_A3_1beat.wav");
 auto expectedSample = tester.loadSample(resource::File{path});
 
-ASSERT_EQ(expectedSample, sample); // compare the 2 samples
+ASSERT_EQ(*expectedSample, *sample); // compare the 2 samples
 ```
 
 > ### Note
@@ -273,7 +273,7 @@ This mock device also offers a `consumeSample()` api to consume a full sample. F
 ```cpp
 auto auSrc = tester.wireNewAUSrc("aui_left", "aui_right");
 
-auSrc->consumeSample(tester.loadSample(<path to sample>));
+auSrc->consumeSample(*tester.loadSample(<path to sample>));
 
 // next batches => the device reads the input from the provided sample for the duration (or timeline) provided
 tester.nextBatch(...);
@@ -319,7 +319,7 @@ tester.nextBatches(...);
 auto sample = auDst->getSample();
 
 // Check that the sample generated is what is wanted (for example load a reference sample from disk)
-ASSERT_EQ(tester.loadSample(<expected sample>), *sample);
+ASSERT_EQ(*tester.loadSample(<expected sample>), *sample);
 ```
 
 #### Testing a CV Input socket

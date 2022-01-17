@@ -506,7 +506,7 @@ std::optional<resource::Patch> Config::findPatchResource(std::string const &iRes
 //------------------------------------------------------------------------
 // Config::findBlobResource
 //------------------------------------------------------------------------
-std::optional<resource::Blob> Config::findBlobResource(std::string const &iResourcePath) const
+std::unique_ptr<resource::Blob> Config::findBlobResource(std::string const &iResourcePath) const
 {
   auto resourceFile = resource::File{iResourcePath};
 
@@ -515,7 +515,7 @@ std::optional<resource::Blob> Config::findBlobResource(std::string const &iResou
   {
     auto b = std::get<ConfigResource::Blob>(blobResource->second);
     if(std::holds_alternative<resource::Blob>(b.fBlobVariant))
-      return std::get<resource::Blob>(b.fBlobVariant);
+      return std::make_unique<resource::Blob>(std::get<resource::Blob>(b.fBlobVariant));
     else
       resourceFile = std::get<resource::File>(b.fBlobVariant);
   }
@@ -530,13 +530,13 @@ std::optional<resource::Blob> Config::findBlobResource(std::string const &iResou
   if(resolvedResource && FileManager::fileExists(*resolvedResource))
     return FileManager::loadBlob(*resolvedResource);
 
-  return std::nullopt;
+  return nullptr;
 }
 
 //------------------------------------------------------------------------
 // Config::findSampleResource
 //------------------------------------------------------------------------
-std::optional<resource::Sample> Config::findSampleResource(std::string const &iResourcePath) const
+std::unique_ptr<resource::Sample> Config::findSampleResource(std::string const &iResourcePath) const
 {
   auto resourceFile = resource::File{iResourcePath};
 
@@ -546,7 +546,7 @@ std::optional<resource::Sample> Config::findSampleResource(std::string const &iR
     auto s = std::get<ConfigResource::Sample>(sampleResource->second);
 
     if(std::holds_alternative<resource::Sample>(s.fSampleVariant))
-      return std::get<resource::Sample>(s.fSampleVariant);
+      return std::make_unique<resource::Sample>(std::get<resource::Sample>(s.fSampleVariant));
     else
       resourceFile = std::get<resource::File>(s.fSampleVariant);
   }
@@ -561,7 +561,7 @@ std::optional<resource::Sample> Config::findSampleResource(std::string const &iR
   if(resolvedResource)
     return FileManager::loadSample(*resolvedResource);
 
-  return std::nullopt;
+  return nullptr;
 }
 
 namespace impl {

@@ -214,8 +214,8 @@ struct Config
   std::optional<resource::File> resource_file(resource::File iRelativeResourcePath) const;
 
   std::optional<resource::Patch> findPatchResource(std::string const &iResourcePath) const;
-  std::optional<resource::Blob> findBlobResource(std::string const &iResourcePath) const;
-  std::optional<resource::Sample> findSampleResource(std::string const &iResourcePath) const;
+  std::unique_ptr<resource::Blob> findBlobResource(std::string const &iResourcePath) const;
+  std::unique_ptr<resource::Sample> findSampleResource(std::string const &iResourcePath) const;
 
   static Config fromSkeleton(Info const &iInfo);
   static Config fromSkeleton(DeviceType iDeviceType = DeviceType::kHelper) { return fromSkeleton(Info::fromSkeleton(iDeviceType)); }
@@ -262,9 +262,9 @@ struct DeviceConfig
 
   std::optional<resource::File> resource_file(resource::File iRelativeResourcePath) const { return fConfig.resource_file(iRelativeResourcePath); }
 
-  std::optional<resource::Patch> findPatchResource(std::string const &iResourcePath) const { return fConfig.findPatchResource(iResourcePath); }
-  std::optional<resource::Blob> findBlobResource(std::string const &iResourcePath) const { return fConfig.findBlobResource(iResourcePath); }
-  std::optional<resource::Sample> findSampleResource(std::string const &iResourcePath) const { return fConfig.findSampleResource(iResourcePath); }
+  std::unique_ptr<resource::Patch> findPatchResource(std::string const &iResourcePath) const { return fConfig.findPatchResource(iResourcePath); }
+  std::unique_ptr<resource::Blob> findBlobResource(std::string const &iResourcePath) const { return fConfig.findBlobResource(iResourcePath); }
+  std::unique_ptr<resource::Sample> findSampleResource(std::string const &iResourcePath) const { return fConfig.findSampleResource(iResourcePath); }
 
   DeviceConfig &debug_config(bool iDebug = true) { fConfig.debug_config(iDebug); return *this; }
 

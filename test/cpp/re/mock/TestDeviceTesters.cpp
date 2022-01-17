@@ -83,26 +83,26 @@ TEST(StudioEffectTester, Sample)
   tester.wireMainOut(MockAudioDevice::LEFT_SOCKET, MockAudioDevice::RIGHT_SOCKET);
 
   auto sinePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
-  auto sine = tester.loadSample(resource::File{sinePath});
+  auto const sine = tester.loadSample(resource::File{sinePath});
 
   {
     tester.device()->fBatchCount = 0;
     auto processedSine = tester.processSample(resource::File{sinePath});
 
     // processedSine should be sine (since MAUPst is pass through)
-    ASSERT_EQ(sine.fChannels, processedSine.fChannels);
-    ASSERT_EQ(sine.fSampleRate, tester.rack().getSampleRate());
-    ASSERT_EQ(sine.fData, processedSine.fData);
+    ASSERT_EQ(sine->fChannels, processedSine->fChannels);
+    ASSERT_EQ(sine->fSampleRate, tester.rack().getSampleRate());
+    ASSERT_EQ(sine->fData, processedSine->fData);
     ASSERT_EQ(2, tester.device()->fBatchCount); // 100 = 64 + 36
   }
 
   {
     tester.device()->fBatchCount = 0;
     auto processedSine = tester.processSample("/re/mock/audio/sine.wav", sample::Duration{30});
-    auto expectedSine = sine; // sine (100 samples) + tail of 30 samples
+    auto expectedSine = sine->clone(); // sine (100 samples) + tail of 30 samples
     for(int i = 0; i < 30; i++)
       expectedSine.fData.emplace_back(0);
-    ASSERT_EQ(expectedSine, processedSine);
+    ASSERT_EQ(expectedSine, *processedSine);
     ASSERT_EQ(3, tester.device()->fBatchCount); // 130 = 64 + 64 + 2
   }
 
@@ -114,11 +114,11 @@ TEST(StudioEffectTester, Sample)
                                               tester.newTimeline().onEveryBatch([&batches](long f) { batches.emplace_back(f); return true; }));
 
     // 1ms at 44100 is 44.1 samples => 45 samples
-    auto expectedSine = sine; // sine (100 samples) + tail of 45 samples
+    auto expectedSine = sine->clone(); // sine (100 samples) + tail of 45 samples
     for(int i = 0; i < 45; i++)
       expectedSine.fData.emplace_back(0);
 
-    ASSERT_EQ(expectedSine, processedSine);
+    ASSERT_EQ(expectedSine, *processedSine);
     ASSERT_EQ(std::vector<int>({0, 1, 2}), batches);
     ASSERT_EQ(3, tester.device()->fBatchCount); // 145 = 64 + 64 + 17
   }

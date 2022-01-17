@@ -33,8 +33,8 @@ std::ostream &operator<<(std::ostream &os, smf::MidiFile const &iMidiFile);
 class FileManager
 {
 public:
-  static std::optional<resource::Blob> loadBlob(resource::File const &iFile);
-  static std::optional<resource::Sample> loadSample(resource::File const &iFile);
+  static std::unique_ptr<resource::Blob> loadBlob(resource::File const &iFile);
+  static std::unique_ptr<resource::Sample> loadSample(resource::File const &iFile);
   static void saveSample(resource::Sample const &iSample, resource::File const &iToFile) {
     saveSample(iSample.fChannels, iSample.fSampleRate, iSample.fData, iToFile);
   }
@@ -43,7 +43,7 @@ public:
                          std::vector<TJBox_AudioSample> const &iData,
                          resource::File const &iToFile);
 
-  static std::optional<smf::MidiFile> loadMidi(resource::File const &iFile, bool iConvertToReasonPPQ = true);
+  static std::unique_ptr<smf::MidiFile> loadMidi(resource::File const &iFile, bool iConvertToReasonPPQ = true);
 
   static std::ifstream::pos_type fileSize(resource::File const &iFile);
   static bool fileExists(resource::File const &iFile);

@@ -136,7 +136,7 @@ public:
     Sample &mixWith(Sample const &iOtherSample, size_t iFrameCount = -1);
     Sample &applyGain(TJBox_Float32 iGain);
 
-    Sample subSample(size_t iFromFrame = 0, size_t iFrameCount = -1) const;
+    Sample &subSample(size_t iFromFrame = 0, size_t iFrameCount = -1);
 
     bool isMono() const { return fChannels == 1; }
     bool isStereo() const { return fChannels == 2; }
@@ -155,14 +155,15 @@ public:
     Sample getLeftChannelSample() const;
     Sample getRightChannelSample() const;
 
-    Sample trimLeft() const;
-    Sample trimRight() const;
-    Sample trim() const;
+    Sample &trimLeft();
+    Sample &trimRight();
+    Sample &trim();
 
     std::string toString(size_t iFrameCount = -1) const;
 
     static Sample from(resource::Sample iSample);
     static Sample from(StereoBuffer const &iStereoBuffer, TJBox_UInt32 iSampleRate);
+    static std::unique_ptr<Sample> from(std::unique_ptr<resource::Sample> iSample);
 
     static const std::size_t npos = -1;
 
@@ -178,13 +179,12 @@ public:
   class SampleConsumer
   {
   public:
-    explicit SampleConsumer(Sample const &iSample);
-    explicit SampleConsumer(Sample &&iSample);
+    explicit SampleConsumer(MockAudioDevice::Sample const &iSample);
 
     bool consume(StereoBuffer &oBuffer);
 
   private:
-    Sample fSample;
+    MockAudioDevice::Sample const &fSample;
     decltype(std::vector<TJBox_AudioSample>{}.cbegin()) fPtr;
   };
 
@@ -238,8 +238,6 @@ public:
   static const DeviceConfig<MAUSrc> CONFIG;
 
   void consumeSample(Sample const &iSample);
-  void consumeSample(Sample &&iSample);
-  void consumeSample(std::shared_ptr<SampleConsumer> iSampleConsumer) { fSampleConsumer = std::move(iSampleConsumer); }
   bool isSampleConsumed() const { return fSampleConsumer == nullptr; }
 
 protected:
@@ -248,7 +246,7 @@ protected:
 
 protected:
   StereoSocket fOutSocket{};
-  std::shared_ptr<SampleConsumer> fSampleConsumer{};
+  std::unique_ptr<SampleConsumer> fSampleConsumer{};
 };
 
 /**

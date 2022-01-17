@@ -31,7 +31,7 @@ TEST(Midi, NotExists)
 {
   auto midiFile = FileManager::loadMidi(resource::File{"/not exists/foo.mid"});
 
-  ASSERT_EQ(std::nullopt, midiFile);
+  ASSERT_EQ(nullptr, midiFile);
 }
 
 // Midi.Tempo

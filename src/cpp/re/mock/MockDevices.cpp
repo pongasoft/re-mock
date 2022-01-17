@@ -286,15 +286,7 @@ void MAUSrc::renderBuffer()
 //------------------------------------------------------------------------
 void MAUSrc::consumeSample(MockAudioDevice::Sample const &iSample)
 {
-  fSampleConsumer = std::make_shared<SampleConsumer>(iSample);
-}
-
-//------------------------------------------------------------------------
-// MAUSrc::consumeSample
-//------------------------------------------------------------------------
-void MAUSrc::consumeSample(MockAudioDevice::Sample &&iSample)
-{
-  fSampleConsumer = std::make_shared<SampleConsumer>(std::move(iSample));
+  fSampleConsumer = std::make_unique<SampleConsumer>(iSample);
 }
 
 //------------------------------------------------------------------------
@@ -804,6 +796,17 @@ MockAudioDevice::Sample MockAudioDevice::Sample::from(resource::Sample iSample)
 //------------------------------------------------------------------------
 // MockAudioDevice::Sample::from
 //------------------------------------------------------------------------
+std::unique_ptr<MockAudioDevice::Sample> MockAudioDevice::Sample::from(std::unique_ptr<resource::Sample> iSample)
+{
+  auto res = std::make_unique<MockAudioDevice::Sample>();
+  res->channels(iSample->fChannels).sample_rate(iSample->fSampleRate);
+  res->fData = std::move(iSample->fData);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// MockAudioDevice::Sample::from
+//------------------------------------------------------------------------
 MockAudioDevice::Sample MockAudioDevice::Sample::from(StereoBuffer const &iStereoBuffer, TJBox_UInt32 iSampleRate)
 {
   MockAudioDevice::Sample res{2, iSampleRate};
@@ -927,51 +930,49 @@ MockAudioDevice::Sample &MockAudioDevice::Sample::applyGain(TJBox_Float32 iGain)
 //------------------------------------------------------------------------
 // MockAudioDevice::Sample::subSample
 //------------------------------------------------------------------------
-MockAudioDevice::Sample MockAudioDevice::Sample::subSample(size_t iFromFrame, size_t iFrameCount) const
+MockAudioDevice::Sample &MockAudioDevice::Sample::subSample(size_t iFromFrame, size_t iFrameCount)
 {
   auto sampleCount = std::min<size_t>(iFrameCount, getFrameCount() - iFromFrame) * fChannels;
   auto startSample = static_cast<ptrdiff_t>(iFromFrame * fChannels);
   auto endSample = static_cast<ptrdiff_t>(startSample + sampleCount);
   RE_MOCK_ASSERT(startSample >= 0 && startSample < fData.size());
   RE_MOCK_ASSERT(endSample >= startSample && endSample <= fData.size());
-  Sample res{fChannels, fSampleRate};
-  res.fData.reserve(sampleCount);
-  std::copy(std::begin(fData) + startSample, std::begin(fData) + endSample, std::back_inserter(res.fData));
-  return res;
+  if(startSample > 0)
+    std::copy(std::begin(fData) + startSample, std::begin(fData) + endSample, fData.begin());
+  fData.resize(sampleCount);
+  return *this;
 }
 
 //------------------------------------------------------------------------
 // MockAudioDevice::Sample::trimLeft
 //------------------------------------------------------------------------
-MockAudioDevice::Sample MockAudioDevice::Sample::trimLeft() const
+MockAudioDevice::Sample &MockAudioDevice::Sample::trimLeft()
 {
   auto iter = std::find_if(fData.begin(), fData.end(), [](auto s) { return !isSilent(s); });
   if(iter != fData.end())
   {
     return subSample((iter - fData.begin()) / fChannels);
   }
-  else
-    return clone();
+  return *this;
 }
 
 //------------------------------------------------------------------------
 // MockAudioDevice::Sample::trimRight
 //------------------------------------------------------------------------
-MockAudioDevice::Sample MockAudioDevice::Sample::trimRight() const
+MockAudioDevice::Sample &MockAudioDevice::Sample::trimRight()
 {
   auto end = std::find_if(fData.rbegin(), fData.rend(), [](auto s) { return !isSilent(s); });
   if(end != fData.rend())
   {
     return subSample(0, (end.base() + (fChannels - 1) - fData.begin()) / fChannels);
   }
-  else
-    return clone();
+  return *this;
 }
 
 //------------------------------------------------------------------------
 // MockAudioDevice::Sample::trim
 //------------------------------------------------------------------------
-MockAudioDevice::Sample MockAudioDevice::Sample::trim() const
+MockAudioDevice::Sample &MockAudioDevice::Sample::trim()
 {
   auto start = std::find_if(fData.begin(), fData.end(), [](auto s) { return !isSilent(s); });
   if(start != fData.end())
@@ -986,8 +987,7 @@ MockAudioDevice::Sample MockAudioDevice::Sample::trim() const
     else
       return subSample((start - fData.begin()) / fChannels);
   }
-  else
-    return clone();
+  return *this;
 }
 
 //------------------------------------------------------------------------
@@ -1008,14 +1008,6 @@ void MockAudioDevice::Sample::maybeGrowExponentially(size_t iNewCapacity)
 //------------------------------------------------------------------------
 MockAudioDevice::SampleConsumer::SampleConsumer(Sample const &iSample)
 : fSample(iSample), fPtr{fSample.fData.cbegin()}
-{
-}
-
-//------------------------------------------------------------------------
-// MockAudioDevice::SampleConsumer::SampleConsumer
-//------------------------------------------------------------------------
-MockAudioDevice::SampleConsumer::SampleConsumer(Sample &&iSample)
-  : fSample(std::move(iSample)), fPtr{fSample.fData.cbegin()}
 {
 }
 

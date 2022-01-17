@@ -94,9 +94,9 @@ TEST(Device, test1)
   auto sample = tester.bounce(sequencer::Duration::k1Beat_4x4 * 2);
 
   // make sure that the sample is what we expect
-  ASSERT_EQ(sample, tester.loadSample(resource::File{fmt::path(RE_CMAKE_PROJECT_DIR, "test", "wav", "test1.wav")));
+  ASSERT_EQ(*sample, *tester.loadSample(resource::File{fmt::path(RE_CMAKE_PROJECT_DIR, "test", "wav", "test1.wav")));
   
-  // tester.saveSample(sample, resource::File{"/tmp/result.wav"});
+  // tester.saveSample(*sample, resource::File{"/tmp/result.wav"});
 }
 ```
 
@@ -157,31 +157,31 @@ TEST(CVerySimpleSampler, Play)
   tester.device().setNum("/user_samples/3/root_key", Midi::A(3));       tester.device().setNum("/user_samples/3/preview_volume_level", 127);
 
   // play C3 (Bell) (gain = 1.0)
-  ASSERT_EQ(bellSample,
-            tester.bounce(sample::Duration{bellSample.getFrameCount()},
-                          tester.newTimeline()
-                            .note(Midi::C(3), sample::Duration{bellSample.getFrameCount()}, 127)));
+  ASSERT_EQ(*bellSample,
+            *tester.bounce(sample::Duration{bellSample.getFrameCount()},
+                           tester.newTimeline()
+                             .note(Midi::C(3), sample::Duration{bellSample.getFrameCount()}, 127)));
 
   // play C3 again (note off/note on) (Bell) (gain = 0.78 (100/127))
-  ASSERT_EQ(bellSample.clone().applyGain(100/127.0f),
-            tester.bounce(sample::Duration{bellSample.getFrameCount()},
-                          tester.newTimeline()
-                            .note(Midi::C(3), sample::Duration{bellSample.getFrameCount()}, 100)));
+  ASSERT_EQ(bellSample->clone().applyGain(100/127.0f),
+            *tester.bounce(sample::Duration{bellSample.getFrameCount()},
+                           tester.newTimeline()
+                             .note(Midi::C(3), sample::Duration{bellSample.getFrameCount()}, 100)));
 
   // play D#3 (Chip) (gain = 1.0) ...
   // play F#3 (Machina) (gain = 1.0) ...
   // play A3 (MkIV) (gain = 1.0) ...
 
   // Expected result is 4 samples mixed
-  auto mixedSample = bellSample.clone().mixWith(chipSample).mixWith(machinaSample).mixWith(mkivSample);
+  auto mixedSample = bellSample->clone().mixWith(*chipSample).mixWith(*machinaSample).mixWith(*mkivSample);
 
   ASSERT_EQ(mixedSample,
-            tester.bounce(sample::Duration{mixedSample.getFrameCount()},
-                          tester.newTimeline()
-                            .note(Midi::C(3),       sample::Duration{bellSample.getFrameCount()},    127)
-                            .note(Midi::D_sharp(3), sample::Duration{chipSample.getFrameCount()},    127)
-                            .note(Midi::F_sharp(3), sample::Duration{machinaSample.getFrameCount()}, 127)
-                            .note(Midi::A(3),       sample::Duration{mkivSample.getFrameCount()},    127)));
+            *tester.bounce(sample::Duration{mixedSample.getFrameCount()},
+                           tester.newTimeline()
+                             .note(Midi::C(3),       sample::Duration{bellSample.getFrameCount()},    127)
+                             .note(Midi::D_sharp(3), sample::Duration{chipSample.getFrameCount()},    127)
+                             .note(Midi::F_sharp(3), sample::Duration{machinaSample.getFrameCount()}, 127)
+                             .note(Midi::A(3),       sample::Duration{mkivSample.getFrameCount()},    127)));
 }
 ```
 
@@ -203,7 +203,7 @@ TEST(CVerySimpleSampler, Play)
                    tester.newTimeline()
                      .note(Midi::C(3), sample::Duration{bellSample.getFrameCount()}, 127)))
   ```
-* The next assert shows how to easily apply gain to a sample (`bellSample.clone().applyGain(100/127.0f)`)
+* The next assert shows how to easily apply gain to a sample (`bellSample->clone().applyGain(100/127.0f)`)
 * The next 3 asserts are not shown for brevity since they do the same for the other samples
 * Finally, the last assert shows how to mix multiple samples together and how the timeline describes holding 4 notes with various durations
 
