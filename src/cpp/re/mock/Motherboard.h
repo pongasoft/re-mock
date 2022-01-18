@@ -45,6 +45,7 @@ std::ostream &operator<<(std::ostream &os, TJBox_NoteEvent const &event);
 bool compare(TJBox_NoteEvent const &l, TJBox_NoteEvent const &r);
 
 namespace re::mock { class Rack; }
+namespace re::mock::rack { class Extension; }
 namespace re::mock::lua { class RealtimeController; }
 
 namespace re::mock {
@@ -235,8 +236,9 @@ public: // used by Jukebox.cpp (need to be public)
   static void copy(TJBox_Value const &iFromValue, TJBox_Value &oToValue);
   static TJBox_Value clone(TJBox_Value const &iValue);
 
-  friend class Rack;
-  friend class lua::RealtimeController;
+  friend class re::mock::Rack;
+  friend class re::mock::rack::Extension;
+  friend class re::mock::lua::RealtimeController;
 
 protected:
 
@@ -352,6 +354,18 @@ template<typename T>
 T *Motherboard::getInstance() const
 {
   return reinterpret_cast<T *>(getJboxValue("/custom_properties/instance")->getNativeObject().fNativeObject);
+}
+
+namespace impl {
+struct InternalThreadLocalRAII
+{
+  explicit InternalThreadLocalRAII(Motherboard *iMotherboard);
+  InternalThreadLocalRAII(InternalThreadLocalRAII &&) = delete;
+  InternalThreadLocalRAII(InternalThreadLocalRAII const &) = delete;
+  ~InternalThreadLocalRAII();
+private:
+  Motherboard *fPrevious;
+};
 }
 
 }

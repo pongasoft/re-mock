@@ -64,6 +64,7 @@ set(re-mock_BUILD_HEADERS
     ${re-mock_CPP_SRC_DIR}/re/mock/Constants.h
     ${re-mock_CPP_SRC_DIR}/re/mock/DeviceTesters.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Errors.h
+    ${re-mock_CPP_SRC_DIR}/re/mock/Extension.h
     ${re-mock_CPP_SRC_DIR}/re/mock/FileManager.h
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.h
     ${re-mock_CPP_SRC_DIR}/re/mock/Motherboard.h
@@ -86,6 +87,7 @@ set(re-mock_BUILD_HEADERS
 set(re-mock_BUILD_SOURCES
     ${re-mock_CPP_SRC_DIR}/re/mock/Config.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/DeviceTesters.cpp
+    ${re-mock_CPP_SRC_DIR}/re/mock/Extension.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/FileManager.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/Jukebox.cpp
     ${re-mock_CPP_SRC_DIR}/re/mock/MockDevices.cpp

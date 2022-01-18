@@ -138,3 +138,12 @@ tester.device().loadMoreSample("/user_samples/1/item"); // to load all of it
 The previously described api (`tester.device().loadUserSampleAsync()`) also takes an additional optional parameter providing a `resource::LoadingContext` to achieve the same kind of desired result.
 
 Check the test [TestRackExtension.cpp / RealtimeController_UserSample](../test/cpp/re/mock/TestRackExtension.cpp) unit test for examples on how to use these APIs.
+
+#### Mocking slow/failure loading
+
+As shown in the case of samples and blobs, the `DeviceConfig` offers an API to associate a `resource::LoadingContext` to a resource path. A similar API exists on the device itself in order to be able to handle cases after the device has been instantiated:
+
+```cpp
+tester.device().setResourceLoadingContext("/Private/sample.default", resource::LoadingContext{}.status(resource::LoadStatus::kMissing));
+tester.device().clearResourceLoadingContext("/Private/sample.default"); // to remove it
+```

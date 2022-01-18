@@ -19,6 +19,10 @@
 #ifndef RE_MOCK_RE_MOCK_H
 #define RE_MOCK_RE_MOCK_H
 
+// Contains the DeviceTester classes like InstrumentTester, StudioEffectTester
 #include "DeviceTesters.h"
+
+// Contains the Extension / ExtensionDevice (typed version) api
+#include "Extension.h"
 
 #endif //RE_MOCK_RE_MOCK_H

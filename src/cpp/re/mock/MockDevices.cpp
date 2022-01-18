@@ -547,8 +547,8 @@ void MockNotePlayer::setBypassed(bool iBypassed)
 // MockNotePlayer::wire
 //------------------------------------------------------------------------
 void MockNotePlayer::wire(Rack &iRack,
-                          Rack::Extension const &iFromExtension,
-                          Rack::Extension const &iToExtension)
+                          rack::Extension const &iFromExtension,
+                          rack::Extension const &iToExtension)
 {
   iRack.wire(iFromExtension.getNoteOutSocket(), iToExtension.getNoteInSocket());
 }

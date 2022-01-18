@@ -32,7 +32,7 @@ DeviceTester::DeviceTester(Config const &iDeviceConfig, int iSampleRate) :
 //------------------------------------------------------------------------
 // DeviceTester::wire
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MAUSrc> &DeviceTester::wire(Rack::ExtensionDevice<MAUSrc> &iSrc,
+rack::ExtensionDevice<MAUSrc> &DeviceTester::wire(rack::ExtensionDevice<MAUSrc> &iSrc,
                                                   std::optional<std::string> iLeftInSocketName,
                                                   std::optional<std::string> iRightInSocketName)
 {
@@ -48,7 +48,7 @@ Rack::ExtensionDevice<MAUSrc> &DeviceTester::wire(Rack::ExtensionDevice<MAUSrc> 
 //------------------------------------------------------------------------
 // DeviceTester::wireNewAudioSrc
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MAUSrc> DeviceTester::wireNewAudioSrc(std::optional<std::string> iLeftInSocketName,
+rack::ExtensionDevice<MAUSrc> DeviceTester::wireNewAudioSrc(std::optional<std::string> iLeftInSocketName,
                                                             std::optional<std::string> iRightInSocketName)
 {
   auto src = fRack.newDevice<MAUSrc>(MAUSrc::CONFIG);
@@ -59,7 +59,7 @@ Rack::ExtensionDevice<MAUSrc> DeviceTester::wireNewAudioSrc(std::optional<std::s
 //------------------------------------------------------------------------
 // DeviceTester::unwire
 //------------------------------------------------------------------------
-void DeviceTester::unwire(Rack::ExtensionDevice<MAUSrc> &iSrc)
+void DeviceTester::unwire(rack::ExtensionDevice<MAUSrc> &iSrc)
 {
   fRack.unwire(iSrc.getStereoAudioOutSocket(MAUSrc::LEFT_SOCKET, MAUSrc::RIGHT_SOCKET));
 }
@@ -67,8 +67,8 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MAUSrc> &iSrc)
 //------------------------------------------------------------------------
 // DeviceTester::wire
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MAUDst> &
-DeviceTester::wire(Rack::ExtensionDevice<MAUDst> &iDst,
+rack::ExtensionDevice<MAUDst> &
+DeviceTester::wire(rack::ExtensionDevice<MAUDst> &iDst,
                    std::optional<std::string> iLeftOutSocketName,
                    std::optional<std::string> iRightOutSocketName)
 {
@@ -83,7 +83,7 @@ DeviceTester::wire(Rack::ExtensionDevice<MAUDst> &iDst,
 //------------------------------------------------------------------------
 // DeviceTester::wireNewAudioDst
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MAUDst> DeviceTester::wireNewAudioDst(std::optional<std::string> iLeftOutSocketName,
+rack::ExtensionDevice<MAUDst> DeviceTester::wireNewAudioDst(std::optional<std::string> iLeftOutSocketName,
                                                             std::optional<std::string> iRightOutSocketName)
 {
   auto dst = fRack.newDevice<MAUDst>(MAUDst::CONFIG);
@@ -94,7 +94,7 @@ Rack::ExtensionDevice<MAUDst> DeviceTester::wireNewAudioDst(std::optional<std::s
 //------------------------------------------------------------------------
 // DeviceTester::unwire
 //------------------------------------------------------------------------
-void DeviceTester::unwire(Rack::ExtensionDevice<MAUDst> &iDst)
+void DeviceTester::unwire(rack::ExtensionDevice<MAUDst> &iDst)
 {
   fRack.unwire(iDst.getAudioInSocket(MAUDst::LEFT_SOCKET));
   fRack.unwire(iDst.getAudioInSocket(MAUDst::RIGHT_SOCKET));
@@ -103,8 +103,8 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MAUDst> &iDst)
 //------------------------------------------------------------------------
 // DeviceTester::wire
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MCVSrc> &
-DeviceTester::wire(Rack::ExtensionDevice<MCVSrc> &iSrc, std::string const &iCVInSocketName)
+rack::ExtensionDevice<MCVSrc> &
+DeviceTester::wire(rack::ExtensionDevice<MCVSrc> &iSrc, std::string const &iCVInSocketName)
 {
   fRack.wire(iSrc.getCVOutSocket(MCVSrc::SOCKET), fDevice.getCVInSocket(iCVInSocketName));
   return iSrc;
@@ -113,7 +113,7 @@ DeviceTester::wire(Rack::ExtensionDevice<MCVSrc> &iSrc, std::string const &iCVIn
 //------------------------------------------------------------------------
 // DeviceTester::wireNewCVSrc
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MCVSrc> DeviceTester::wireNewCVSrc(std::optional<std::string> iCVInSocketName)
+rack::ExtensionDevice<MCVSrc> DeviceTester::wireNewCVSrc(std::optional<std::string> iCVInSocketName)
 {
   auto src = fRack.newDevice<MCVSrc>(MCVSrc::CONFIG);
   if(iCVInSocketName)
@@ -124,7 +124,7 @@ Rack::ExtensionDevice<MCVSrc> DeviceTester::wireNewCVSrc(std::optional<std::stri
 //------------------------------------------------------------------------
 // DeviceTester::unwire
 //------------------------------------------------------------------------
-void DeviceTester::unwire(Rack::ExtensionDevice<MCVSrc> &iSrc)
+void DeviceTester::unwire(rack::ExtensionDevice<MCVSrc> &iSrc)
 {
   fRack.unwire(iSrc.getCVOutSocket(MCVSrc::SOCKET));
 }
@@ -132,8 +132,8 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MCVSrc> &iSrc)
 //------------------------------------------------------------------------
 // DeviceTester::wire
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MCVDst> &
-DeviceTester::wire(Rack::ExtensionDevice<MCVDst> &iDst, std::string const &iCVOutSocketName)
+rack::ExtensionDevice<MCVDst> &
+DeviceTester::wire(rack::ExtensionDevice<MCVDst> &iDst, std::string const &iCVOutSocketName)
 {
   fRack.wire(fDevice.getCVOutSocket(iCVOutSocketName), iDst.getCVInSocket(MCVDst::SOCKET));
   return iDst;
@@ -142,7 +142,7 @@ DeviceTester::wire(Rack::ExtensionDevice<MCVDst> &iDst, std::string const &iCVOu
 //------------------------------------------------------------------------
 // DeviceTester::wireNewCVDst
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MCVDst> DeviceTester::wireNewCVDst(std::optional<std::string> iCVOutSocketName)
+rack::ExtensionDevice<MCVDst> DeviceTester::wireNewCVDst(std::optional<std::string> iCVOutSocketName)
 {
   auto dst = fRack.newDevice<MCVDst>(MCVDst::CONFIG);
   if(iCVOutSocketName)
@@ -153,7 +153,7 @@ Rack::ExtensionDevice<MCVDst> DeviceTester::wireNewCVDst(std::optional<std::stri
 //------------------------------------------------------------------------
 // DeviceTester::unwire
 //------------------------------------------------------------------------
-void DeviceTester::unwire(Rack::ExtensionDevice<MCVDst> &iDst)
+void DeviceTester::unwire(rack::ExtensionDevice<MCVDst> &iDst)
 {
   fRack.unwire(iDst.getCVInSocket(MCVSrc::SOCKET));
 }
@@ -161,7 +161,7 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MCVDst> &iDst)
 //------------------------------------------------------------------------
 // DeviceTester::wireNewNotePlayerSrc
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MNPSrc> DeviceTester::wireNewNotePlayerSrc()
+rack::ExtensionDevice<MNPSrc> DeviceTester::wireNewNotePlayerSrc()
 {
   auto src = fRack.newDevice<MNPSrc>(MNPSrc::CONFIG);
   fRack.wire(src.getNoteOutSocket(), fDevice.getNoteInSocket());
@@ -171,7 +171,7 @@ Rack::ExtensionDevice<MNPSrc> DeviceTester::wireNewNotePlayerSrc()
 //------------------------------------------------------------------------
 // DeviceTester::unwire
 //------------------------------------------------------------------------
-void DeviceTester::unwire(Rack::ExtensionDevice<MNPSrc> &iSrc)
+void DeviceTester::unwire(rack::ExtensionDevice<MNPSrc> &iSrc)
 {
   fRack.unwire(iSrc.getNoteOutSocket());
 }
@@ -179,7 +179,7 @@ void DeviceTester::unwire(Rack::ExtensionDevice<MNPSrc> &iSrc)
 //------------------------------------------------------------------------
 // DeviceTester::wireNewNotePlayerDst
 //------------------------------------------------------------------------
-Rack::ExtensionDevice<MNPDst> DeviceTester::wireNewNotePlayerDst()
+rack::ExtensionDevice<MNPDst> DeviceTester::wireNewNotePlayerDst()
 {
   auto dst = fRack.newDevice<MNPDst>(MNPDst::CONFIG);
   fRack.wire(fDevice.getNoteOutSocket(), dst.getNoteInSocket());
@@ -189,7 +189,7 @@ Rack::ExtensionDevice<MNPDst> DeviceTester::wireNewNotePlayerDst()
 //------------------------------------------------------------------------
 // DeviceTester::unwire
 //------------------------------------------------------------------------
-void DeviceTester::unwire(Rack::ExtensionDevice<MNPDst> &iDst)
+void DeviceTester::unwire(rack::ExtensionDevice<MNPDst> &iDst)
 {
   fRack.unwire(iDst.getNoteInSocket());
 }
@@ -299,6 +299,14 @@ void DeviceTester::transportStop()
 {
   if(fRack.getTransportPlaying())
     fRack.transportStop();
+}
+
+//------------------------------------------------------------------------
+// DeviceTester::transportPlayPos
+//------------------------------------------------------------------------
+sequencer::Time DeviceTester::transportPlayPos() const
+{
+  return sequencer::Time::from(fRack.getTransportPlayPos(), transportTimeSignature());
 }
 
 //------------------------------------------------------------------------

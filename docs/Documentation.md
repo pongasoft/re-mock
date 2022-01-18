@@ -6,6 +6,9 @@ It is strongly recommended reading the [Quick Start Guide](Quick_Start.md) prior
 > #### Note
 > All classes are under the `re::mock` namespace, so it will be omitted from now on.
 
+> #### Note
+> The documentation uses the terminology "device" to refer to the rack extension under test. For example, `tester.device()` returns the `rack::ExtensionDevice` instance that is configured for testing.
+
 ### The main event loop
 
 Recon/Reason has a main event loop, calling `JBox_Export_RenderRealtime` over and over as fast as necessary. For example, at a sample rate of 48000, it calls this function 750 times per second which can make logging and/or debugging quite challenging.
@@ -123,7 +126,7 @@ auto outputBuffer = tester.nextBatch(inputBuffer);
 
 // is 100% equivalent to:
 tester.src()->fBuffer = inputBuffer;
-tester.rack().nextBatch();
+tester.nextBatch();
 auto outputBuffer = tester.dst()->fBuffer;
 ```
 
@@ -161,7 +164,7 @@ auto outputBuffer = tester.nextBatch(noteEvents);
 
 // is 100% equivalent to:
 tester.setNoteEvents(noteEvents);
-tester.rack().nextBatch();
+tester.nextBatch();
 auto outputBuffer = tester.dst()->fBuffer;
 ```
 
@@ -203,7 +206,7 @@ auto events = tester.nextBatch(noteEvents);
 
 // is 100% equivalent to:
 tester.src()->fNoteEvents = noteEvents;
-tester.rack().nextBatch();
+tester.nextBatch();
 auto events = tester.dst()->fNoteEvents;
 ```
 
@@ -357,6 +360,9 @@ ASSERT_FLOAT_EQ(<expected value>, cvDst->fValue);
 ### Accessing the rack
 
 The tester allows access to the main device under test with `tester.device()` and to the rack with `tester.rack()`. The rack (`Rack`) is actually the main class that models the full system (the concept of testers is merely a wrapper around the rack to provide higher level APIs designed to facilitate testing a single device). The rack gives access to system level properties, like the tempo, the play position, etc... which are independent of the main device.
+
+> #### Note
+> Most rack APIs are mirrored on the tester itself so using the rack directly should be very rare.
 
 ### The sequencer track
 

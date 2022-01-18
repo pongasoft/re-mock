@@ -117,50 +117,75 @@ public:
   inline Rack &rack() { return fRack; }
   inline Rack const &rack() const { return fRack; }
 
-  Rack::ExtensionDevice<MAUSrc> &wire(Rack::ExtensionDevice<MAUSrc> &iSrc,
+  rack::ExtensionDevice<MAUSrc> &wire(rack::ExtensionDevice<MAUSrc> &iSrc,
                                       std::optional<std::string> iLeftInSocketName = std::nullopt,
                                       std::optional<std::string> iRightInSocketName = std::nullopt);
 
-  Rack::ExtensionDevice<MAUSrc> wireNewAudioSrc(std::optional<std::string> iLeftInSocketName = std::nullopt,
+  rack::ExtensionDevice<MAUSrc> wireNewAudioSrc(std::optional<std::string> iLeftInSocketName = std::nullopt,
                                                 std::optional<std::string> iRightInSocketName = std::nullopt);
 
-  void unwire(Rack::ExtensionDevice<MAUSrc> &iSrc);
+  void unwire(rack::ExtensionDevice<MAUSrc> &iSrc);
 
-  Rack::ExtensionDevice<MAUDst> &wire(Rack::ExtensionDevice<MAUDst> &iDst,
+  rack::ExtensionDevice<MAUDst> &wire(rack::ExtensionDevice<MAUDst> &iDst,
                                       std::optional<std::string> iLeftOutSocketName = std::nullopt,
                                       std::optional<std::string> iRightOutSocketName = std::nullopt);
 
-  Rack::ExtensionDevice<MAUDst> wireNewAudioDst(std::optional<std::string> iLeftOutSocketName = std::nullopt,
+  rack::ExtensionDevice<MAUDst> wireNewAudioDst(std::optional<std::string> iLeftOutSocketName = std::nullopt,
                                                 std::optional<std::string> iRightOutSocketName = std::nullopt);
 
-  void unwire(Rack::ExtensionDevice<MAUDst> &iDst);
+  void unwire(rack::ExtensionDevice<MAUDst> &iDst);
 
-  Rack::ExtensionDevice<MCVSrc> &wire(Rack::ExtensionDevice<MCVSrc> &iSrc, std::string const &iCVInSocketName);
+  rack::ExtensionDevice<MCVSrc> &wire(rack::ExtensionDevice<MCVSrc> &iSrc, std::string const &iCVInSocketName);
 
-  Rack::ExtensionDevice<MCVSrc> wireNewCVSrc(std::optional<std::string> iCVInSocketName = std::nullopt);
+  rack::ExtensionDevice<MCVSrc> wireNewCVSrc(std::optional<std::string> iCVInSocketName = std::nullopt);
 
-  void unwire(Rack::ExtensionDevice<MCVSrc> &iSrc);
+  void unwire(rack::ExtensionDevice<MCVSrc> &iSrc);
 
-  Rack::ExtensionDevice<MCVDst> &wire(Rack::ExtensionDevice<MCVDst> &iDst, std::string const &iCVOutSocketName);
+  rack::ExtensionDevice<MCVDst> &wire(rack::ExtensionDevice<MCVDst> &iDst, std::string const &iCVOutSocketName);
 
-  Rack::ExtensionDevice<MCVDst> wireNewCVDst(std::optional<std::string> iCVOutSocketName = std::nullopt);
+  rack::ExtensionDevice<MCVDst> wireNewCVDst(std::optional<std::string> iCVOutSocketName = std::nullopt);
 
-  void unwire(Rack::ExtensionDevice<MCVDst> &iDst);
+  void unwire(rack::ExtensionDevice<MCVDst> &iDst);
 
-  Rack::ExtensionDevice<MNPSrc> wireNewNotePlayerSrc();
+  rack::ExtensionDevice<MNPSrc> wireNewNotePlayerSrc();
 
-  void unwire(Rack::ExtensionDevice<MNPSrc> &iSrc);
+  void unwire(rack::ExtensionDevice<MNPSrc> &iSrc);
 
-  Rack::ExtensionDevice<MNPDst> wireNewNotePlayerDst();
+  rack::ExtensionDevice<MNPDst> wireNewNotePlayerDst();
 
-  void unwire(Rack::ExtensionDevice<MNPDst> &iDst);
+  void unwire(rack::ExtensionDevice<MNPDst> &iDst);
 
-  void transportStart();
-  void transportStop();
-  inline void transportReset() { fRack.setTransportPlayPos(0); }
+  int getSampleRate() const { return fRack.getSampleRate(); }
 
   inline void enableTransport() { fTransportEnabled = true; }
   inline void disableTransport() { transportStop(); fTransportEnabled = false; }
+
+  void transportStart();
+  void transportStop();
+  inline bool transportPlaying() const { return fRack.getTransportPlaying(); }
+  inline void transportReset() { fRack.setTransportPlayPos(0); }
+
+  void requestResetAudio() { fRack.requestResetAudio(); }
+
+  sequencer::Time transportPlayPos() const;
+  void transportPlayPos(sequencer::Time iTime) { fRack.setTransportPlayPos(iTime); }
+
+  TJBox_Float64 transportTempo() const { return fRack.getTransportTempo(); }
+  void transportTempo(TJBox_Float64 iTempo) { fRack.setTransportTempo(iTempo); }
+
+  sequencer::TimeSignature transportTimeSignature() const { return fRack.getTransportTimeSignature(); }
+  void transportTimeSignature(sequencer::TimeSignature iTimeSignature) { fRack.setTransportTimeSignature(iTimeSignature); }
+
+  bool transportLoopEnabled() const { return fRack.getTransportLoopEnabled(); }
+
+  void transportEnableLoop() { fRack.setTransportLoopEnabled(true); }
+  void transportDisableLoop() { fRack.setTransportLoopEnabled(false); }
+
+  void transportLoop(sequencer::Time iStart, sequencer::Time iEnd) { fRack.setTransportLoop(iStart, iEnd); }
+  void transportLoop(sequencer::Time iStart, sequencer::Duration iDuration) { fRack.setTransportLoop(iStart, iDuration); }
+
+  sequencer::Time transportSongEnd() const { return fRack.getSongEnd(); }
+  void transportSongEnd(sequencer::Time iSongEnd) { fRack.setSongEnd(iSongEnd); }
 
   void setNoteEvents(MockDevice::NoteEvents iNoteEvents) { fDevice.setNoteInEvents(iNoteEvents.events()); }
 
@@ -188,10 +213,10 @@ public:
 
 protected:
   template<typename Device>
-  Rack::ExtensionDevice<Device> getExtensionDevice();
+  rack::ExtensionDevice<Device> getExtensionDevice();
 
   Rack fRack;
-  Rack::Extension fDevice;
+  rack::Extension fDevice;
   Config fDeviceConfig;
   bool fTransportEnabled{true};
 };
@@ -213,11 +238,11 @@ public:
       RE_MOCK_ASSERT(iDeviceConfig.getConfig().info().fDeviceType == DeviceType::kHelper);
     }
 
-  inline Rack::ExtensionDevice<Helper> &device() { return fHelper; }
-  inline Rack::ExtensionDevice<Helper> const &device() const { return fHelper; }
+  inline rack::ExtensionDevice<Helper> &device() { return fHelper; }
+  inline rack::ExtensionDevice<Helper> const &device() const { return fHelper; }
 
 protected:
-  Rack::ExtensionDevice<Helper> fHelper;
+  rack::ExtensionDevice<Helper> fHelper;
 };
 
 /**
@@ -258,15 +283,15 @@ public:
   TJBox_OnOffBypassStates getBypassState() const { return fDevice.getEffectBypassState(); }
   void setBypassState(TJBox_OnOffBypassStates iState) { fDevice.setEffectBypassState(iState); }
 
-  inline Rack::ExtensionDevice<MAUSrc> &src() { return fSrc; }
-  inline Rack::ExtensionDevice<MAUSrc> const &src() const { return fSrc; }
+  inline rack::ExtensionDevice<MAUSrc> &src() { return fSrc; }
+  inline rack::ExtensionDevice<MAUSrc> const &src() const { return fSrc; }
 
-  inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
-  inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }
+  inline rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
+  inline rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }
 
 protected:
-  Rack::ExtensionDevice<MAUSrc> fSrc;
-  Rack::ExtensionDevice<MAUDst> fDst;
+  rack::ExtensionDevice<MAUSrc> fSrc;
+  rack::ExtensionDevice<MAUDst> fDst;
 };
 
 template<typename Effect>
@@ -280,11 +305,11 @@ public:
     RE_MOCK_ASSERT(iDeviceConfig.getConfig().info().fDeviceType == DeviceType::kStudioFX);
   }
 
-  inline Rack::ExtensionDevice<Effect> &device() { return fEffect; }
-  inline Rack::ExtensionDevice<Effect> const &device() const { return fEffect; }
+  inline rack::ExtensionDevice<Effect> &device() { return fEffect; }
+  inline rack::ExtensionDevice<Effect> const &device() const { return fEffect; }
 
 protected:
-  Rack::ExtensionDevice<Effect> fEffect;
+  rack::ExtensionDevice<Effect> fEffect;
 };
 
 template<typename Effect>
@@ -298,11 +323,11 @@ public:
     RE_MOCK_ASSERT(iDeviceConfig.getConfig().info().fDeviceType == DeviceType::kCreativeFX);
   }
 
-  inline Rack::ExtensionDevice<Effect> &device() { return fEffect; }
-  inline Rack::ExtensionDevice<Effect> const &device() const { return fEffect; }
+  inline rack::ExtensionDevice<Effect> &device() { return fEffect; }
+  inline rack::ExtensionDevice<Effect> const &device() const { return fEffect; }
 
 protected:
-  Rack::ExtensionDevice<Effect> fEffect;
+  rack::ExtensionDevice<Effect> fEffect;
 };
 
 class ExtensionInstrumentTester : public DeviceTester
@@ -317,11 +342,11 @@ public:
   std::unique_ptr<MockAudioDevice::Sample> bounce(tester::Timeline iTimeline);
   std::unique_ptr<MockAudioDevice::Sample> bounce(Duration iDuration, std::optional<tester::Timeline> iTimeline = std::nullopt);
 
-  inline Rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
-  inline Rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }
+  inline rack::ExtensionDevice<MAUDst> &dst() { return fDst; }
+  inline rack::ExtensionDevice<MAUDst> const &dst() const { return fDst; }
 
 protected:
-  Rack::ExtensionDevice<MAUDst> fDst;
+  rack::ExtensionDevice<MAUDst> fDst;
 };
 
 template<typename Instrument>
@@ -333,11 +358,11 @@ public:
     fInstrument{getExtensionDevice<Instrument>()}
   {}
 
-  inline Rack::ExtensionDevice<Instrument> &device() { return fInstrument; }
-  inline Rack::ExtensionDevice<Instrument> const &device() const { return fInstrument; }
+  inline rack::ExtensionDevice<Instrument> &device() { return fInstrument; }
+  inline rack::ExtensionDevice<Instrument> const &device() const { return fInstrument; }
 
 protected:
-  Rack::ExtensionDevice<Instrument> fInstrument;
+  rack::ExtensionDevice<Instrument> fInstrument;
 };
 
 class ExtensionNotePlayerTester : public DeviceTester
@@ -351,15 +376,15 @@ public:
   bool isBypassed() const { return fDevice.isNotePlayerBypassed(); }
   void setBypassed(bool iBypassed) { fDevice.setNotePlayerBypassed(iBypassed); }
 
-  inline Rack::ExtensionDevice<MNPSrc> &src() { return fSrc; }
-  inline Rack::ExtensionDevice<MNPSrc> const &src() const { return fSrc; }
+  inline rack::ExtensionDevice<MNPSrc> &src() { return fSrc; }
+  inline rack::ExtensionDevice<MNPSrc> const &src() const { return fSrc; }
 
-  inline Rack::ExtensionDevice<MNPDst> &dst() { return fDst; }
-  inline Rack::ExtensionDevice<MNPDst> const &dst() const { return fDst; }
+  inline rack::ExtensionDevice<MNPDst> &dst() { return fDst; }
+  inline rack::ExtensionDevice<MNPDst> const &dst() const { return fDst; }
 
 protected:
-  Rack::ExtensionDevice<MNPSrc> fSrc;
-  Rack::ExtensionDevice<MNPDst> fDst;
+  rack::ExtensionDevice<MNPSrc> fSrc;
+  rack::ExtensionDevice<MNPDst> fDst;
 };
 
 template<typename NotePlayer>
@@ -371,18 +396,18 @@ public:
     fNotePlayer{getExtensionDevice<NotePlayer>()}
   {}
 
-  inline Rack::ExtensionDevice<NotePlayer> &device() { return fNotePlayer; }
-  inline Rack::ExtensionDevice<NotePlayer> const &device() const { return fNotePlayer; }
+  inline rack::ExtensionDevice<NotePlayer> &device() { return fNotePlayer; }
+  inline rack::ExtensionDevice<NotePlayer> const &device() const { return fNotePlayer; }
 
 protected:
-  Rack::ExtensionDevice<NotePlayer> fNotePlayer;
+  rack::ExtensionDevice<NotePlayer> fNotePlayer;
 };
 
 //------------------------------------------------------------------------
 // DeviceTester::getExtensionDevice
 //------------------------------------------------------------------------
 template<typename Device>
-Rack::ExtensionDevice<Device> DeviceTester::getExtensionDevice()
+rack::ExtensionDevice<Device> DeviceTester::getExtensionDevice()
 {
   return fRack.getDevice<Device>(fDevice.getInstanceId());
 }
