@@ -27,8 +27,8 @@ namespace re::mock {
 class PatchParser
 {
 public:
-  static resource::Patch from(resource::File iPatchFile);
-  static resource::Patch from(resource::String iPatchString);
+  static std::unique_ptr<resource::Patch> from(resource::File iPatchFile);
+  static std::unique_ptr<resource::Patch> from(resource::String iPatchString);
 };
 
 }

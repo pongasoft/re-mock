@@ -33,7 +33,7 @@ namespace impl {
 template<typename Container, size_t BUFFER_SIZE = 1024>
 long loadFile(resource::File const &iFile, Container &oBuffer)
 {
-  std::ifstream ifs{iFile.fFilename, std::fstream::binary};
+  std::ifstream ifs{iFile.fFilePath, std::fstream::binary};
   if(!ifs)
     return -1;
 
@@ -49,7 +49,7 @@ long loadFile(resource::File const &iFile, Container &oBuffer)
 
     if(ifs.bad())
     {
-      RE_MOCK_LOG_ERROR("Error while reading file %s", iFile.fFilename);
+      RE_MOCK_LOG_ERROR("Error while reading file %s", iFile.fFilePath);
       return -1;
     }
 
@@ -72,7 +72,7 @@ long loadFile(resource::File const &iFile, Container &oBuffer)
 //------------------------------------------------------------------------
 std::ifstream::pos_type FileManager::fileSize(resource::File const &iFile)
 {
-  std::ifstream in(iFile.fFilename, std::ifstream::ate | std::ifstream::binary);
+  std::ifstream in(iFile.fFilePath, std::ifstream::ate | std::ifstream::binary);
   return in.tellg();
 }
 
@@ -81,7 +81,7 @@ std::ifstream::pos_type FileManager::fileSize(resource::File const &iFile)
 //------------------------------------------------------------------------
 bool FileManager::fileExists(resource::File const &iFile)
 {
-  return std::ifstream{iFile.fFilename}.is_open();
+  return std::ifstream{iFile.fFilePath}.is_open();
 }
 
 //------------------------------------------------------------------------
@@ -107,10 +107,10 @@ std::unique_ptr<resource::Blob> FileManager::loadBlob(resource::File const &iFil
 std::unique_ptr<smf::MidiFile> FileManager::loadMidi(resource::File const &iFile, bool iConvertToReasonPPQ)
 {
   auto midiFile = std::make_unique<smf::MidiFile>();
-  midiFile->read(iFile.fFilename);
+  midiFile->read(iFile.fFilePath);
   if(!midiFile->status())
   {
-    RE_MOCK_LOG_ERROR("Error opening midi file [%s]", iFile.fFilename);
+    RE_MOCK_LOG_ERROR("Error opening midi file [%s]", iFile.fFilePath);
     return nullptr;
   }
 
@@ -253,12 +253,12 @@ std::unique_ptr<resource::Sample> FileManager::loadSample(resource::File const &
   if(!FileManager::fileExists(iFile))
     return nullptr;
 
-  SndfileHandle sndFile(iFile.fFilename.c_str());
+  SndfileHandle sndFile(iFile.fFilePath.c_str());
 
   if(!sndFile.rawHandle())
   {
     RE_MOCK_LOG_ERROR("Error opening sample file [%s] %d/%s",
-                      iFile.fFilename.c_str(),
+                      iFile.fFilePath.c_str(),
                       sndFile.error(),
                       sndFile.strError());
     return nullptr;
@@ -276,7 +276,7 @@ std::unique_ptr<resource::Sample> FileManager::loadSample(resource::File const &
   else
   {
     RE_MOCK_LOG_ERROR("Error reading sample file [%s] %d/%s",
-                      iFile.fFilename.c_str(),
+                      iFile.fFilePath.c_str(),
                       sndFile.error(),
                       sndFile.strError());
     return nullptr;
@@ -291,7 +291,7 @@ void FileManager::saveSample(TJBox_UInt32 iChannels,
                              std::vector<TJBox_AudioSample> const &iData,
                              resource::File const &iToFile)
 {
-  SndfileHandle sndFile(iToFile.fFilename.c_str(),
+  SndfileHandle sndFile(iToFile.fFilePath.c_str(),
                         SFM_WRITE, // open for writing
                         SF_FORMAT_WAV | SF_FORMAT_PCM_32,
                         iChannels,
@@ -300,7 +300,7 @@ void FileManager::saveSample(TJBox_UInt32 iChannels,
   if(!sndFile.rawHandle())
   {
     RE_MOCK_LOG_ERROR("Error opening sample file [%s] %d/%s",
-                      iToFile.fFilename.c_str(),
+                      iToFile.fFilePath.c_str(),
                       sndFile.error(),
                       sndFile.strError());
     return;
@@ -309,7 +309,7 @@ void FileManager::saveSample(TJBox_UInt32 iChannels,
   if(!impl::saveSample(iData, sndFile))
   {
     RE_MOCK_LOG_ERROR("Error writing sample file [%s] %d/%s",
-                      iToFile.fFilename.c_str(),
+                      iToFile.fFilePath.c_str(),
                       sndFile.error(),
                       sndFile.strError());
   }

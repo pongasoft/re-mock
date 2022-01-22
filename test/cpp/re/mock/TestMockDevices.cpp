@@ -91,13 +91,13 @@ TEST(MockDevices, Sample_trim)
   {
     auto const sample = MockAudioDevice::Sample{}.channels(1).data({1, 2, 3, 4, 5});
 
-    ASSERT_EQ(sample, sample.clone().trimLeft());
-    ASSERT_EQ(sample, sample.clone().trimRight());
+    ASSERT_EQ(sample, sample.clone().trimBeginning());
+    ASSERT_EQ(sample, sample.clone().trimEnd());
     ASSERT_EQ(sample, sample.clone().trim());
 
     auto const sample1 = MockAudioDevice::Sample{}.channels(1).data({0, 0, 0, 1, 2, 3, 4, 5, 0, 0, 0, 0});
-    ASSERT_EQ(MockAudioDevice::Sample{}.channels(1).data({1, 2, 3, 4, 5, 0, 0, 0, 0}), sample1.clone().trimLeft());
-    ASSERT_EQ(MockAudioDevice::Sample{}.channels(1).data({0, 0, 0, 1, 2, 3, 4, 5}), sample1.clone().trimRight());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(1).data({1, 2, 3, 4, 5, 0, 0, 0, 0}), sample1.clone().trimBeginning());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(1).data({0, 0, 0, 1, 2, 3, 4, 5}), sample1.clone().trimEnd());
     ASSERT_EQ(sample, sample1.clone().trim());
   }
 
@@ -105,23 +105,23 @@ TEST(MockDevices, Sample_trim)
   {
     auto const sample = MockAudioDevice::Sample{}.channels(2).data({1, 2, 3, 4, 5, 6});
 
-    ASSERT_EQ(sample, sample.clone().trimLeft());
-    ASSERT_EQ(sample, sample.clone().trimRight());
+    ASSERT_EQ(sample, sample.clone().trimBeginning());
+    ASSERT_EQ(sample, sample.clone().trimEnd());
     ASSERT_EQ(sample, sample.clone().trim());
 
     auto const sample1 = MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 0, 0});
-    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({1, 2, 3, 4, 5, 6, 0, 0, 0, 0}), sample1.clone().trimLeft());
-    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 2, 3, 4, 5, 6}), sample1.clone().trimRight());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({1, 2, 3, 4, 5, 6, 0, 0, 0, 0}), sample1.clone().trimBeginning());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 2, 3, 4, 5, 6}), sample1.clone().trimEnd());
     ASSERT_EQ(sample, sample1.clone().trim());
 
     auto const sample2 = MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 0});
-    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 1, 2, 3, 4, 5, 6, 0, 0, 0}), sample2.clone().trimLeft());
-    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 1, 2, 3, 4, 5, 6, 0}), sample2.clone().trimRight());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 1, 2, 3, 4, 5, 6, 0, 0, 0}), sample2.clone().trimBeginning());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 1, 2, 3, 4, 5, 6, 0}), sample2.clone().trimEnd());
     ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 1, 2, 3, 4, 5, 6, 0}), sample2.clone().trim());
 
     auto const sample3 = MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 0, 2, 3, 4, 5, 0, 6, 0, 0, 0, 0});
-    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({1, 0, 2, 3, 4, 5, 0, 6, 0, 0, 0, 0}), sample3.clone().trimLeft());
-    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 0, 2, 3, 4, 5, 0, 6}), sample3.clone().trimRight());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({1, 0, 2, 3, 4, 5, 0, 6, 0, 0, 0, 0}), sample3.clone().trimBeginning());
+    ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({0, 0, 0, 0, 1, 0, 2, 3, 4, 5, 0, 6}), sample3.clone().trimEnd());
     ASSERT_EQ(MockAudioDevice::Sample{}.channels(2).data({1, 0, 2, 3, 4, 5, 0, 6}), sample3.clone().trim());
   }
 

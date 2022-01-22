@@ -51,7 +51,8 @@ void log_jukebox_error(const std::string& format, Args ... args)
   std::cerr << fmt::printf(format, std::forward<Args>(args)...) << std::endl;
 }
 
-// Error handling
+/**
+ * When `re-mock` detects an error, it usually throws an exception of this type via the `RE_MOCK_ASSERT` define */
 struct Exception : public std::logic_error {
   explicit Exception(std::string const &s) : std::logic_error(s.c_str()) {}
   explicit Exception(char const *s) : std::logic_error(s) {}

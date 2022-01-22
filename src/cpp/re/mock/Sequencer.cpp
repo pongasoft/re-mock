@@ -188,7 +188,7 @@ Track &Track::event(TJBox_Float64 iAtPPQ, Event iEvent)
 //------------------------------------------------------------------------
 // Track::noteOn
 //------------------------------------------------------------------------
-Track &Track::noteOn(TJBox_UInt8 iNoteNumber, PPQ iTime, TJBox_UInt8 iNoteVelocity)
+Track &Track::noteOn(PPQ iTime, TJBox_UInt8 iNoteNumber, TJBox_UInt8 iNoteVelocity)
 {
   event(iTime.count(),
         [iNoteNumber, iNoteVelocity](Motherboard &iMotherboard, Batch const &iBatch) {
@@ -203,7 +203,7 @@ Track &Track::noteOn(TJBox_UInt8 iNoteNumber, PPQ iTime, TJBox_UInt8 iNoteVeloci
 //------------------------------------------------------------------------
 // Track::noteOff
 //------------------------------------------------------------------------
-Track &Track::noteOff(TJBox_UInt8 iNoteNumber, PPQ iTime)
+Track &Track::noteOff(PPQ iTime, TJBox_UInt8 iNoteNumber)
 {
   event(iTime.count(),
         [iNoteNumber](Motherboard &iMotherboard, Batch const &iBatch) {
@@ -217,8 +217,8 @@ Track &Track::noteOff(TJBox_UInt8 iNoteNumber, PPQ iTime)
 //------------------------------------------------------------------------
 Track &Track::note(Note const &iNote)
 {
-  noteOn(iNote.fNumber, iNote.fTime, iNote.fVelocity);
-  noteOff(iNote.fNumber, iNote.fTime + iNote.fDuration);
+  noteOn(iNote.fTime, iNote.fNumber, iNote.fVelocity);
+  noteOff(iNote.fTime + iNote.fDuration, iNote.fNumber);
   return *this;
 }
 

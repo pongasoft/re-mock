@@ -96,11 +96,11 @@ TEST(Patch, String)
 
   auto patch = PatchParser::from(resource::String{patchString});
 
-  ASSERT_FLOAT_EQ(0.5, std::get<resource::Patch::number_property>(patch.fProperties["/custom_properties/prop_number"]).fValue);
-  ASSERT_TRUE(std::get<resource::Patch::boolean_property>(patch.fProperties["/custom_properties/prop_boolean"]).fValue);
-  ASSERT_EQ("ABC", std::get<resource::Patch::string_property>(patch.fProperties["/custom_properties/prop_string"]).fValue);
-  ASSERT_EQ("/Public/Samples/Bell.wav", std::get<resource::Patch::sample_property>(patch.fProperties["/user_samples/0/item"]).fValue);
-  ASSERT_EQ("/tmp/Music/Samples/Sample 01.aif", std::get<resource::Patch::sample_property>(patch.fProperties["/user_samples/1/item"]).fValue);
+  ASSERT_FLOAT_EQ(0.5, std::get<resource::Patch::number_property>(patch->fProperties["/custom_properties/prop_number"]).fValue);
+  ASSERT_TRUE(std::get<resource::Patch::boolean_property>(patch->fProperties["/custom_properties/prop_boolean"]).fValue);
+  ASSERT_EQ("ABC", std::get<resource::Patch::string_property>(patch->fProperties["/custom_properties/prop_string"]).fValue);
+  ASSERT_EQ("/Public/Samples/Bell.wav", std::get<resource::Patch::sample_property>(patch->fProperties["/user_samples/0/item"]).fValue);
+  ASSERT_EQ("/tmp/Music/Samples/Sample 01.aif", std::get<resource::Patch::sample_property>(patch->fProperties["/user_samples/1/item"]).fValue);
 }
 
 // Patch.Load

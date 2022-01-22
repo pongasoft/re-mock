@@ -142,9 +142,9 @@ sample_reference_resolver extractSampleReferenceResolver(XMLElement const *e)
 //------------------------------------------------------------------------
 // createPatch
 //------------------------------------------------------------------------
-resource::Patch createPatch(XMLDocument const &iDoc)
+std::unique_ptr<resource::Patch> createPatch(XMLDocument const &iDoc)
 {
-  resource::Patch patch;
+  auto patch = std::make_unique<resource::Patch>();
 
   auto e = iDoc.FirstChildElement("JukeboxPatch");
   RE_MOCK_ASSERT(e != nullptr, "Missing JukeboxPatch root element");
@@ -176,11 +176,11 @@ resource::Patch createPatch(XMLDocument const &iDoc)
         if(type == "boolean")
         {
           RE_MOCK_ASSERT(value == "true" || value == "false", "Invalid boolean property [%s] line [%d]", value, v->GetLineNum());
-          patch.boolean(property, value == "true");
+          patch->boolean(property, value == "true");
         }
         else if(type == "number")
         {
-          patch.number(property, std::stod(value));
+          patch->number(property, std::stod(value));
         }
         else if(type == "sample")
         {
@@ -188,7 +188,7 @@ resource::Patch createPatch(XMLDocument const &iDoc)
           auto samplePath = resolver ? resolver(sampleIndex) : std::nullopt;
           RE_MOCK_ASSERT(static_cast<bool>(samplePath),
                          "Sample path [%d] could not be resolved in patch file <Samples> section.", sampleIndex);
-          patch.sample(property, *samplePath);
+          patch->sample(property, *samplePath);
         }
         else if(type == "string")
         {
@@ -198,7 +198,7 @@ resource::Patch createPatch(XMLDocument const &iDoc)
             s += static_cast<char>(std::stoi(value.substr(0, 2), nullptr, 16));
             value = value.substr(2);
           }
-          patch.string(property, s);
+          patch->string(property, s);
         }
       }
 
@@ -215,11 +215,11 @@ resource::Patch createPatch(XMLDocument const &iDoc)
 //------------------------------------------------------------------------
 // Patch::from (file)
 //------------------------------------------------------------------------
-resource::Patch PatchParser::from(resource::File iPatchFile)
+std::unique_ptr<resource::Patch> PatchParser::from(resource::File iPatchFile)
 {
   XMLDocument doc;
-  auto res = doc.LoadFile(iPatchFile.fFilename.c_str());
-  RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch file %s", res, iPatchFile.fFilename);
+  auto res = doc.LoadFile(iPatchFile.fFilePath.c_str());
+  RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch file %s", res, iPatchFile.fFilePath);
   auto patch = impl::createPatch(doc);
   return patch;
 }
@@ -227,7 +227,7 @@ resource::Patch PatchParser::from(resource::File iPatchFile)
 //------------------------------------------------------------------------
 // Patch::from (String)
 //------------------------------------------------------------------------
-resource::Patch PatchParser::from(resource::String iPatchString)
+std::unique_ptr<resource::Patch> PatchParser::from(resource::String iPatchString)
 {
   XMLDocument doc;
   auto res = doc.Parse(iPatchString.fString.c_str());

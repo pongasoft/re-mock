@@ -89,7 +89,7 @@ global_rtc = {
 
   auto re = rack.newExtension(c);
 
-  re.use([]() {
+  re.withJukebox([]() {
     auto customProperties = JBox_GetMotherboardObjectRef("/custom_properties");
 
     ASSERT_FLOAT_EQ(0, JBox_GetNumber(JBox_LoadMOMProperty(JBox_MakePropertyRef(customProperties, "prop_number_default"))));
@@ -210,7 +210,7 @@ global_rtc = {
   });
 
   re.selectCurrentPattern(1, 128);
-  re.use([]() {
+  re.withJukebox([]() {
     ASSERT_EQ(1, JBox_LoadMOMPropertyAsNumber(JBox_GetMotherboardObjectRef("/transport"), kJBox_TransportPatternIndex));
     ASSERT_EQ(128, JBox_LoadMOMPropertyAsNumber(JBox_GetMotherboardObjectRef("/transport"), kJBox_TransportPatternStartPos));
   });
@@ -239,7 +239,7 @@ TEST(Jukebox, AudioSocket)
 
   auto re = rack.newExtension(c);
 
-  re.use([](auto &motherboard) {
+  re.withJukebox([](auto &motherboard) {
     // testing input
     {
       auto input1Ref = JBox_GetMotherboardObjectRef("/audio_inputs/input_1");

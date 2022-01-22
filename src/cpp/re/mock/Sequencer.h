@@ -26,10 +26,13 @@
 
 namespace re::mock {
 class Motherboard;
+class Rack;
 }
 
 namespace re::mock::sequencer {
 
+/**
+ * Small wrapper around a PPQ value (PPQ stands for Pulse Per Quarter Note) to make the APIs more obvious */
 struct PPQ {
   PPQ(TJBox_Float64 iCount = 0) : fCount{iCount} { RE_MOCK_ASSERT( iCount >= 0); }
 
@@ -41,6 +44,8 @@ private:
 
 class Duration;
 
+/**
+ * Defines a time signature (numerator / denominator) */
 struct TimeSignature
 {
   constexpr TimeSignature(int iNumerator = 4, int iDenominator = 4) : fNumerator{iNumerator}, fDenominator{iDenominator}
@@ -61,6 +66,12 @@ private:
   int fDenominator;
 };
 
+/**
+ * Represents the concept of time on the sequencer track as defined by `<bars>.<beats>.<sixteenth>.<ticks>`
+ * (+ a time signature). This is the same concept as can be seen on the transport bar in Reason.
+ *
+ * @note Time 0 is defined by `1.1.1.0`
+ */
 class Time
 {
 public:
@@ -84,15 +95,23 @@ public:
   TimeSignature signature() const { return fTimeSignature; }
   Time &signature(TimeSignature iTimeSignature) { fTimeSignature = iTimeSignature; return *this; }
 
+  /**
+   * Normalization is the process of making sure that every entry in the time "fits" the signature. For example,
+   * with a 4/4 time signature, `1.5.1.0` gets normalized to `2.1.1.0` */
   Time &normalize();
 
+  //! Converts this time to a PPQ
   TJBox_Float64 toPPQCount() const;
+
+  //! Converts this time to a PPQ
   PPQ toPPQ() const { return toPPQCount(); }
 
   Time withOtherSignature(TimeSignature iTimeSignature) { return from(toPPQ(), iTimeSignature); }
 
+  //! Returns a string representation of this time (ex: `1.2.3.120`)
   std::string toString() const;
 
+  //! Builds a time from PPQ / time signature
   static Time from(PPQ iPPQ, TimeSignature iTimeSignature = {});
 
 private:
@@ -103,6 +122,11 @@ private:
   TJBox_UInt32 fTicks;
 };
 
+/**
+ * Represents the concept of duration on the sequencer track as defined by `<bars>.<beats>.<sixteenth>.<ticks>`. This
+ * is the same concept as can be seen on the transport bar in Reason, for example when selecting a Midi note.
+ *
+ * @note Duration 0 is defined by `0.0.0.0` */
 class Duration
 {
 public:
@@ -126,17 +150,30 @@ public:
   TimeSignature signature() const { return fTimeSignature; }
   Duration &signature(TimeSignature iTimeSignature) { fTimeSignature = iTimeSignature; return *this; }
 
+  /**
+   * Normalization is the process of making sure that every entry in the time "fits" the signature. For example,
+   * with a 4/4 time signature, `1.5.1.0` gets normalized to `2.1.1.0` */
   Duration &normalize();
 
+  //! Converts this time to a PPQ
   TJBox_Float64 toPPQCount() const;
+
+  //! Converts this time to a PPQ
   PPQ toPPQ() const { return toPPQCount(); }
 
+  //! Builds a duration from PPQ / time signature
   static Duration from(PPQ iPPQ, TimeSignature iTimeSignature = {});
 
+  //! Returns a string representation of this duration (ex: `1.0.0.0`)
   std::string toString() const;
 
+  //! Convenient shortcut for 1 bar (for a 4/4 time signature): `1.0.0.0`
   static const Duration k1Bar_4x4;
+
+  //! Convenient shortcut for 1 beat (for a 4/4 time signature): `0.1.0.0`
   static const Duration k1Beat_4x4;
+
+  //! Convenient shortcut for 1 16th (for a 4/4 time signature): `0.0.1.0`
   static const Duration k1Sixteenth_4x4;
 
 private:
@@ -147,12 +184,18 @@ private:
   TJBox_UInt32 fTicks;
 };
 
+//! time + duration => time
 Time operator+(Time const &iTime, Duration const &iDuration);
+
+//! duration + duration => duration
 Duration operator+(Duration const &d1, Duration const &d2);
 
+//! duration * number => duration: ex: Duration::k1Beat_4x4 * 2 => 2 beats
 template<typename Number>
 Duration operator*(Duration const &iDuration, Number iFactor) { return Duration::from(iDuration.toPPQCount() * iFactor, iDuration.signature()); }
 
+/**
+ * A note on the sequencer track: a (midi) note number, a velocity, a time (when it starts) and a duration */
 struct Note
 {
   TJBox_UInt8 fNumber{69};
@@ -168,9 +211,32 @@ struct Note
   Note &duration(TJBox_UInt32 iBars = 0, TJBox_UInt32 iBeats = 0, TJBox_UInt32 i16th = 0, TJBox_UInt32 iTicks = 0) { fDuration = Duration{iBars, iBeats, i16th, iTicks}; return *this; }
 };
 
+/**
+ * This class represents a track in the sequencer. There is one per device/extension accessible via
+ * `tester.sequencerTrack()` or `Extension::getSequencerTrack()`. It is meant to represent the same concept of the
+ * sequencer track associated to a device in Reason: contains notes as well as other generic events (like property
+ * value changes).
+ *
+ * ```cpp
+ * tester.sequencerTrack()
+ *   .note(sequencer::Note{}.number(Midi::C(3)).time(2,1,1,0).duration(0,0,0,120)
+ *   .at(sequencer::Time(2,2,1,0)) // all events after this that don't specify a time use this time
+ *   .note(Midi::C(4), sequencer::Duration(0,0,1,0))
+ *   .event([&tester]) { tester.device().setNum("/custom_properties/gain", 0.8); })
+ * ```
+ *
+ * This example sets a C3 note starting at 2.1.1.0 for a duration of 120 ticks, a C4 note that starts at 2.2.1.0 and
+ * lasts 1 16th, and finally changes the custom property "gain" to 0.8 at 2.2.1.0.
+ *
+ * @note It is possible to populate the sequencer track with (imported) midi notes. Check `DeviceTester::importMidi()`
+ *       and `Extension::importMidiNotes()`
+ *
+ */
 class Track
 {
 public:
+  /**
+   * Contains information about the batch during the callback of an event (see `Event` below) */
   struct Batch
   {
     enum class Type { kFull, kLoopingStart, kLoopingEnd };
@@ -181,61 +247,115 @@ public:
     TJBox_UInt16 fAtFrameIndex{};
   };
 
+  //! A simpler definition of an event (no arguments)
   using SimpleEvent = std::function<void()>;
+
+  /**
+   * Definition of an event which is a function that takes the motherboard and a description of the batch in which
+   * the event is happening. */
   using Event = std::function<void(Motherboard &, Batch const &)>;
 
+  //! An event that does nothing
   static const Event kNoOp;
 
+  //! Wraps a simple event into an event (ignores parameters)
   static Event wrap(SimpleEvent iEvent);
 
 public:
+  //! Constructor
   explicit Track(TimeSignature iTimeSignature = {}) : fTimeSignature{iTimeSignature} {}
 
+  /**
+   * Moves the "current" time to the time provided. All apis which do not take a time use this "current" time.
+   *
+   * ```cpp
+   * tester.sequencerTrack()
+   *   .at(sequencer::Time(2,2,1,0)) // all events after this that don't specify a time use this time
+   *   .note(Midi::C(4), sequencer::Duration(0,0,1,0))
+   *   .event([&tester]) { tester.device().setNum("/custom_properties/gain", 0.8); })
+   *
+   * // 100% equivalent to
+   * tester.sequencerTrack()
+   *   .note(sequencer::Time(2,2,1,0), Midi::C(4), sequencer::Duration(0,0,1,0))
+   *   .event(sequencer::Time(2,2,1,0), [&tester]) { tester.device().setNum("/custom_properties/gain", 0.8); })
+   * ```
+   */
   Track &at(Time iTime) { fCurrentTime = iTime; return *this; }
+
+  /**
+   * Moves the current time by `iDuration`
+   *
+   * @see `at(Time)` */
   Track &after(Duration iDuration) { fCurrentTime = fCurrentTime + iDuration; return *this; }
 
-  Track &noteOn(TJBox_UInt8 iNoteNumber, PPQ iTime, TJBox_UInt8 iNoteVelocity = 100);
-  inline Track &noteOn(TJBox_UInt8 iNoteNumber, Time iTime, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(iNoteNumber, iTime.toPPQ(), iNoteVelocity); }
-  Track &noteOn(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(iNoteNumber, fCurrentTime, iNoteVelocity); }
+  //! Adds a "note on" event to the sequencer track at the time (provided in PPQ)
+  Track &noteOn(PPQ iTime, TJBox_UInt8 iNoteNumber, TJBox_UInt8 iNoteVelocity = 100);
 
-  Track &noteOff(TJBox_UInt8 iNoteNumber, PPQ iTime);
-  inline Track &noteOff(TJBox_UInt8 iNoteNumber, Time iTime) { return noteOff(iNoteNumber, iTime.toPPQ()); }
-  Track &noteOff(TJBox_UInt8 iNoteNumber) { return noteOff(iNoteNumber, fCurrentTime); }
+  //! Adds a "note on" event to the sequencer track at the time provided
+  inline Track &noteOn(Time iTime, TJBox_UInt8 iNoteNumber, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(iTime.toPPQ(), iNoteNumber, iNoteVelocity); }
 
+  //! Adds a "note on" event to the sequencer track at the "current" time (defined by `at` or `after`)
+  Track &noteOn(TJBox_UInt8 iNoteNumber, TJBox_UInt8 iNoteVelocity = 100) { return noteOn(fCurrentTime, iNoteNumber, iNoteVelocity); }
+
+  //! Adds a "note off" event to the sequencer track at the time (provided in PPQ)
+  Track &noteOff(PPQ iTime, TJBox_UInt8 iNoteNumber);
+
+  //! Adds a "note off" event to the sequencer track at the time provided
+  inline Track &noteOff(Time iTime, TJBox_UInt8 iNoteNumber) { return noteOff(iTime.toPPQ(), iNoteNumber); }
+
+  //! Adds a "note off" event to the sequencer track at the "current" time (defined by `at` or `after`)
+  Track &noteOff(TJBox_UInt8 iNoteNumber) { return noteOff(fCurrentTime, iNoteNumber); }
+
+  //! Adds a note to the sequencer track (2 events: a "note on" and "note off" events)
   Track &note(Note const &iNote);
 
-  Track &note(TJBox_UInt8 iNoteNumber, Time iTime, Duration iDuration, TJBox_UInt8 iNoteVelocity = 100) {
+  //! Adds a note to the sequencer track (2 events: a "note on" event at the provided time and "note off" event after the duration)
+  Track &note(Time iTime, TJBox_UInt8 iNoteNumber, Duration iDuration, TJBox_UInt8 iNoteVelocity = 100) {
     return note(Note{iNoteNumber, iNoteVelocity, iTime, iDuration});
   }
+
+  //! Adds a note to the sequencer track (2 events: a "note on" event at the "current" time and "note off" event after the duration)
   Track &note(TJBox_UInt8 iNoteNumber, Duration iDuration, TJBox_UInt8 iNoteVelocity = 100) {
-    return note(iNoteNumber, fCurrentTime, iDuration, iNoteVelocity);
+    return note(fCurrentTime, iNoteNumber, iDuration, iNoteVelocity);
   }
 
+  //! Add an event that happens at the provided time
   Track &event(Time iAt, Event iEvent) { return event(iAt.toPPQ() , std::move(iEvent)); };
+
+  //! Add a (simple) event that happens at the provided time
   Track &event(Time iAt, SimpleEvent iEvent) { return event(iAt, wrap(std::move(iEvent))); }
 
+  //! Add an event that happens at the "current" time
   Track &event(Event iEvent) { return event(fCurrentTime, std::move(iEvent)); }
+
+  //! Add a (simple) event that happens at the "current" time
   Track &event(SimpleEvent iEvent) { return event(wrap(std::move(iEvent))); }
 
+  //! Add an event that happens at the provided time (in PPQ)
   inline Track &event(PPQ iAt, Event iEvent) { return event(iAt.count(), std::move(iEvent)); }
+
+  //! Add a (simple) event that happens at the provided time (in PPQ)
   inline Track &event(PPQ iAt, SimpleEvent iEvent) { return event(iAt.count(), wrap(std::move(iEvent))); }
 
+   //! Add an event that happens on every batch
   Track &onEveryBatch(Event iEvent);
+
+  //! Add a (simple) event that happens on every batch
   Track &onEveryBatch(SimpleEvent iEvent) { return onEveryBatch(wrap(iEvent)); }
 
+  //! Clear all events and reset the "current" time to `1.1.1.0`
   Track &reset();
 
+  //! Change the time signature associated to this track
   void setTimeSignature(TimeSignature iTimeSignature) { fTimeSignature = iTimeSignature; }
 
-  void executeEvents(Motherboard &iMotherboard,
-                     TJBox_Int64 iPlayBatchStartPos,
-                     TJBox_Int64 iPlayBatchEndPos,
-                     Batch::Type iBatchType,
-                     int iAtFrameIndex,
-                     int iBatchSize) const;
-
+  //! Returns the time at which the first event happens
   Time getFirstEventTime() const;
+
+  //! Returns the time at which the last event happens
   Time getLastEventTime() const;
+
+  friend class re::mock::Rack;
 
 private:
   struct EventImpl
@@ -250,6 +370,14 @@ private:
   Track &event(TJBox_Float64 iAtPPQ, Event iEvent);
 
   std::vector<EventImpl> const &getEvents() const { ensureSorted(); return fEvents; }
+
+  //! Execute
+  void executeEvents(Motherboard &iMotherboard,
+                     TJBox_Int64 iPlayBatchStartPos,
+                     TJBox_Int64 iPlayBatchEndPos,
+                     Batch::Type iBatchType,
+                     int iAtFrameIndex,
+                     int iBatchSize) const;
 
 private:
   TimeSignature fTimeSignature;

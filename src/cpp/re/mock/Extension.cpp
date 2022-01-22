@@ -114,7 +114,7 @@ sequencer::Track &Extension::getSequencerTrack() const
 //------------------------------------------------------------------------
 // Extension::loadMidiNotes
 //------------------------------------------------------------------------
-void Extension::loadMidiNotes(smf::MidiEventList const &iEvents)
+void Extension::importMidiNotes(smf::MidiEventList const &iEvents)
 {
   fImpl->loadMidiNotes(iEvents);
 }

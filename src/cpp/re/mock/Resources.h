@@ -27,13 +27,22 @@
 
 namespace re::mock::resource {
 
-struct File { std::string fFilename{}; };
+//! Define a resource file (defined by its path)
+struct File { std::string fFilePath{}; };
+
+//! Define a resource string (the entire resource is defined by the content of the string)
 struct String { std::string fString{}; };
 
+//! Enumeration defining the various state the load operation of a resource can lead to
 enum class LoadStatus { kNil, kPartiallyResident, kResident, kHasErrors, kMissing };
 
+//! Shortcut to check if the load resulted in a success (it may not be complete yet, but it can be continued)
 inline bool isLoadStatusOk(LoadStatus s) { return s == LoadStatus::kResident || s == LoadStatus::kPartiallyResident; }
 
+/**
+ * This structure allows to mock/simulate various loading state when resources (samples, blobs) get loaded.
+ *
+ * @see The "Advance Topics" guide for more details on the usage of this concept */
 struct LoadingContext
 {
   LoadStatus fStatus{LoadStatus::kNil};
@@ -47,6 +56,9 @@ struct LoadingContext
   LoadingContext &status(LoadStatus l) { fStatus = l; return *this; }
 };
 
+/**
+ * Represent the patch resource which is a map of property path to value (valid values can be boolean, number, string
+ * or sample) */
 struct Patch {
   struct boolean_property { bool fValue{}; };
   struct number_property { TJBox_Float64 fValue{}; };
@@ -68,8 +80,13 @@ struct Patch {
   std::map<std::string, patch_property> fProperties{};
 };
 
+/**
+ * Represent the blob resource which is a vector of raw/opaque data (the Jukebox API uses `char` for the type) */
 struct Blob { std::vector<char> fData{}; };
 
+/**
+ * Represent the sample resource which is a vector or interleaved `TJBox_AudioSample` including the number of channels
+ * (1 for mono, 2 for stereo) and the sample rate */
 struct Sample
 {
   TJBox_UInt32 fChannels{1};

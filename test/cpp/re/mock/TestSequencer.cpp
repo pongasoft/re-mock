@@ -363,10 +363,10 @@ Looping: batch=3790,pos 76762 => 61447
 
   // now we use notes
   tester.sequencerTrack()
-    .note(60, sequencer::Time(1,4,4,120), sequencer::Duration::k1Sixteenth_4x4)
-    .note(61, sequencer::Time(2,1,2,0), sequencer::Duration::k1Sixteenth_4x4)
-    .note(62, sequencer::Time(2,1,4,120), sequencer::Duration::k1Sixteenth_4x4)
-    .note(63, sequencer::Time(1,4,4,120), sequencer::Duration(0,1,1,0))
+    .note(sequencer::Time(1,4,4,120), 60, sequencer::Duration::k1Sixteenth_4x4)
+    .note(sequencer::Time(2,1,2,0),   61, sequencer::Duration::k1Sixteenth_4x4)
+    .note(sequencer::Time(2,1,4,120), 62, sequencer::Duration::k1Sixteenth_4x4)
+    .note(sequencer::Time(1,4,4,120), 63, sequencer::Duration(0,1,1,0))
     ;
 
   tester.newTimeline().play(sequencer::Duration(0,2,1,0));

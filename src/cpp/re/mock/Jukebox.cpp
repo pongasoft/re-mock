@@ -276,7 +276,7 @@ std::string JBox_toString(TJBox_Value const &iValue, char const *iFormat)
 
 std::string JBox_toString(TJBox_PropertyRef const &iPropertyRef)
 {
-  return re::mock::Rack::currentMotherboard().toString(iPropertyRef);
+  return re::mock::Rack::currentMotherboard().getPropertyPath(iPropertyRef);
 }
 
 }

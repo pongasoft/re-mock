@@ -213,7 +213,7 @@ struct Config
    *                              (which is what the SDK uses (for example: `/Public/Default.repatch`)) */
   std::optional<resource::File> resource_file(resource::File iRelativeResourcePath) const;
 
-  std::optional<resource::Patch> findPatchResource(std::string const &iResourcePath) const;
+  std::unique_ptr<resource::Patch> findPatchResource(std::string const &iResourcePath) const;
   std::unique_ptr<resource::Blob> findBlobResource(std::string const &iResourcePath) const;
   std::unique_ptr<resource::Sample> findSampleResource(std::string const &iResourcePath) const;
 

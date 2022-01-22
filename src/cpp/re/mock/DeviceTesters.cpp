@@ -226,7 +226,7 @@ void DeviceTester::play(Duration iDuration, std::optional<tester::Timeline> iTim
 std::unique_ptr<MockAudioDevice::Sample> DeviceTester::loadSample(resource::File const &iSampleFile) const
 {
   auto sample = FileManager::loadSample(iSampleFile);
-  RE_MOCK_ASSERT(sample != nullptr, "Could not load sample [%s]", iSampleFile.fFilename);
+  RE_MOCK_ASSERT(sample != nullptr, "Could not load sample [%s]", iSampleFile.fFilePath);
   return MockAudioDevice::Sample::from(std::move(sample));
 }
 
@@ -280,7 +280,7 @@ void DeviceTester::importMidi(resource::File const &iMidiFile, int iTrack, bool 
 
   RE_MOCK_ASSERT(iTrack < midiFile->size(), "Cannot read track [%d]: not enough tracks in midifile (%ld)", iTrack, midiFile->size());
 
-  fDevice.loadMidiNotes((*midiFile)[iTrack]);
+  fDevice.importMidiNotes((*midiFile)[iTrack]);
 }
 
 //------------------------------------------------------------------------
@@ -366,7 +366,7 @@ void ExtensionEffectTester::nextBatch(MockAudioDevice::StereoBuffer const &iInpu
 // ExtensionEffectTester::processSample
 //------------------------------------------------------------------------
 std::unique_ptr<MockAudioDevice::Sample> ExtensionEffectTester::processSample(MockAudioDevice::Sample const &iSample,
-                                                                              optional_duration_t iTail,
+                                                                              std::optional<Duration> iTail,
                                                                               std::optional<tester::Timeline> iTimeline)
 {
   TJBox_AudioFramePos tailInFrames = 0;

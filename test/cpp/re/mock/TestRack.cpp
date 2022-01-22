@@ -34,7 +34,7 @@ TEST(Rack, Basic)
 
   ASSERT_THROW(JBox_GetMotherboardObjectRef("/custom_properties"), Exception);
 
-  re.use([]() {
+  re.withJukebox([]() {
     // now this works
     JBox_GetMotherboardObjectRef("/custom_properties");
   });
@@ -91,7 +91,7 @@ TEST(Rack, AudioWiring) {
   ASSERT_EQ(pst->fBuffer, MockAudioDevice::buffer(4.0, 5.0));
 
   // we bypass the device
-  pst.use([&pst]{
+  pst.withJukebox([&pst]{
     pst->setBypassState(kJBox_EnabledOff);
   });
 
@@ -418,10 +418,10 @@ end
   ASSERT_STREQ("Blob{.fSize=0,.fResidentSize=0,.fLoadStatus=nil,.fBlobPath=[]}", re.toString("/custom_properties/prop_blob").c_str());
   ASSERT_STREQ("Sample{.fChannels=1,.fSampleRate=1,.fFrameCount=0,.fResidentFrameCount=0,.fLoadStatus=nil,.fSamplePath=[]}", re.toString("/custom_properties/prop_sample").c_str());
 
-  re.use([&re]{
+  re.withJukebox([&re]{
     auto o1 = JBox_GetMotherboardObjectRef("/audio_outputs/output_1");
     ASSERT_STREQ("/audio_outputs/output_1", re.getObjectPath(o1).c_str());
-    ASSERT_STREQ("/audio_outputs/output_1/buffer", re.toString(JBox_MakePropertyRef(o1, "buffer")).c_str());
+    ASSERT_STREQ("/audio_outputs/output_1/buffer", re.getPropertyPath(JBox_MakePropertyRef(o1, "buffer")).c_str());
 
     TJBox_Value values[] = { JBox_MakeNil(),
                              re.getValue("/audio_outputs/output_1/connected"),
@@ -507,7 +507,7 @@ TEST(Rack, Diff)
   }
 
   auto noteStateDiff = re->fDiffs[re->fDiffs.size() - 1];
-  re.use([&noteStateDiff] {
+  re.withJukebox([&noteStateDiff] {
     auto noteEvent = JBox_AsNoteEvent(noteStateDiff);
     ASSERT_EQ(69, noteEvent.fNoteNumber);
     ASSERT_EQ(100, noteEvent.fVelocity);
@@ -523,7 +523,7 @@ TEST(Rack, Diff)
   rack.nextBatch();
 
   ASSERT_EQ(4, re->fDiffs.size());
-  re.use([&re] {
+  re.withJukebox([&re] {
     auto noteEvent = JBox_AsNoteEvent(re->fDiffs[0]);
     ASSERT_EQ(69, noteEvent.fNoteNumber); ASSERT_EQ(100, noteEvent.fVelocity); ASSERT_EQ(0, noteEvent.fAtFrameIndex);
     noteEvent = JBox_AsNoteEvent(re->fDiffs[1]);
@@ -665,8 +665,8 @@ TEST(Rack, Transport)
                        );
   };
 
-  ASSERT_EQ("p=false,pp=0,t=120,ft=120,ta=false,tsn=4,tsd=4,le=false,lsp=0,lep=0,bsp=0", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=false,pp=0,t=120,ft=120,ta=false,tsn=4,tsd=4,le=false,lsp=0,lep=0,bsp=0", dst.use<std::string>(re_transport));
+  ASSERT_EQ("p=false,pp=0,t=120,ft=120,ta=false,tsn=4,tsd=4,le=false,lsp=0,lep=0,bsp=0", src.withJukebox<std::string>(re_transport));
+  ASSERT_EQ("p=false,pp=0,t=120,ft=120,ta=false,tsn=4,tsd=4,le=false,lsp=0,lep=0,bsp=0", dst.withJukebox<std::string>(re_transport));
 
   rack.setTransportPlaying(true);
   rack.setTransportPlayPos(2);
@@ -686,8 +686,8 @@ TEST(Rack, Transport)
 
   // make sure that ALL extensions get updated (only propagated on nextBatch!)
   rack.nextBatch();
-  ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", src.withJukebox<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38500,t=130,ft=121,ta=false,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", dst.withJukebox<std::string>(re_transport));
 
   // change tempo automation
   rack.setTransportTempoAutomation(true);
@@ -697,24 +697,24 @@ TEST(Rack, Transport)
   // the rack "advances" at the end of the batch
   ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", rack_transport());
   rack.nextBatch();
-  ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", src.withJukebox<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38548,t=130,ft=121,ta=true,tsn=5,tsd=8,le=false,lsp=3,lep=9,bsp=38400", dst.withJukebox<std::string>(re_transport));
 
   rack.setTransportLoopEnabled(true);
 
   ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
   rack.nextBatch();
-  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", src.use<std::string>(re_transport));
-  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", dst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", src.withJukebox<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38596,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", dst.withJukebox<std::string>(re_transport));
 
   // make sure that a new device gets the "latest" transport
   ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", rack_transport());
   auto pst = rack.newDevice(MAUPst::CONFIG);
   // inherit the "latest" transport (nextBatch has not been called yet)
-  ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.withJukebox<std::string>(re_transport));
   rack.nextBatch();
   // still gets the same value since it just processed the batch starting at 38645
-  ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.use<std::string>(re_transport));
+  ASSERT_EQ("p=true,pp=38645,t=130,ft=121,ta=true,tsn=5,tsd=8,le=true,lsp=3,lep=9,bsp=38400", pst.withJukebox<std::string>(re_transport));
 
 }
 

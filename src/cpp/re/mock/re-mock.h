@@ -25,4 +25,16 @@
 // Contains the Extension / ExtensionDevice (typed version) api
 #include "Extension.h"
 
+// Contains the Rack and definitions of the various Duration
+#include "Rack.h"
+
+// Contains the definition of the Exception thrown by the framework
+#include "Errors.h"
+
+// Contains the definition of the various kinds of resources (file, string, blob, etc...)
+#include "Resources.h"
+
+// Contains the mock devices used by testers
+#include "MockDevices.h"
+
 #endif //RE_MOCK_RE_MOCK_H

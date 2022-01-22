@@ -439,6 +439,15 @@ auto timeline = tester.newTimeline()
 tester.bounce(sequencer::Duration::k1Bar_4x4, timeline);
 ```
 
+### Error handling
+
+`re-mock`, being a framework designed for testing, is meant to catch as many errors as possible before the device is deployed in Reason/Recon (which sometimes lead to crash/core dump of Recon). As a result, most APIs simply throw an exception early when something wrong is detected.
+
+In some instances, `re-mock` raises an error when it would be allowed in Recon, yet it is considered an error. For example, defining a property in the `rt_input / notify` section that is not defined in the motherboard is ignored by Recon but triggers an error in `re-mock` because it potentially shows a typo kind of error or a leftover for a removed property.
+
+> #### Note
+> Although the error messages might not always be the most user-friendly, it is easy to run the failing test from within the IDE with a debugger attached and navigate the stack when the exception occurs.
+
 ### Next
 
 This page discusses the main concepts and classes from the framework. The [Advanced Topics](Advanced_Topics.md) guide describes less used concepts.

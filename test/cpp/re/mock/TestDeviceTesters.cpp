@@ -230,7 +230,7 @@ TEST(NotePlayerTester, Usage)
   ASSERT_EQ(MockDevice::NoteEvents{}.noteOff(Midi::A_440, 25), tester.device()->fNoteEvents);
 
   // simulating sequencer note
-  tester.device().use([](Motherboard &m) {
+  tester.device().withJukebox([](Motherboard &m) {
     m.setNoteInEvent(70, 120, 3);
   });
 

@@ -327,7 +327,7 @@ struct MockJBoxVisitor
     fCode += iString.fString + "\n";
     fMockJBox.loadString(iString.fString);
   }
-  void operator()(resource::File const &iFile) { fMockJBox.loadFile(iFile.fFilename); }
+  void operator()(resource::File const &iFile) { fMockJBox.loadFile(iFile.fFilePath); }
 
   lua::MockJBox &fMockJBox;
   std::string fCode{};
@@ -1274,14 +1274,6 @@ std::string Motherboard::toString(JboxValue const &iValue, char const *iFormat) 
 }
 
 //------------------------------------------------------------------------
-// Motherboard::toString
-//------------------------------------------------------------------------
-std::string Motherboard::toString(TJBox_PropertyRef const &iPropertyRef) const
-{
-  return fmt::printf("%s/%s", getObjectPath(iPropertyRef.fObject), iPropertyRef.fKey);
-}
-
-//------------------------------------------------------------------------
 // Motherboard::getPath
 //------------------------------------------------------------------------
 std::string Motherboard::getObjectPath(TJBox_ObjectRef iObjectRef) const
@@ -1474,7 +1466,7 @@ void Motherboard::loadPatch(std::string const &iPatchPath)
 {
   RE_MOCK_ASSERT(stl::starts_with(iPatchPath, "/"), "patch path must start with / [%s]", iPatchPath);
   auto patchResource = fConfig.findPatchResource(iPatchPath);
-  RE_MOCK_ASSERT(patchResource != std::nullopt, "loadPatch: Cannot find patch [%s]", iPatchPath);
+  RE_MOCK_ASSERT(patchResource != nullptr, "loadPatch: Cannot find patch [%s]", iPatchPath);
   loadPatch(*patchResource);
 }
 
@@ -1483,7 +1475,9 @@ void Motherboard::loadPatch(std::string const &iPatchPath)
 //------------------------------------------------------------------------
 void Motherboard::loadPatch(resource::File const &iPatchFile)
 {
-  loadPatch(PatchParser::from(iPatchFile));
+  auto patchResource = PatchParser::from(iPatchFile);
+  RE_MOCK_ASSERT(patchResource != nullptr, "loadPatch: Cannot find / Error with patch [%s]", iPatchFile.fFilePath);
+  loadPatch(*patchResource);
 }
 
 //------------------------------------------------------------------------
@@ -1491,7 +1485,9 @@ void Motherboard::loadPatch(resource::File const &iPatchFile)
 //------------------------------------------------------------------------
 void Motherboard::loadPatch(resource::String const &iPatchString)
 {
-  loadPatch(PatchParser::from(iPatchString));
+  auto patchResource = PatchParser::from(iPatchString);
+  RE_MOCK_ASSERT(patchResource != nullptr, "loadPatch: Cannot find / Error with patch [%s]", iPatchString.fString);
+  loadPatch(*patchResource);
 }
 
 //------------------------------------------------------------------------

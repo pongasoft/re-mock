@@ -757,10 +757,10 @@ void ExtensionImpl::loadMidiNotes(smf::MidiEventList const &iEvents)
 
     if(event.isNoteOn())
     {
-      fSequencerTrack.noteOn(event.getKeyNumber(), sequencer::PPQ{static_cast<TJBox_Float64>(event.tick)}, event.getVelocity());
+      fSequencerTrack.noteOn(sequencer::PPQ{static_cast<TJBox_Float64>(event.tick)}, event.getKeyNumber(), event.getVelocity());
     } else if(event.isNoteOff())
     {
-      fSequencerTrack.noteOff(event.getKeyNumber(), sequencer::PPQ{static_cast<TJBox_Float64>(event.tick)});
+      fSequencerTrack.noteOff(sequencer::PPQ{static_cast<TJBox_Float64>(event.tick)}, event.getKeyNumber());
     }
   }
 }

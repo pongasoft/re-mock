@@ -60,7 +60,7 @@ TEST(SanityCheck, SDKExamples)
       {
         auto patchFile = fmt::path(RE_MOCK_SDK_ROOT, "Examples", p, "Resources", def->default_patch());
         auto patch = PatchParser::from(resource::File{patchFile});
-        patchPropertiesCount = patch.fProperties.size();
+        patchPropertiesCount = patch->fProperties.size();
       }
 
       std::cout << p << "/info.lua: "

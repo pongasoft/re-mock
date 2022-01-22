@@ -31,23 +31,35 @@
 namespace re::mock {
 
 namespace time {
+/**
+ * A `time::Duration` represents an amount of time expressed in milliseconds */
 struct Duration { float fMilliseconds{}; };
 }
 
 namespace sample {
+/**
+ * A `sample::Duration` represents an amount of time expressed in number of audio frames/samples. */
 struct Duration { TJBox_AudioFramePos fFrames{}; };
 }
 
 namespace rack {
+/**
+ * A `rack::Duration` represents an amount of time expressed in number of rack batches. A batch always represents a
+ * fixed 64 audio frames/samples irrelevant of the sample rate. If the sample rate is higher more batches needs
+ * to be processed in order to render more samples. */
 struct Duration { size_t fBatches{}; };
 }
 
 namespace timeline {
 /**
- * This duration indicates that it is driven by the timeline itself (returns `false` when done) */
+ * A `timeline::Duration` is a special kind of duration which indicates that it is driven by the
+ * timeline itself (returns `false` when done).
+ *
+ * @note Be careful when using this duration as if the timeline never returns `false` then it would run indefinitely */
 struct Duration {};
 }
 
+//! Most apis which takes a `Duration` use this variant which allows for all kinds of durations
 using Duration = std::variant<time::Duration, sample::Duration, rack::Duration, sequencer::Duration, timeline::Duration>;
 
 namespace impl {

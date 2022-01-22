@@ -147,3 +147,23 @@ As shown in the case of samples and blobs, the `DeviceConfig` offers an API to a
 tester.device().setResourceLoadingContext("/Private/sample.default", resource::LoadingContext{}.status(resource::LoadStatus::kMissing));
 tester.device().clearResourceLoadingContext("/Private/sample.default"); // to remove it
 ```
+
+### Beyond testing
+
+Although the primary goal of the framework is to test rack extensions, it is entirely possible to use the framework in a different manner, for example to create command line tools. An example would be an offline effect processor:
+
+```cpp
+// invoke with <path to rack extension>, <patch to load>, <input file>, <output file>
+int main(int argc, char *argv[])
+{
+  // ignoring all error handling for this brief example!!!
+  auto c = DeviceConfig<Device>::fromJBoxExport(argv[1]);
+  auto tester = StudioEffectTester<Device>(c);
+  tester.device.loadPatch(argv[2]); // set the device in a known state (optional of course)
+  auto sample = tester.processSample(argv[3]);
+  tester.saveSample(*sample, resource::File{argv[4]});
+}
+```
+
+> #### Note
+> This can actually be used for testing as well, since running this tool through a combination of patch/sample, can produce a series of expected outcome.

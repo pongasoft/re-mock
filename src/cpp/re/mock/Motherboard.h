@@ -187,8 +187,8 @@ public: // used by regular code
   inline std::string toString(TJBox_Value const &iValue, char const *iFormat = nullptr) const {
     return toString(*from_TJBox_Value(iValue), iFormat); }
   std::string toString(std::string const &iPropertyPath, char const *iFormat = nullptr) const { return toString(getValue(iPropertyPath), iFormat); }
-  std::string toString(TJBox_PropertyRef const &iPropertyRef) const;
   std::string getObjectPath(TJBox_ObjectRef iObjectRef) const;
+  std::string getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const;
   PropertyOwner getPropertyOwner(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fOwner; }
 
 public: // used by Jukebox.cpp (need to be public)
@@ -289,7 +289,6 @@ protected:
   std::unique_ptr<JboxValue> makeEmptyBlob() const;
 
   TJBox_PropertyRef getPropertyRef(std::string const &iPropertyPath) const;
-  std::string getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const;
 
   DSPBuffer getDSPBuffer(TJBox_ObjectRef iAudioSocket) const;
   void setDSPBuffer(TJBox_ObjectRef iAudioSocket, DSPBuffer iBuffer);

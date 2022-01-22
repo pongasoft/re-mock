@@ -91,19 +91,19 @@ bool MockAudioDevice::copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef
 // MockAudioDevice::copyBuffer
 //------------------------------------------------------------------------
 void MockAudioDevice::copyBuffer(MockAudioDevice::buffer_type const &iFromBuffer,
-                                 MockAudioDevice::buffer_type &iToBuffer)
+                                 MockAudioDevice::buffer_type &oToBuffer)
 {
-  iToBuffer = iFromBuffer;
+  oToBuffer = iFromBuffer;
 }
 
 //------------------------------------------------------------------------
 // MockAudioDevice::copyBuffer
 //------------------------------------------------------------------------
 void MockAudioDevice::copyBuffer(MockAudioDevice::StereoBuffer const &iFromBuffer,
-                                 MockAudioDevice::StereoBuffer &iToBuffer)
+                                 MockAudioDevice::StereoBuffer &oToBuffer)
 {
-  copyBuffer(iFromBuffer.fLeft, iToBuffer.fLeft);
-  copyBuffer(iFromBuffer.fRight, iToBuffer.fRight);
+  copyBuffer(iFromBuffer.fLeft, oToBuffer.fLeft);
+  copyBuffer(iFromBuffer.fRight, oToBuffer.fRight);
 }
 
 //------------------------------------------------------------------------
@@ -489,8 +489,7 @@ MCVDst::MCVDst(int iSampleRate) :
 //------------------------------------------------------------------------
 void MCVDst::renderBatch(TJBox_PropertyDiff const *, TJBox_UInt32)
 {
-  if(loadValue(fInSocket))
-    fValues.emplace_back(fValue);
+  loadValue(fInSocket);
 }
 
 //------------------------------------------------------------------------
@@ -944,9 +943,9 @@ MockAudioDevice::Sample &MockAudioDevice::Sample::subSample(size_t iFromFrame, s
 }
 
 //------------------------------------------------------------------------
-// MockAudioDevice::Sample::trimLeft
+// MockAudioDevice::Sample::trimBeginning
 //------------------------------------------------------------------------
-MockAudioDevice::Sample &MockAudioDevice::Sample::trimLeft()
+MockAudioDevice::Sample &MockAudioDevice::Sample::trimBeginning()
 {
   auto iter = std::find_if(fData.begin(), fData.end(), [](auto s) { return !isSilent(s); });
   if(iter != fData.end())
@@ -957,9 +956,9 @@ MockAudioDevice::Sample &MockAudioDevice::Sample::trimLeft()
 }
 
 //------------------------------------------------------------------------
-// MockAudioDevice::Sample::trimRight
+// MockAudioDevice::Sample::trimEnd
 //------------------------------------------------------------------------
-MockAudioDevice::Sample &MockAudioDevice::Sample::trimRight()
+MockAudioDevice::Sample &MockAudioDevice::Sample::trimEnd()
 {
   auto end = std::find_if(fData.rbegin(), fData.rend(), [](auto s) { return !isSilent(s); });
   if(end != fData.rend())

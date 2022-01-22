@@ -461,7 +461,7 @@ std::optional<resource::File> Config::resource_file(resource::File iRelativeReso
 {
   if(fDeviceResourcesDir)
   {
-    return resource::File{fmt::path(*fDeviceResourcesDir, fmt::split(iRelativeResourcePath.fFilename, '/'))};
+    return resource::File{fmt::path(*fDeviceResourcesDir, fmt::split(iRelativeResourcePath.fFilePath, '/'))};
   }
   else
     return std::nullopt;
@@ -470,7 +470,7 @@ std::optional<resource::File> Config::resource_file(resource::File iRelativeReso
 //------------------------------------------------------------------------
 // Config::findPatchResource
 //------------------------------------------------------------------------
-std::optional<resource::Patch> Config::findPatchResource(std::string const &iResourcePath) const
+std::unique_ptr<resource::Patch> Config::findPatchResource(std::string const &iResourcePath) const
 {
   auto resourceFile = resource::File{iResourcePath};
 
@@ -481,7 +481,7 @@ std::optional<resource::Patch> Config::findPatchResource(std::string const &iRes
 
     // it's already a patch...
     if(std::holds_alternative<resource::Patch>(r.fPatchVariant))
-      return std::get<resource::Patch>(r.fPatchVariant);
+      return std::make_unique<resource::Patch>(std::get<resource::Patch>(r.fPatchVariant));
 
     // it's a string
     if(std::holds_alternative<resource::String>(r.fPatchVariant))
@@ -500,7 +500,7 @@ std::optional<resource::Patch> Config::findPatchResource(std::string const &iRes
   if(resolvedResource && FileManager::fileExists(*resolvedResource))
     return PatchParser::from(*resolvedResource);
 
-  return std::nullopt;
+  return nullptr;
 }
 
 //------------------------------------------------------------------------
@@ -610,7 +610,7 @@ Info fromInfoLua(lua::InfoLua &iInfo)
 //------------------------------------------------------------------------
 Info Info::from(resource::File iFile)
 {
-  auto luaInfo = lua::InfoLua::fromFile(iFile.fFilename);
+  auto luaInfo = lua::InfoLua::fromFile(iFile.fFilePath);
   return impl::fromInfoLua(*luaInfo);
 }
 
