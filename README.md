@@ -8,32 +8,54 @@ Taste of the framework
 
 Example of unit test (using GoogleTest):
 
- ```c++
-// Creates a config by reading motherboard_def.lua and realtime_controller.lua
-auto c = DeviceConfig<Device>::fromJBoxExport(RE_CMAKE_PROJECT_DIR);
+ ```cpp
+// Creates a config by reading info.lua, motherboard_def.lua and realtime_controller.lua
+auto c = DeviceConfig<MyInstrument>::fromJBoxExport(RE_CMAKE_PROJECT_DIR);
 
-// Creates a tester for the device (a studio_fx device)
-auto tester = StudioEffectTester<Device>(c);
+// Creates a tester for the device (an instrument device)
+auto tester = InstrumentTester<MyInstrument>(c, 48000);
 
-// Wire the sockets
-tester.wireMainIn("audioInLeft", "audioInRight");
-tester.wireMainOut("audioOutLeft", "audioOutRight");
+// wiring main out sockets
+tester.wireMainOut("OutLeft", "OutRight");
 
-// Change properties (simulate user action)
-tester.device().setNum("/custom_properties/gain", 0.7);
+// first batch = initialization
+tester.nextBatch();
 
-// Call "JBox_Export_RenderRealtime" of all registered devices
-// Populate a stereo buffer (2x64 samples) with the value 0.5 (left) and 0.6 (right) 
-// made available to the device under test on the [in] sockets previously wired ("audioInLeft" / "audioInRight")
-// Read the [out] sockets after processing and return it (buffer)
-auto buffer = tester.nextBatch(MockAudioDevice::buffer(0.5, 0.6));
+// load a patch to set all the parameters of the device to a known state
+tester.device().loadPatch("/Public/Sync Bell.repatch");
 
-// Check that the resulting buffer is what we expected (here we assume that it is an effect with a gain knob
-// set to 0 dB change => output == input).
-ASSERT_EQ(MockAudioDevice::buffer(0.5, 0.6), buffer);
+// apply patch
+tester.nextBatch();
 
-// Make sure that properties were changed accordingly
-ASSERT_TRUE(tester.device().getBool("/custom_properties/sound_on_led");
+// import a Midi file containing note on/off events
+tester.importMidi(resource::File{fmt::path(RE_CMAKE_PROJECT_DIR, "test", "midi", "test1.mid")});
+
+// set the transport position at the start of bar 2
+tester.transportPlayPos(sequencer::Time(2,1,1,0));
+
+// play for 2 bars (so bar 2 and 3) and captures the output
+auto sample = tester.bounce(sequencer::Duration::k1Beat_4x4 * 2);
+
+// make sure that the sample is what we expect
+ASSERT_EQ(*sample, *tester.loadSample(resource::File{fmt::path(RE_CMAKE_PROJECT_DIR, "test", "wav", "test1.wav")));
+  
+// Optionally the sample can be saved to a file (for listening to it or opening in an audio visualizer...)
+// tester.saveSample(*sample, resource::File{"/tmp/result.wav"});
+```
+
+Example of command line tool: offline effect processor
+
+```cpp
+// invoke with <path to RE>, <patch>, <input file (to process)>, <output file (result)>
+int main(int argc, char *argv[])
+{
+  // ignoring all error handling for this brief example!!!
+  auto c = DeviceConfig<MyEffect>::fromJBoxExport(argv[1]);
+  auto tester = StudioEffectTester<MyEffect>(c);
+  tester.device.loadPatch(argv[2]); // set the device in a known state (optional of course)
+  auto sample = tester.processSample(argv[3]);
+  tester.saveSample(*sample, resource::File{argv[4]});
+}
 ```
 
 Links
@@ -44,21 +66,12 @@ Links
 * [Documentation](docs/Documentation.md)
 * [Advanced Topics](docs/Advanced_Topics.md)
 
-Status & Limitations
---------------------
-
-This project is currently under development and as a result, not all apis and functionalities provided by Reason 
-are supported.
-
-Here is a list of known unimplemented features:
-
-* `/environment/master_tune` (you can change it but it has no effect currently)
-
-If you find other unimplemented feature and/or you want to help in implementation, feel free to open a ticket. I
-am looking for use cases my plugins are not covering, so do not hesitate to contact me.
-
 Release notes
 -------------
+
+#### 1.0.0 - 2022-01-22
+
+- Reached maturity to be a 1.0.0 release (70 commits since 0.9.3!)
 
 #### 0.9.3 - 2021-10-04
 

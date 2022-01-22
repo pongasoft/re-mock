@@ -320,12 +320,12 @@ void FileManager::saveSample(TJBox_UInt32 iChannels,
 //------------------------------------------------------------------------
 // FileManager::loadSample
 //------------------------------------------------------------------------
-std::optional<resource::Sample> FileManager::loadSample(resource::File const &iFile)
+std::unique_ptr<resource::Sample> FileManager::loadSample(resource::File const &iFile)
 {
   RE_MOCK_ASSERT(false,
                  "Loading sample is disabled by default. To enable, define option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE \"\" ON) "
                  "before including re-mock  in your CMakeLists.txt (and make sure you do a fresh cmake reconfigure).");
-  return std::nullopt;
+  return nullptr;
 }
 
 //------------------------------------------------------------------------

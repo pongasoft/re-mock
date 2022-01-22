@@ -88,7 +88,7 @@ TEST(Device, test1)
   tester.importMidi(resource::File{fmt::path(RE_CMAKE_PROJECT_DIR, "test", "midi", "test1.mid")});
 
   // set the transport position at the start of bar 2
-  tester.rack().setTransportPlayPos(sequencer::Time(2,1,1,0));
+  tester.transportPlayPos(sequencer::Time(2,1,1,0));
 
   // play for 2 bars (so bar 2 and 3) and captures the output
   auto sample = tester.bounce(sequencer::Duration::k1Beat_4x4 * 2);

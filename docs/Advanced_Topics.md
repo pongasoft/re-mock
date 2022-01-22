@@ -153,7 +153,7 @@ tester.device().clearResourceLoadingContext("/Private/sample.default"); // to re
 Although the primary goal of the framework is to test rack extensions, it is entirely possible to use the framework in a different manner, for example to create command line tools. An example would be an offline effect processor:
 
 ```cpp
-// invoke with <path to rack extension>, <patch to load>, <input file>, <output file>
+// invoke with <path to RE>, <patch>, <input file (to process)>, <output file (result)>
 int main(int argc, char *argv[])
 {
   // ignoring all error handling for this brief example!!!
