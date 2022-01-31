@@ -437,6 +437,8 @@ TEST(RackExtension, RealtimeController_Blob)
 
   std::vector<char> blobData{'A', 'L', '\0', 'z'};
 
+  auto const blobFilePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
+
   auto c = DeviceConfig<Device>::fromSkeleton()
     .mdef(Config::document_owner_property("prop_function",
                                           lua::jbox_string_property{}.default_value("noop").property_tag(2000)))
@@ -449,7 +451,7 @@ TEST(RackExtension, RealtimeController_Blob)
 
     .blob_data("/Private/blob.default", to_chars("default"))
     .blob_data("/Private/blob.data", blobData)
-    .blob_file("/Private/blob.file", fmt::path(RE_MOCK_PROJECT_DIR, "LICENSE.txt"))
+    .blob_file("/Private/blob.file", blobFilePath)
 
     .resource_loading_context("/Private/blob.file", resource::LoadingContext{}.status(resource::LoadStatus::kPartiallyResident).resident_size(100))
 
@@ -494,22 +496,22 @@ TEST(RackExtension, RealtimeController_Blob)
   rack.nextBatch();
   ASSERT_EQ("load_blob_file -> true", re.getString("/custom_properties/prop_function_return"));
   ASSERT_EQ(100, re->fBlobInfo->fResidentSize);
-  ASSERT_EQ(13600, re->fBlobInfo->fSize);
-  ASSERT_EQ(to_TJBox_UInt8_vector("re-mock li"),
+  ASSERT_EQ(244, re->fBlobInfo->fSize);
+  ASSERT_EQ(std::vector<TJBox_UInt8>({0x52, 0x49, 0x46, 0x46, 0xec, 0x00, 0x00, 0x00, 0x57, 0x41}),
             std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
-  ASSERT_EQ("Blob{.fSize=13600,.fResidentSize=100,.fLoadStatus=partially_resident,.fBlobPath=[/Private/blob.file]}", re->fBlobString);
+  ASSERT_EQ("Blob{.fSize=244,.fResidentSize=100,.fLoadStatus=partially_resident,.fBlobPath=[/Private/blob.file]}", re->fBlobString);
   rack.nextBatch();
-  ASSERT_EQ("is_blob=true;size=13600.0;resident_size=100.0;state=1.0", re.getString("/custom_properties/on_prop_blob_return"));
+  ASSERT_EQ("is_blob=true;size=244.0;resident_size=100.0;state=1.0", re.getString("/custom_properties/on_prop_blob_return"));
 
   // load the rest
   re.loadMoreBlob("/custom_properties/prop_blob");
-  re->fBlobRange = std::make_pair(1000, 1010);
+  re->fBlobRange = std::make_pair(200, 210);
   rack.nextBatch();
-  ASSERT_EQ(13600, re->fBlobInfo->fResidentSize);
-  ASSERT_EQ(13600, re->fBlobInfo->fSize);
-  ASSERT_EQ(to_TJBox_UInt8_vector(" shares, o"),
+  ASSERT_EQ(244, re->fBlobInfo->fResidentSize);
+  ASSERT_EQ(244, re->fBlobInfo->fSize);
+  ASSERT_EQ(std::vector<TJBox_UInt8>({0x33, 0x9b, 0x8c, 0x9c, 0x3f, 0x9e, 0x5f, 0xa0, 0xd6, 0xa2}),
             std::vector<TJBox_UInt8>(std::begin(re->fBlobData), std::end(re->fBlobData)));
-  ASSERT_EQ("Blob{.fSize=13600,.fResidentSize=13600,.fLoadStatus=resident,.fBlobPath=[/Private/blob.file]}", re->fBlobString);
+  ASSERT_EQ("Blob{.fSize=244,.fResidentSize=244,.fLoadStatus=resident,.fBlobPath=[/Private/blob.file]}", re->fBlobString);
 
   re->fBlobRange = std::make_pair(0, 10);
 
@@ -587,7 +589,7 @@ TEST(RackExtension, RealtimeController_Sample)
     void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override
     {
       // clear the data first
-      std::fill(std::begin(fSampleData), std::end(fSampleData), 0);
+      std::fill(std::begin(fSampleData), std::end(fSampleData), static_cast<TJBox_AudioSample>(0.0));
       fSampleInfo = std::nullopt;
       fSampleString = "";
 

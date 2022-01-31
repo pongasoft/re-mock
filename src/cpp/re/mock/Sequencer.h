@@ -22,6 +22,7 @@
 #include <JukeboxTypes.h>
 #include <string>
 #include <vector>
+#include <functional>
 #include "Errors.h"
 
 namespace re::mock {

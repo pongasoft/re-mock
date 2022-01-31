@@ -69,6 +69,10 @@ Links
 Release notes
 -------------
 
+#### 1.0.1 - 2022-02-01
+
+- Fixes for Windows 10
+
 #### 1.0.0 - 2022-01-22
 
 - Reached maturity to be a 1.0.0 release (70 commits since 0.9.3!)

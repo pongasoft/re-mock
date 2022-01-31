@@ -1,11 +1,19 @@
+Requirements
+------------
+
+* CMake 3.17+
+* For Mac: tested on macOS Mojave (10.14.6) / Xcode 11.3.1
+* For Windows: tested on Windows 10 / "Visual Studio 16 2019"
+* RE SDK 4.1.0+
+
 Installation
 ------------
 
-This CMake based project compiles into a library called `re-mock` after adding it as a subdirectory to your rack extension project (`add_subdirectory`). The only requirement is that the RE SDK (4.2.0+) be installed on your system and that the `RE_SDK_ROOT` CMake variable be set to the location of the SDK.
+This CMake based project compiles into a library called `re-mock` after adding it as a subdirectory to your rack extension project (`add_subdirectory`). The only requirement is that the RE SDK (4.1.0+) be installed on your system and that the `RE_SDK_ROOT` CMake variable be set to the location of the SDK.
 
 ```cmake
 # in CMakeLists.txt
-set(RE_SDK_ROOT "<path_to_RE_SDK_4.2.0+>")
+set(RE_SDK_ROOT "<path_to_RE_SDK_4.1.0+>")
 
 # add re-mock as a subdirectory
 add_subdirectory("re-mock" EXCLUDE_FROM_ALL)

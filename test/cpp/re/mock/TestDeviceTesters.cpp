@@ -101,7 +101,7 @@ TEST(StudioEffectTester, Sample)
     auto processedSine = tester.processSample("/re/mock/audio/sine.wav", sample::Duration{30});
     auto expectedSine = sine->clone(); // sine (100 samples) + tail of 30 samples
     for(int i = 0; i < 30; i++)
-      expectedSine.fData.emplace_back(0);
+      expectedSine.fData.emplace_back(static_cast<TJBox_AudioSample>(0));
     ASSERT_EQ(expectedSine, *processedSine);
     ASSERT_EQ(3, tester.device()->fBatchCount); // 130 = 64 + 64 + 2
   }
@@ -116,7 +116,7 @@ TEST(StudioEffectTester, Sample)
     // 1ms at 44100 is 44.1 samples => 45 samples
     auto expectedSine = sine->clone(); // sine (100 samples) + tail of 45 samples
     for(int i = 0; i < 45; i++)
-      expectedSine.fData.emplace_back(0);
+      expectedSine.fData.emplace_back(static_cast<TJBox_AudioSample>(0));
 
     ASSERT_EQ(expectedSine, *processedSine);
     ASSERT_EQ(std::vector<int>({0, 1, 2}), batches);

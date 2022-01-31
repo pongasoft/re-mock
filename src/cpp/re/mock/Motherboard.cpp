@@ -466,6 +466,7 @@ void Motherboard::init()
       auto prop = std::make_shared<lua::jbox_number_property>();
       prop->fPropertyTag = kJBox_CustomPropertiesOnOffBypass;
       prop->fDefaultValue = kJBox_EnabledOn;
+      prop->fPersistence = lua::EPersistence::kSong;
       addProperty(fCustomPropertiesRef, "builtin_onoffbypass", PropertyOwner::kDocOwner, prop);
       break;
     }
@@ -475,6 +476,7 @@ void Motherboard::init()
       auto prop = std::make_shared<lua::jbox_boolean_property>();
       prop->fPropertyTag = kJBox_EnvironmentPlayerBypassed;
       prop->fDefaultValue = false;
+      prop->fPersistence = lua::EPersistence::kSong;
       addProperty(fEnvironmentRef, "player_bypassed", PropertyOwner::kHostOwner, prop);
       break;
     }
@@ -1973,7 +1975,8 @@ void impl::JboxObject::addProperty(const std::string& iPropertyName,
                                    TJBox_Tag iPropertyTag,
                                    lua::EPersistence iPersistence)
 {
-  addProperty(iPropertyName, iOwner, iInitialValue->getValueType(), std::move(iInitialValue), iPropertyTag, iPersistence);
+  auto valueType = iInitialValue->getValueType();
+  addProperty(iPropertyName, iOwner, valueType, std::move(iInitialValue), iPropertyTag, iPersistence);
 }
 
 //------------------------------------------------------------------------

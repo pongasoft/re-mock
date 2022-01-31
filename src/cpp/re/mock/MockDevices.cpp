@@ -963,7 +963,7 @@ MockAudioDevice::Sample &MockAudioDevice::Sample::trimEnd()
   auto end = std::find_if(fData.rbegin(), fData.rend(), [](auto s) { return !isSilent(s); });
   if(end != fData.rend())
   {
-    return subSample(0, (end.base() + (fChannels - 1) - fData.begin()) / fChannels);
+    return subSample(0, (end.base() - fData.begin() + (fChannels - 1)) / fChannels);
   }
   return *this;
 }
@@ -980,7 +980,7 @@ MockAudioDevice::Sample &MockAudioDevice::Sample::trim()
     if(end != fData.rend())
     {
       auto adjustedStart = (start - fData.begin()) / fChannels;
-      auto adjustedEnd = (end.base() + (fChannels - 1) - fData.begin()) / fChannels;
+      auto adjustedEnd = (end.base() - fData.begin() + (fChannels - 1)) / fChannels;
       return subSample(adjustedStart, adjustedEnd - adjustedStart);
     }
     else

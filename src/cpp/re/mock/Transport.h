@@ -24,6 +24,7 @@
 #include "Errors.h"
 #include <map>
 #include <cmath>
+#include <optional>
 
 namespace re::mock {
 

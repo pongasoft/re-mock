@@ -222,7 +222,7 @@ bool saveSample(Container const &iBuffer, SndfileHandle &iFileHandle)
   while(!complete)
   {
     // fill interleaved buffer
-    auto numFrames = std::min(framesToWrite, static_cast<unsigned long>(BUFFER_SIZE));
+    auto numFrames = std::min<unsigned long>(framesToWrite, BUFFER_SIZE);
     auto numSamplesWrite = numFrames * channelCount;
 
     std::copy(std::begin(iBuffer) + samplesWritten,
