@@ -22,7 +22,11 @@ add_subdirectory("re-mock" EXCLUDE_FROM_ALL)
 target_link_libraries("${test_target}" "gtest_main" "re-mock")
 ```
 
-It is highly recommended to use [re-cmake](https://github.com/pongasoft/re-cmake) and check [re-blank-plugin](https://github.com/pongasoft/re-blank-plugin) on how to configure it. TODO: integrate with re-quickstart!!!
+It is highly recommended to use [re-cmake](https://github.com/pongasoft/re-cmake) and in particular it is strongly advised to check one of the following projects:
+
+* [Rack Extension - Quick Start](https://pongasoft.com/re-quickstart/index.html) which creates a blank plugin and uses `re-mock` for testing
+* [Rack Extension - Convert](https://github.com/pongasoft/re-quickstart/blob/master/docs/convert.md) which converts an existing plugin to use `re-cmake` and `re-mock` for testing
+
 
 ```cmake
 # in CMakeLists.txt (using re-cmake)
