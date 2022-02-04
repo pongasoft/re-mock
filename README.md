@@ -3,6 +3,20 @@ Introduction
 
 The goal of this project is to offer mock classes of the Reason SDK APIs in order to be able to unit test (or black box test) rack extensions (for Reason DAW by Reason Studios).
 
+Features
+--------
+
+* Allow for testing rack extensions by fully controlling the event loop
+* Supports 100% of `Jukebox.h` functions (ex: `JBox_LoadMOMProperty`)
+* Supports 100% of `jbox.lua` functions (in `realtime_controller.lua`) (ex: `jbox.load_sample_async`)
+* Load `info.lua`, `motherboard_def.lua` and `realtime_controller.lua` to build the rack extension exactly as Reason does
+* Support loading and saving sample files (wav, aiff...)
+* Support loading patch files (for example a patch file saved in Recon/Reason)
+* Support for simulating slow loads and errors (when loading samples or blobs)
+* Support loading midi files to populate the sequencer track
+* Powerful APIs to help in common testing use cases (like "playing an instrument" or "processing a sample through an effect")
+* much, much more
+
 Taste of the framework
 ----------------------
 
