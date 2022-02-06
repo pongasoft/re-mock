@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
   // ignoring all error handling for this brief example!!!
   auto c = DeviceConfig<MyEffect>::fromJBoxExport(argv[1]);
   auto tester = StudioEffectTester<MyEffect>(c);
-  tester.device.loadPatch(argv[2]); // set the device in a known state (optional of course)
+  tester.device().loadPatch(argv[2]); // set the device in a known state (optional of course)
   auto sample = tester.processSample(argv[3]);
   tester.saveSample(*sample, resource::File{argv[4]});
 }
