@@ -189,7 +189,9 @@ public: // used by regular code
   std::string toString(std::string const &iPropertyPath, char const *iFormat = nullptr) const { return toString(getValue(iPropertyPath), iFormat); }
   std::string getObjectPath(TJBox_ObjectRef iObjectRef) const;
   std::string getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const;
-  PropertyOwner getPropertyOwner(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fOwner; }
+  PropertyOwner getPropertyOwner(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fInfo.fOwner; }
+  JboxPropertyInfo const &getPropertyInfo(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fInfo; }
+  std::vector<JboxPropertyInfo> getPropertyInfos() const;
 
 public: // used by Jukebox.cpp (need to be public)
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
@@ -247,7 +249,7 @@ protected:
   Motherboard(int iInstanceId, int iSampleRate, Config const &iConfig);
 
   void init();
-  void addDeviceHostProperties();
+  void addDeviceHostProperties(int iUserSampleCount);
 
   std::shared_ptr<const JboxValue> getJboxValue(std::string const &iPropertyPath) const;
   std::shared_ptr<JboxValue> getJboxValue(std::string const &iPropertyPath);
@@ -327,7 +329,6 @@ protected:
   resource::Patch fDefaultValuesPatch{};
   std::map<std::string, resource::LoadingContext> fResourceLoadingContexts{};
   ObjectManager<std::unique_ptr<impl::JboxObject>> fJboxObjects{};
-  std::map<std::string, lua::gui_jbox_property> fGUIProperties{};
   std::map<std::string, TJBox_ObjectRef> fJboxObjectRefs{};
   TJBox_ObjectRef fCustomPropertiesRef{};
   TJBox_ObjectRef fEnvironmentRef{};

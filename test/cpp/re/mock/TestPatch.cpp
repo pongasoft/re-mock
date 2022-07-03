@@ -187,7 +187,7 @@ TEST(Patch, Load)
   auto c = DeviceConfig<Device>::fromSkeleton()
     .device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"))
     .default_patch("/Public/default.repatch")
-    .mdef(Config::gui_owner_property("gui_prop_float", lua::jbox_number_property{}.default_value(0.9))) // ignored
+    .mdef(Config::gui_owner_property("gui_prop_float", lua::jbox_number_property{}.default_value(0.9).persistence(lua::EPersistence::kPatch))) // ignored
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}))
     .mdef(Config::document_owner_property("prop_string", lua::jbox_string_property{}.default_value("abcd")))
@@ -214,7 +214,8 @@ TEST(Patch, Load)
 
   auto defaultValuesPatch = re.getDefaultValuesPatch();
 
-  ASSERT_EQ(7, defaultValuesPatch.fProperties.size());
+  ASSERT_EQ(8, defaultValuesPatch.fProperties.size());
+  ASSERT_EQ(0.9, std::get<resource::Patch::number_property>(defaultValuesPatch.fProperties["/custom_properties/gui_prop_float"]).fValue);
   ASSERT_EQ(0.8, std::get<resource::Patch::number_property>(defaultValuesPatch.fProperties["/custom_properties/prop_float"]).fValue);
   ASSERT_FALSE(std::get<resource::Patch::boolean_property>(defaultValuesPatch.fProperties["/custom_properties/prop_bool"]).fValue);
   ASSERT_EQ("abcd", std::get<resource::Patch::string_property>(defaultValuesPatch.fProperties["/custom_properties/prop_string"]).fValue);

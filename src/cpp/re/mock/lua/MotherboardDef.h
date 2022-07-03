@@ -78,12 +78,14 @@ struct jbox_boolean_property {
 struct jbox_number_property {
   int fPropertyTag{};
   TJBox_Float64 fDefaultValue{};
+  std::optional<int> fSteps{};
   std::optional<EPersistence> fPersistence{};
 
   TJBox_ValueType value_type() const { return kJBox_Number; }
 
   jbox_number_property &property_tag(int iTag) { fPropertyTag = iTag; return *this; }
   jbox_number_property &default_value(TJBox_Float64 iValue) { fDefaultValue = iValue; return *this;}
+  jbox_number_property &steps(int iSteps) { fSteps = iSteps; return *this;}
   jbox_number_property &persistence(EPersistence iPersistence) { fPersistence = iPersistence; return *this;}
 };
 
@@ -269,24 +271,24 @@ public:
     return std::dynamic_pointer_cast<T>(getObjectOnTopOfStack());
   }
 
-  std::shared_ptr<JboxPropertySet> getCustomProperties();
+  std::shared_ptr<JboxPropertySet> getCustomProperties() const;
 
-  std::unique_ptr<jbox_sockets> getAudioInputs()
+  std::unique_ptr<jbox_sockets> getAudioInputs() const
   {
     return getSockets("audio_inputs", jbox_sockets::Type::AUDIO_INPUT);
   }
 
-  std::unique_ptr<jbox_sockets> getAudioOutputs()
+  std::unique_ptr<jbox_sockets> getAudioOutputs() const
   {
     return getSockets("audio_outputs", jbox_sockets::Type::AUDIO_OUTPUT);
   }
 
-  std::unique_ptr<jbox_sockets> getCVInputs()
+  std::unique_ptr<jbox_sockets> getCVInputs() const
   {
     return getSockets("cv_inputs", jbox_sockets::Type::CV_INPUT);
   }
 
-  std::unique_ptr<jbox_sockets> getCVOutputs()
+  std::unique_ptr<jbox_sockets> getCVOutputs() const
   {
     return getSockets("cv_outputs", jbox_sockets::Type::CV_OUTPUT);
   }
@@ -314,7 +316,8 @@ protected:
    * Assumes lua table is at the top of the stack. Removes the map from the stack! */
   void populateMapFromLuaTable(jbox_object_map_t &oMap);
 
-  std::unique_ptr<jbox_sockets> getSockets(char const *iSocketName, jbox_sockets::Type iSocketType);
+  std::unique_ptr<jbox_sockets> getSockets(char const *iSocketName, jbox_sockets::Type iSocketType) const;
+  std::unique_ptr<jbox_sockets> doGetSockets(char const *iSocketName, jbox_sockets::Type iSocketType);
 
   void populatePropertyTag(jbox_property iProperty);
 
@@ -326,6 +329,8 @@ protected:
               std::function<std::optional<jbox_property_type>(std::string, std::optional<impl::jbox_object>)> iFilter);
 
   jbox_native_object::param_t toParam(int idx = -1);
+
+  std::shared_ptr<JboxPropertySet> doGetCustomProperties();
 
 private:
   ObjectManager<impl::jbox_object> fObjects{};

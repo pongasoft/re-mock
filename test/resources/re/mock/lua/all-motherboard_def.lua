@@ -3,6 +3,7 @@ format_version = "2.0"
 local documentOwnerProperties = {
   doc_boolean = jbox.boolean { property_tag = 100, default = true },
   doc_number = jbox.number { property_tag = 101, default = 3 },
+  doc_number_with_steps = jbox.number { property_tag = 110, default = 2, steps = 5 },
   doc_string = jbox.string { property_tag = 103, default = "abcd" },
   doc_mod_wheel = jbox.performance_modwheel { property_tag = 104 },
   doc_pitch_bend = jbox.performance_pitchbend { property_tag = 105 },

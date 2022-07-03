@@ -83,10 +83,12 @@ struct Info
   bool fSupportPatches{};
   std::string fDefaultPatch{};
   bool fAcceptNotes{};
+  int fDeviceHeightRU{1};
 
   Info &device_type(DeviceType t) { fDeviceType = t; return *this; }
   Info &default_patch(std::string s) { fDefaultPatch = std::move(s); fSupportPatches = !fDefaultPatch.empty(); return *this; }
   Info &accept_notes(bool b) { fAcceptNotes = b; return *this; }
+  Info &device_height_ru(int i) { fDeviceHeightRU = i; return *this; }
 
   static Info fromSkeleton(DeviceType iDeviceType);
   static Info from(resource::File iFile);

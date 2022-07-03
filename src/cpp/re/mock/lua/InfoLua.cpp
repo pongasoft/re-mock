@@ -105,4 +105,12 @@ bool InfoLua::accepts_notes()
   return L.getGlobalAsBoolean("accepts_notes");
 }
 
+//------------------------------------------------------------------------
+// InfoLua::device_height_ru
+//------------------------------------------------------------------------
+int InfoLua::device_height_ru()
+{
+  return static_cast<int>(L.getGlobalAsInteger("device_height_ru"));
+}
+
 }

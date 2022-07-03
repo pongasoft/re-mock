@@ -119,6 +119,18 @@ bool LuaState::getGlobalAsBoolean(char const *iKey)
 }
 
 //------------------------------------------------------------------------
+// LuaState::getGlobalAsInteger
+//------------------------------------------------------------------------
+lua_Integer LuaState::getGlobalAsInteger(char const *iKey)
+{
+  lua_Integer res = 0;
+  if(lua_getglobal(L, iKey) != LUA_TNIL)
+    res = lua_tointeger(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
 // LuaState::getGlobalAsString
 //------------------------------------------------------------------------
 std::string LuaState::getGlobalAsString(char const *iKey)
@@ -154,6 +166,19 @@ lua_Integer LuaState::getTableValueAsInteger(char const *iKey, int idx)
 {
   luaL_checktype(L, idx, LUA_TTABLE);
   lua_getfield(L, idx, iKey);
+  auto res = lua_tointeger(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
+// LuaState::getTableValueAsOptionalInteger
+//------------------------------------------------------------------------
+std::optional<lua_Integer> LuaState::getTableValueAsOptionalInteger(char const *iKey, int idx)
+{
+  luaL_checktype(L, idx, LUA_TTABLE);
+  if(lua_getfield(L, idx, iKey) == LUA_TNIL)
+    return {};
   auto res = lua_tointeger(L, -1);
   lua_pop(L, 1);
   return res;

@@ -310,6 +310,7 @@ int MotherboardDef::luaNumber()
   populatePropertyTag(p);
   p->fPersistence = getPersistence();
   p->fDefaultValue = L.getTableValueAsNumber("default", 1);
+  p->fSteps = L.getTableValueAsOptionalInteger("steps", 1);
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -604,7 +605,18 @@ void MotherboardDef::populateMapFromLuaTable(jbox_object_map_t &oMap)
 //------------------------------------------------------------------------
 // MotherboardDef::getSockets
 //------------------------------------------------------------------------
-std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName, jbox_sockets::Type iSocketType)
+std::unique_ptr<jbox_sockets> MotherboardDef::getSockets(char const *iSocketName, jbox_sockets::Type iSocketType) const
+{
+  // implementation detail: the method is not changing the state of the object
+  // but all lua APIs technically modify the state (L)
+  auto def = const_cast<MotherboardDef *>(this);
+  return def->doGetSockets(iSocketName, iSocketType);
+}
+
+//------------------------------------------------------------------------
+// MotherboardDef::doGetSockets
+//------------------------------------------------------------------------
+std::unique_ptr<jbox_sockets> MotherboardDef::doGetSockets(char const *iSocketName, jbox_sockets::Type iSocketType)
 {
   auto sockets = std::make_unique<jbox_sockets>();
   sockets->fType = iSocketType;
@@ -680,7 +692,18 @@ std::unique_ptr<MotherboardDef> MotherboardDef::fromString(std::string const &iL
 //------------------------------------------------------------------------
 // MotherboardDef::getCustomProperties
 //------------------------------------------------------------------------
-std::shared_ptr<JboxPropertySet> MotherboardDef::getCustomProperties()
+std::shared_ptr<JboxPropertySet> MotherboardDef::getCustomProperties() const
+{
+  // implementation detail: the method is not changing the state of the object
+  // but all lua APIs technically modify the state (L)
+  auto def = const_cast<MotherboardDef *>(this);
+  return def->doGetCustomProperties();
+}
+
+//------------------------------------------------------------------------
+// MotherboardDef::getCustomProperties
+//------------------------------------------------------------------------
+std::shared_ptr<JboxPropertySet> MotherboardDef::doGetCustomProperties()
 {
   if(fCustomProperties)
     return fCustomProperties;

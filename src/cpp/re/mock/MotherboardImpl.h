@@ -53,14 +53,14 @@ public:
   impl::DSPBuffer const &getDSPBuffer() const { return *std::get<std::unique_ptr<impl::DSPBuffer>>(fMotherboardValue); }
 
 private:
-  struct Nil {};
-  struct Incompatible {};
+  struct nil_t {};
+  struct incompatible_t {};
 
   using motherboard_value_t = std::variant<
-    Nil,
+    nil_t,
     TJBox_Float64,
     bool,
-    Incompatible,
+    incompatible_t,
     std::unique_ptr<impl::String>,
     std::unique_ptr<impl::NativeObject>,
     std::unique_ptr<impl::Blob>,
@@ -76,7 +76,18 @@ private:
 
 private:
   TJBox_ValueType fValueType{kJBox_Nil};
-  motherboard_value_t fMotherboardValue{Nil{}};
+  motherboard_value_t fMotherboardValue{nil_t{}};
+};
+
+struct JboxPropertyInfo
+{
+  TJBox_PropertyRef fPropertyRef;
+  std::string fPropertyPath;
+  TJBox_ValueType fValueType;
+  int fStepCount;
+  PropertyOwner fOwner;
+  TJBox_Tag fTag;
+  lua::EPersistence fPersistence;
 };
 
 namespace impl {
@@ -120,14 +131,18 @@ struct JboxPropertyDiff
   int fInsertIndex{};
 };
 
+using value_validator_t = std::function<bool(JboxValue const &)>;
+
 struct JboxProperty
 {
   JboxProperty(TJBox_PropertyRef const &iPropertyRef,
                std::string iPropertyPath,
                TJBox_ValueType iValueType,
+               int iStepCount,
                PropertyOwner iOwner,
                std::shared_ptr<JboxValue> iInitialValue,
                TJBox_Tag iTag,
+               value_validator_t iValueValidator,
                lua::EPersistence iPersistence);
 
   inline std::shared_ptr<const JboxValue> loadValue() const { return fValue; };
@@ -137,18 +152,20 @@ struct JboxProperty
   JboxPropertyDiff watchForChange();
   bool isWatched() const { return fWatched; }
 
-  const TJBox_PropertyRef fPropertyRef;
-  const std::string fPropertyPath;
-  const PropertyOwner fOwner;
-  const TJBox_Tag fTag;
-  const lua::EPersistence fPersistence;
+  JboxPropertyInfo const &getInfo() const { return fInfo; }
+
+  const JboxPropertyInfo fInfo;
 
 protected:
-  const TJBox_ValueType fValueType;
+  void validateValue(std::shared_ptr<JboxValue> const &iValue);
+
+protected:
   std::shared_ptr<JboxValue> fInitialValue;
   std::shared_ptr<JboxValue> fValue;
+  value_validator_t fValueValidator;
   bool fWatched{};
 };
+
 
 struct JboxObject
 {
@@ -172,21 +189,27 @@ struct JboxObject
   friend class re::mock::Motherboard;
 
 protected:
-  void addProperty(const std::string& iPropertyName,
+  void addProperty(const std::string &iPropertyName,
                    PropertyOwner iOwner,
                    TJBox_ValueType iValueType,
                    std::shared_ptr<JboxValue> iInitialValue,
                    TJBox_Tag iPropertyTag,
-                   lua::EPersistence iPersistence = lua::EPersistence::kNone);
+                   int iStepCount,
+                   lua::EPersistence iPersistence = lua::EPersistence::kNone,
+                   value_validator_t iValueValidator = {});
 
-  void addProperty(const std::string& iPropertyName,
+  void addProperty(const std::string &iPropertyName,
                    PropertyOwner iOwner,
                    std::shared_ptr<JboxValue> iInitialValue,
                    TJBox_Tag iPropertyTag,
-                   lua::EPersistence iPersistence = lua::EPersistence::kNone);
+                   int iStepCount = 0,
+                   lua::EPersistence iPersistence = lua::EPersistence::kNone,
+                   value_validator_t iValueValidator = {});
 
   JboxProperty *getProperty(std::string const &iPropertyName) const;
   JboxProperty *getProperty(TJBox_Tag iPropertyTag) const;
+
+  std::vector<JboxPropertyInfo> getPropertyInfos() const;
 
 protected:
   std::map<std::string, std::unique_ptr<JboxProperty>> fProperties{};

@@ -108,7 +108,7 @@ TEST(MotherboardDef, All)
   }
 
   // document_owner
-  ASSERT_EQ(9, customProperties->document_owner.size());
+  ASSERT_EQ(10, customProperties->document_owner.size());
   {
     auto ptr = std::get<std::shared_ptr<jbox_boolean_property>>(customProperties->document_owner["doc_boolean"]);
     ASSERT_EQ(ptr->fPropertyTag, 100);
@@ -119,7 +119,15 @@ TEST(MotherboardDef, All)
     auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->document_owner["doc_number"]);
     ASSERT_EQ(ptr->fPropertyTag, 101);
     ASSERT_EQ(ptr->fPersistence, EPersistence::kPatch);
+    ASSERT_TRUE(ptr->fSteps == std::nullopt);
     ASSERT_FLOAT_EQ(ptr->fDefaultValue, 3);
+  }
+  {
+    auto ptr = std::get<std::shared_ptr<jbox_number_property>>(customProperties->document_owner["doc_number_with_steps"]);
+    ASSERT_EQ(ptr->fPropertyTag, 110);
+    ASSERT_EQ(ptr->fPersistence, EPersistence::kPatch);
+    ASSERT_EQ(ptr->fSteps, 5);
+    ASSERT_FLOAT_EQ(ptr->fDefaultValue, 2);
   }
   {
     auto ptr = std::get<std::shared_ptr<jbox_string_property>>(customProperties->document_owner["doc_string"]);

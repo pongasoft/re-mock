@@ -203,8 +203,8 @@ inline resource::String custom_property(std::string const &iPropertyType,
 
 //! custom_property for lua::jbox_boolean_property
 inline resource::String custom_property(std::string const &iPropertyType,
-                                    std::string const &iPropertyName,
-                                    lua::jbox_boolean_property const &iProperty)
+                                        std::string const &iPropertyName,
+                                        lua::jbox_boolean_property const &iProperty)
 {
   std::vector<std::string> args{};
   arg("default", "%s", iProperty.fDefaultValue ? "true" : "false", args);
@@ -214,19 +214,22 @@ inline resource::String custom_property(std::string const &iPropertyType,
 
 //! custom_property for lua::jbox_number_property
 inline resource::String custom_property(std::string const &iPropertyType,
-                                    std::string const &iPropertyName,
-                                    lua::jbox_number_property const &iProperty)
+                                        std::string const &iPropertyName,
+                                        lua::jbox_number_property const &iProperty)
 {
   std::vector<std::string> args{};
   arg("default", "%f", iProperty.fDefaultValue, args);
+  if(iProperty.fSteps)
+    arg("steps", "%d", iProperty.fSteps.value(), args);
   property_tag(iProperty.fPropertyTag, args);
+  impl::persistence(iProperty.fPersistence, args);
   return custom_property(iPropertyType, iPropertyName, "number", args);
 }
 
 //! custom_property for lua::jbox_string_property
 inline resource::String custom_property(std::string const &iPropertyType,
-                                    std::string const &iPropertyName,
-                                    lua::jbox_string_property const &iProperty)
+                                        std::string const &iPropertyName,
+                                        lua::jbox_string_property const &iProperty)
 {
   std::vector<std::string> args{};
   if(iProperty.fMaxSize > 0)
@@ -241,8 +244,8 @@ inline resource::String custom_property(std::string const &iPropertyType,
 
 //! custom_property for lua::jbox_blob_property
 inline resource::String custom_property(std::string const &iPropertyType,
-                                    std::string const &iPropertyName,
-                                    lua::jbox_blob_property const &iProperty)
+                                        std::string const &iPropertyName,
+                                        lua::jbox_blob_property const &iProperty)
 {
   std::vector<std::string> args{};
   if(iProperty.fDefaultValue)
@@ -599,6 +602,7 @@ Info fromInfoLua(lua::InfoLua &iInfo)
   res.default_patch(iInfo.default_patch());
   res.fSupportPatches = iInfo.supports_patches();
   res.fAcceptNotes = iInfo.accepts_notes();
+  res.fDeviceHeightRU = iInfo.device_height_ru();
 
   return res;
 }

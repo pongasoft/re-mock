@@ -505,6 +505,12 @@ public:
   template<typename T>
   inline T* getInstance() const { return motherboard().getInstance<T>(); }
 
+  //! Return the information about the given property (meta information)
+  JboxPropertyInfo const &getPropertyInfo(std::string const &iPropertyPath) const { return motherboard().getPropertyInfo(iPropertyPath); }
+
+  //! Return the information about ALL properties known to the motherboard (includes transport, device_host, ...)
+  std::vector<JboxPropertyInfo> getPropertyInfos() const { return motherboard().getPropertyInfos(); }
+
   int getInstanceId() const;
 
   friend class re::mock::Rack;

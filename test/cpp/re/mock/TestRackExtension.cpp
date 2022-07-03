@@ -94,7 +94,7 @@ TEST(RackExtension, Motherboard)
     .mdef(Config::cv_out())
     .mdef(Config::document_owner_property("prop_number", lua::jbox_number_property{}.default_value(0.1)))
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
-    .mdef(Config::document_owner_property("prop_int", lua::jbox_number_property{}.default_value(4)))
+    .mdef(Config::document_owner_property("prop_int", lua::jbox_number_property{}.default_value(4).steps(5)))
     .mdef(Config::document_owner_property("prop_bool", lua::jbox_boolean_property{}.default_value(true)))
     .mdef(Config::document_owner_property("prop_string", lua::jbox_string_property{}.default_value("abcd")))
     .mdef(Config::document_owner_property("volume_ro", lua::jbox_number_property{}.default_value(0.7)))
@@ -213,8 +213,9 @@ end
   ASSERT_FLOAT_EQ(100.1, JBox_GetNumber(re.getValue("/custom_properties/prop_number")));
   re.setNum<float>("/custom_properties/prop_float", 100.8);
   ASSERT_FLOAT_EQ(100.8, re.getNum<float>("/custom_properties/prop_float"));
-  re.setNum<int>("/custom_properties/prop_int", 104);
-  ASSERT_EQ(104, re.getNum<int>("/custom_properties/prop_int"));
+  ASSERT_THROW(re.setNum<int>("/custom_properties/prop_int", 104), Exception); // must be [0-4]
+  re.setNum<int>("/custom_properties/prop_int", 2);
+  ASSERT_EQ(2, re.getNum<int>("/custom_properties/prop_int"));
   re.setBool("/custom_properties/prop_bool", false);
   ASSERT_FALSE(re.getBool("/custom_properties/prop_bool"));
   re.setString("/custom_properties/prop_string", "jkl");
@@ -241,6 +242,64 @@ end
 
   re.setCVSocketValue(re.getCVOutSocket("C"), 112.0);
   ASSERT_FLOAT_EQ(112.0, re.getCVSocketValue("/cv_outputs/C"));
+
+  auto infos = re.getPropertyInfos();
+  ASSERT_EQ(44, infos.size());
+  auto expectedInfos =
+    "/audio_inputs/L/buffer,\n"
+    "/audio_inputs/L/connected,\n"
+    "/audio_inputs/R/buffer,\n"
+    "/audio_inputs/R/connected,\n"
+    "/audio_outputs/L/buffer,\n"
+    "/audio_outputs/L/connected,\n"
+    "/audio_outputs/L/dsp_latency,\n"
+    "/audio_outputs/R/buffer,\n"
+    "/audio_outputs/R/connected,\n"
+    "/audio_outputs/R/dsp_latency,\n"
+    "/custom_properties/gain_ro,\n"
+    "/custom_properties/gain_rw,\n"
+    "/custom_properties/instance,\n"
+    "/custom_properties/prop_bool,\n"
+    "/custom_properties/prop_float,\n"
+    "/custom_properties/prop_int,\n"
+    "/custom_properties/prop_number,\n"
+    "/custom_properties/prop_rt_string,\n"
+    "/custom_properties/prop_string,\n"
+    "/custom_properties/volume_ro,\n"
+    "/custom_properties/volume_rw,\n"
+    "/cv_inputs/C/connected,\n"
+    "/cv_inputs/C/value,\n"
+    "/cv_outputs/C/connected,\n"
+    "/cv_outputs/C/dsp_latency,\n"
+    "/cv_outputs/C/value,\n"
+    "/environment/device_visible,\n"
+    "/environment/instance_id,\n"
+    "/environment/master_tune,\n"
+    "/environment/system_sample_rate,\n"
+    "/transport/bar_start_pos,\n"
+    "/transport/filtered_tempo,\n"
+    "/transport/loop_enabled,\n"
+    "/transport/loop_end_pos,\n"
+    "/transport/loop_start_pos,\n"
+    "/transport/play_pos,\n"
+    "/transport/playing,\n"
+    "/transport/request_reset_audio,\n"
+    "/transport/request_run,\n"
+    "/transport/request_stop,\n"
+    "/transport/tempo,\n"
+    "/transport/tempo_automation,\n"
+    "/transport/time_signature_denominator,\n"
+    "/transport/time_signature_numerator";
+  std::set<std::string> computedInfos{};
+  for(auto &info: infos)
+  {
+    computedInfos.emplace(info.fPropertyPath);
+  }
+  ASSERT_STREQ(expectedInfos, stl::join_to_string(computedInfos, ",\n").c_str());
+
+  ASSERT_EQ(0, re.getPropertyInfo("/custom_properties/prop_float").fStepCount);
+  ASSERT_EQ(0, re.getPropertyInfo("/custom_properties/prop_number").fStepCount);
+  ASSERT_EQ(5, re.getPropertyInfo("/custom_properties/prop_int").fStepCount);
 }
 
 std::vector<char> to_chars(std::string s)

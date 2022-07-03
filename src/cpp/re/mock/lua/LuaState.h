@@ -52,10 +52,12 @@ public:
   std::string getStackString(char const *iMessage = nullptr) { return getStackString(L, iMessage); }
 
   bool getGlobalAsBoolean(char const *iKey);
+  lua_Integer getGlobalAsInteger(char const *iKey);
   std::string getGlobalAsString(char const *iKey);
 
   lua_Number getTableValueAsNumber(char const *iKey, int idx = -1);
   lua_Integer getTableValueAsInteger(char const *iKey, int idx = -1);
+  std::optional<lua_Integer> getTableValueAsOptionalInteger(char const *iKey, int idx = -1);
   bool getTableValueAsBoolean(char const *iKey, int idx = -1);
   std::string getTableValueAsString(char const *iKey, int idx = -1);
   std::optional<std::string> getTableValueAsOptionalString(char const *iKey, int idx = -1);

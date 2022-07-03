@@ -57,19 +57,21 @@ struct Exception : public std::logic_error {
   explicit Exception(std::string const &s) : std::logic_error(s.c_str()) {}
   explicit Exception(char const *s) : std::logic_error(s) {}
 
-  static void throwException(char const *iMessage, char const *iFile, int iLine)
+  [[ noreturn ]] static void throwException(char const *iMessage, char const *iFile, int iLine)
   {
     throw Exception(fmt::printf("%s | %s:%d", iMessage, iFile, iLine));
   }
 
   template<typename ... Args>
-  static void throwException(char const *iMessage, char const *iFile, int iLine, const std::string& format, Args ... args)
+  [[ noreturn ]] static void throwException(char const *iMessage, char const *iFile, int iLine, const std::string& format, Args ... args)
   {
     throw Exception(fmt::printf(" %s:%d | %s | %s", iFile, iLine, iMessage, fmt::printf(format, std::forward<Args>(args)...)));
   }
 };
 
 #define RE_MOCK_ASSERT(test, ...) (test) == true ? (void)0 : re::mock::Exception::throwException("CHECK FAILED: \"" #test "\"", __FILE__, __LINE__, ##__VA_ARGS__)
+#define RE_MOCK_FAIL(...) re::mock::Exception::throwException("FAIL", __FILE__, __LINE__, ##__VA_ARGS__)
+#define RE_MOCK_TBD RE_MOCK_FAIL("Not implemented yet")
 #if ENABLE_RE_MOCK_INTERNAL_ASSERT
 #define RE_MOCK_INTERNAL_ASSERT(test, ...) (test) == true ? (void)0 : re::mock::Exception::throwException("INTERNAL CHECK FAILED: \"" #test "\"", __FILE__, __LINE__, ##__VA_ARGS__)
 #else
