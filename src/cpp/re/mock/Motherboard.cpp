@@ -324,7 +324,10 @@ void Motherboard::handlePropertyDiff(impl::JboxPropertyDiff const &iPropertyDiff
       addRTCNotifyDiff(iPropertyDiff);
 
     if(fRTCBindings.find(iPropertyDiff.fPropertyRef) != fRTCBindings.end())
-      fRTCBindingsDiffs.emplace_back(iPropertyDiff);
+    {
+      if(fRTCBindingsEnabled)
+        fRTCBindingsDiffs.emplace_back(iPropertyDiff);
+    }
   }
 }
 
@@ -1493,9 +1496,12 @@ void Motherboard::stopNoteIfOn(TJBox_UInt8 iNoteNumber)
 //------------------------------------------------------------------------
 void Motherboard::addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff)
 {
-  impl::JboxPropertyDiff diff{iDiff};
-  diff.fInsertIndex = fRTCNotifyDiffs.size();
-  fRTCNotifyDiffs.emplace_back(diff);
+  if(fRTCNotifyEnabled)
+  {
+    impl::JboxPropertyDiff diff{iDiff};
+    diff.fInsertIndex = fRTCNotifyDiffs.size();
+    fRTCNotifyDiffs.emplace_back(diff);
+  }
 }
 
 //------------------------------------------------------------------------
@@ -1918,6 +1924,40 @@ void Motherboard::trace(const char *iFile, TJBox_Int32 iLine, const char *iMessa
 {
   if(fConfig.traceEnabled())
     RE_MOCK_LOG_JUKEBOX_INFO("%s:%d | %s", iFile, iLine, iMessage);
+}
+
+//------------------------------------------------------------------------
+// Motherboard::enableRTCNotify
+//------------------------------------------------------------------------
+void Motherboard::enableRTCNotify()
+{
+  fRTCNotifyEnabled = true;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::disableRTCNotify
+//------------------------------------------------------------------------
+void Motherboard::disableRTCNotify()
+{
+  fRTCNotifyEnabled = false;
+  fRTCNotifyDiffs.clear();
+}
+
+//------------------------------------------------------------------------
+// Motherboard::enableRTCBindings
+//------------------------------------------------------------------------
+void Motherboard::enableRTCBindings()
+{
+  fRTCBindingsEnabled = true;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::disableRTCBindings
+//------------------------------------------------------------------------
+void Motherboard::disableRTCBindings()
+{
+  fRTCNotifyEnabled = false;
+  fRTCNotifyDiffs.clear();
 }
 
 //------------------------------------------------------------------------

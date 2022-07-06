@@ -511,6 +511,18 @@ public:
   //! Return the information about ALL properties known to the motherboard (includes transport, device_host, ...)
   std::vector<JboxPropertyInfo> getPropertyInfos() const { return motherboard().getPropertyInfos(); }
 
+  //! Enable dispatching property diffs to the device
+  void enableRTCNotify() { motherboard().enableRTCNotify(); }
+
+  //! Disable dispatching property diffs to the device (behaves as if rt_input_setup / notify is empty)
+  void disableRTCNotify() { motherboard().disableRTCNotify(); }
+
+  //! Enable dispatching property diffs to rtc bindings
+  void enableRTCBindings() { motherboard().enableRTCBindings(); }
+
+  //! Disable dispatching property diffs to rtc bindings (behaves as if rtc_bindings is empty)
+  void disableRTCBindings() { motherboard().disableRTCBindings(); }
+
   int getInstanceId() const;
 
   friend class re::mock::Rack;

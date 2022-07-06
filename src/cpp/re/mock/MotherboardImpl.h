@@ -52,6 +52,8 @@ public:
   impl::Sample const &getSample() const { return *std::get<std::unique_ptr<impl::Sample>>(fMotherboardValue); }
   impl::DSPBuffer const &getDSPBuffer() const { return *std::get<std::unique_ptr<impl::DSPBuffer>>(fMotherboardValue); }
 
+  bool isNil() const { return std::holds_alternative<nil_t>(fMotherboardValue); }
+
 private:
   struct nil_t {};
   struct incompatible_t {};

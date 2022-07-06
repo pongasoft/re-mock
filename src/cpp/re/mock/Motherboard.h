@@ -193,6 +193,11 @@ public: // used by regular code
   JboxPropertyInfo const &getPropertyInfo(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fInfo; }
   std::vector<JboxPropertyInfo> getPropertyInfos() const;
 
+  void enableRTCNotify();
+  void disableRTCNotify();
+  void enableRTCBindings();
+  void disableRTCBindings();
+
 public: // used by Jukebox.cpp (need to be public)
   TJBox_ObjectRef getObjectRef(std::string const &iObjectPath) const;
   TJBox_Tag getPropertyTag(TJBox_PropertyRef const &iPropertyRef) const;
@@ -340,8 +345,10 @@ protected:
   Realtime fRealtime{};
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::vector<impl::JboxPropertyDiff> fRTCNotifyDiffs{};
+  bool fRTCNotifyEnabled{true};
   std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
   std::vector<impl::JboxPropertyDiff> fRTCBindingsDiffs{};
+  bool fRTCBindingsEnabled{true};
   std::vector<std::string> fUserSamplePropertyPaths{};
   NoteEvents fNoteOutEvents{};
 
@@ -353,7 +360,10 @@ protected:
 template<typename T>
 T *Motherboard::getInstance() const
 {
-  return reinterpret_cast<T *>(getJboxValue("/custom_properties/instance")->getNativeObject().fNativeObject);
+  auto instance = getJboxValue("/custom_properties/instance");
+  if(instance->isNil())
+    return nullptr;
+  return reinterpret_cast<T *>(instance->getNativeObject().fNativeObject);
 }
 
 namespace impl {
