@@ -30,7 +30,13 @@ namespace re::mock {
 template<typename ... Args>
 void log_info(char const *iFile, int iLine, const std::string& format, Args ... args)
 {
-  std::cout << fmt::printf("%s:%d | %s", iFile, iLine, fmt::printf(format, std::forward<Args>(args)...)) << std::endl;
+  std::cout << fmt::printf("INFO | %s:%d | %s", iFile, iLine, fmt::printf(format, std::forward<Args>(args)...)) << std::endl;
+}
+
+template<typename ... Args>
+void log_warning(char const *iFile, int iLine, const std::string& format, Args ... args)
+{
+  std::cerr << fmt::printf("WARN | %s:%d | %s", iFile, iLine, fmt::printf(format, std::forward<Args>(args)...)) << std::endl;
 }
 
 template<typename ... Args>
@@ -42,7 +48,7 @@ void log_jukebox_info(const std::string& format, Args ... args)
 template<typename ... Args>
 void log_error(char const *iFile, int iLine, const std::string& format, Args ... args)
 {
-  std::cerr << fmt::printf("%s:%d | %s", iFile, iLine, fmt::printf(format, std::forward<Args>(args)...)) << std::endl;
+  std::cerr << fmt::printf("ERR  | %s:%d | %s", iFile, iLine, fmt::printf(format, std::forward<Args>(args)...)) << std::endl;
 }
 
 template<typename ... Args>
@@ -79,6 +85,7 @@ struct Exception : public std::logic_error {
 #endif
 
 #define RE_MOCK_LOG_INFO(...) re::mock::log_info(__FILE__, __LINE__, __VA_ARGS__)
+#define RE_MOCK_LOG_WARNING(...) re::mock::log_warning(__FILE__, __LINE__, __VA_ARGS__)
 #define RE_MOCK_LOG_ERROR(...) re::mock::log_error(__FILE__, __LINE__, __VA_ARGS__)
 #define RE_MOCK_LOG_JUKEBOX_INFO(...) re::mock::log_jukebox_info(__VA_ARGS__)
 #define RE_MOCK_LOG_JUKEBOX_ERROR(...) re::mock::log_jukebox_error(__VA_ARGS__)

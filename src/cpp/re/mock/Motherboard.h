@@ -192,6 +192,7 @@ public: // used by regular code
   PropertyOwner getPropertyOwner(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fInfo.fOwner; }
   JboxPropertyInfo const &getPropertyInfo(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fInfo; }
   std::vector<JboxPropertyInfo> getPropertyInfos() const;
+  Info const &getDeviceInfo() const { return fConfig.info(); }
 
   void enableRTCNotify();
   void disableRTCNotify();

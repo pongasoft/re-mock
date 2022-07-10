@@ -86,7 +86,7 @@ struct TransportTester
     {
       if(iExpected[i] !=  t.getPlayPos())
       {
-        RE_MOCK_LOG_ERROR("[%d] %d!=%d", i, iExpected[i], t.getPlayPos());
+        RE_MOCK_LOG_WARNING("[%d] %d!=%d", i, iExpected[i], t.getPlayPos());
       }
       if(!iWarnOnly)
         ASSERT_EQ(iExpected[i], t.getPlayPos());

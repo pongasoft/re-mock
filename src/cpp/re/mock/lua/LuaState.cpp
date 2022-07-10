@@ -176,10 +176,10 @@ lua_Integer LuaState::getTableValueAsInteger(char const *iKey, int idx)
 //------------------------------------------------------------------------
 std::optional<lua_Integer> LuaState::getTableValueAsOptionalInteger(char const *iKey, int idx)
 {
+  std::optional<lua_Integer> res{};
   luaL_checktype(L, idx, LUA_TTABLE);
-  if(lua_getfield(L, idx, iKey) == LUA_TNIL)
-    return {};
-  auto res = lua_tointeger(L, -1);
+  if(lua_getfield(L, idx, iKey) != LUA_TNIL)
+    res = lua_tointeger(L, -1);
   lua_pop(L, 1);
   return res;
 }

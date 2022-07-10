@@ -511,6 +511,9 @@ public:
   //! Return the information about ALL properties known to the motherboard (includes transport, device_host, ...)
   std::vector<JboxPropertyInfo> getPropertyInfos() const { return motherboard().getPropertyInfos(); }
 
+  //! Return the information about the device
+  Info const &getDeviceInfo() const { return motherboard().getDeviceInfo(); }
+
   //! Enable dispatching property diffs to the device
   void enableRTCNotify() { motherboard().enableRTCNotify(); }
 
