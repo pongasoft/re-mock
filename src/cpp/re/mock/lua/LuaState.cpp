@@ -197,6 +197,19 @@ bool LuaState::getTableValueAsBoolean(char const *iKey, int idx)
 }
 
 //------------------------------------------------------------------------
+// LuaState::getTableValueAsOptionalBoolean
+//------------------------------------------------------------------------
+std::optional<bool> LuaState::getTableValueAsOptionalBoolean(char const *iKey, int idx)
+{
+  std::optional<bool> res{};
+  luaL_checktype(L, idx, LUA_TTABLE);
+  if(lua_getfield(L, idx, iKey) != LUA_TNIL)
+    res = lua_toboolean(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
 // LuaState::getTableValueAsString
 //------------------------------------------------------------------------
 std::string LuaState::getTableValueAsString(char const *iKey, int idx)

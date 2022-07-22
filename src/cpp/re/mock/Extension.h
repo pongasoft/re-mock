@@ -511,6 +511,9 @@ public:
   //! Return the information about ALL properties known to the motherboard (includes transport, device_host, ...)
   std::vector<JboxPropertyInfo> getPropertyInfos() const { return motherboard().getPropertyInfos(); }
 
+  //! Return the information about ALL objects known to the motherboard
+  std::vector<JboxObjectInfo> getObjectInfos() const { return motherboard().getObjectInfos(); }
+
   //! Return the information about the device
   Info const &getDeviceInfo() const { return motherboard().getDeviceInfo(); }
 

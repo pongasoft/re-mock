@@ -49,6 +49,22 @@ enum class DeviceType
   kNotePlayer
 };
 
+enum class JboxObjectType
+{
+  kAudioInput,
+  kAudioOutput,
+  kCustomProperties,
+  kCVInput,
+  kCVOutput,
+  kDeviceHost,
+  kEnvironment,
+  kGlobalRTC,
+  kNoteStates,
+  kPatterns,
+  kTransport,
+  kUserSamples
+};
+
 struct Realtime
 {
   using create_native_object_t = std::function<void *(const char iOperation[], const TJBox_Value iParams[], TJBox_UInt32 iCount)>;

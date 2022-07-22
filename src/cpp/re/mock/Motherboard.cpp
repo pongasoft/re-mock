@@ -78,11 +78,11 @@ Motherboard::Motherboard(int iInstanceId, int iSampleRate, Config const &iConfig
   fResourceLoadingContexts = fConfig.fResourceLoadingContexts;
 
   // /custom_properties
-  fCustomPropertiesRef = addObject("/custom_properties")->fObjectRef;
+  fCustomPropertiesRef = addObject(JboxObjectType::kCustomProperties, "/custom_properties")->fInfo.fObjectRef;
 
   // /environment
-  auto env = addObject("/environment");
-  fEnvironmentRef = env->fObjectRef;
+  auto env = addObject(JboxObjectType::kEnvironment, "/environment");
+  fEnvironmentRef = env->fInfo.fObjectRef;
 
   // /environment/instance_id
   env->addProperty("instance_id", PropertyOwner::kHostOwner, makeNumber(iInstanceId), kJBox_EnvironmentInstanceID);
@@ -97,13 +97,13 @@ Motherboard::Motherboard(int iInstanceId, int iSampleRate, Config const &iConfig
 //  addProperty(fCustomPropertiesRef, "instance", PropertyOwner::kRTCOwner, lua::jbox_native_object{});
 
   // global_rtc
-  addObject("/global_rtc");
+  addObject(JboxObjectType::kGlobalRTC, "/global_rtc");
 
   if(iConfig.info().fAcceptNotes || iConfig.info().fDeviceType == DeviceType::kNotePlayer)
   {
     // note_states
-    auto noteStates = addObject("/note_states");
-    fNoteStatesRef = noteStates->fObjectRef;
+    auto noteStates = addObject(JboxObjectType::kNoteStates, "/note_states");
+    fNoteStatesRef = noteStates->fInfo.fObjectRef;
     for(int i = FIRST_MIDI_NOTE; i <= LAST_MIDI_NOTE; i++)
     {
       noteStates->addProperty(std::to_string(i),
@@ -114,7 +114,7 @@ Motherboard::Motherboard(int iInstanceId, int iSampleRate, Config const &iConfig
   }
 
   // transport
-  auto transport = addObject("/transport");
+  auto transport = addObject(JboxObjectType::kTransport, "/transport");
   transport->addProperty("playing", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_TransportPlaying);
   transport->addProperty("play_pos", PropertyOwner::kHostOwner, makeNumber(0), kJBox_TransportPlayPos);
   transport->addProperty("tempo", PropertyOwner::kHostOwner, makeNumber(120), kJBox_TransportTempo);
@@ -172,6 +172,18 @@ TJBox_PropertyRef Motherboard::getPropertyRef(TJBox_ObjectRef iObject, TJBox_Tag
 std::string Motherboard::getPropertyPath(TJBox_PropertyRef const &iPropertyRef) const
 {
   return getObject(iPropertyRef.fObject)->getProperty(iPropertyRef.fKey)->fInfo.fPropertyPath;
+}
+
+//------------------------------------------------------------------------
+// Motherboard::getObjectInfos
+//------------------------------------------------------------------------
+std::vector<JboxObjectInfo> Motherboard::getObjectInfos() const
+{
+  std::vector<JboxObjectInfo> res{};
+  res.reserve(fJboxObjects.size());
+  for(auto const &[id, o]: fJboxObjects)
+    res.emplace_back(o->fInfo);
+  return res;
 }
 
 //------------------------------------------------------------------------
@@ -356,7 +368,7 @@ struct MockJBoxVisitor
 //------------------------------------------------------------------------
 void Motherboard::addDeviceHostProperties(int iUserSampleCount)
 {
-  auto deviceHost = addObject("/device_host");
+  auto deviceHost = addObject(JboxObjectType::kDeviceHost, "/device_host");
   deviceHost->addProperty("sample_context", PropertyOwner::kDocOwner, makeNumber(0), kJBox_DeviceHostSampleContext, iUserSampleCount, lua::EPersistence::kPatch);
   deviceHost->addProperty("delete_sample", PropertyOwner::kDocOwner, makeNumber(0), kJBox_DeviceHostDeleteSample);
   deviceHost->addProperty("edit_sample", PropertyOwner::kDocOwner, makeNumber(0), kJBox_DeviceHostEditSample);
@@ -382,7 +394,7 @@ void Motherboard::addPatterns(int iPatternCount)
 
   for(int i = 0; i < iPatternCount; i++)
   {
-    auto pattern = addObject(fmt::printf("/patterns/%d", i));
+    auto pattern = addObject(JboxObjectType::kPatterns, fmt::printf("/patterns/%d", i));
     pattern->addProperty("length", PropertyOwner::kRTOwner, makeNumber(0), kJBox_PatternsLength);
   }
 }
@@ -548,7 +560,7 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 {
   auto &o = fJboxObjects.get(iParentObject);
 
-  auto fullPropertyPath = fmt::printf("%s/%s", o->fObjectPath, iPropertyName);
+  auto fullPropertyPath = fmt::printf("%s/%s", o->fInfo.fObjectPath, iPropertyName);
 
   struct DefaultValueVisitor
   {
@@ -683,19 +695,19 @@ void Motherboard::addUserSample(int iSampleIndex, std::shared_ptr<lua::jbox_user
                     fmt::printf("/user_samples/%s", *iProperty->fName) :
                     fmt::printf("/user_samples/%d", iSampleIndex);
 
-  auto userSample = addObject(objectName);
+  auto userSample = addObject(JboxObjectType::kUserSamples, objectName);
 
   userSample->addProperty("item",
                           PropertyOwner::kDocOwner,
                           kJBox_Sample,
-                          makeEmptySample(userSample->fObjectRef),
+                          makeEmptySample(userSample->fInfo.fObjectRef),
                           kJBox_UserSampleItem,
                           0,
                           *iProperty->fPersistence);
 
   fUserSamplePropertyPaths.emplace_back(userSample->getProperty("item")->fInfo.fPropertyPath);
 
-  auto userSampleRef = userSample->fObjectRef;
+  auto userSampleRef = userSample->fInfo.fObjectRef;
 
   for(auto &sampleParameter: iProperty->fSampleParameters)
   {
@@ -752,7 +764,7 @@ impl::JboxPropertyDiff Motherboard::registerRTCBinding(std::string const &iPrope
 //------------------------------------------------------------------------
 void Motherboard::addAudioInput(std::string const &iSocketName)
 {
-  auto o = addObject(fmt::printf("/audio_inputs/%s", iSocketName));
+  auto o = addObject(JboxObjectType::kAudioInput, fmt::printf("/audio_inputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_AudioInputConnected);
   std::shared_ptr<JboxValue> buffer = makeDSPBuffer();
   o->addProperty("buffer", PropertyOwner::kHostOwner, buffer, kJBox_AudioInputBuffer);
@@ -764,7 +776,7 @@ void Motherboard::addAudioInput(std::string const &iSocketName)
 //------------------------------------------------------------------------
 void Motherboard::addAudioOutput(std::string const &iSocketName)
 {
-  auto o = addObject(fmt::printf("/audio_outputs/%s", iSocketName));
+  auto o = addObject(JboxObjectType::kAudioOutput, fmt::printf("/audio_outputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_AudioOutputConnected);
   o->addProperty("dsp_latency", PropertyOwner::kRTCOwner, makeNumber(0), kJBox_AudioOutputDSPLatency);
   std::shared_ptr<JboxValue> buffer = makeDSPBuffer();
@@ -777,7 +789,7 @@ void Motherboard::addAudioOutput(std::string const &iSocketName)
 //------------------------------------------------------------------------
 void Motherboard::addCVInput(std::string const &iSocketName)
 {
-  auto o = addObject(fmt::printf("/cv_inputs/%s", iSocketName));
+  auto o = addObject(JboxObjectType::kCVInput, fmt::printf("/cv_inputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_CVInputConnected);
   o->addProperty("value", PropertyOwner::kHostOwner, makeNumber(0), kJBox_CVInputValue);
 }
@@ -787,7 +799,7 @@ void Motherboard::addCVInput(std::string const &iSocketName)
 //------------------------------------------------------------------------
 void Motherboard::addCVOutput(std::string const &iSocketName)
 {
-  auto o = addObject(fmt::printf("/cv_outputs/%s", iSocketName));
+  auto o = addObject(JboxObjectType::kCVOutput, fmt::printf("/cv_outputs/%s", iSocketName));
   o->addProperty("connected", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_CVOutputConnected);
   o->addProperty("dsp_latency", PropertyOwner::kRTCOwner, makeNumber(0), kJBox_CVOutputDSPLatency);
   o->addProperty("value", PropertyOwner::kRTOwner, makeNumber(0), kJBox_CVOutputValue);
@@ -813,10 +825,10 @@ impl::JboxProperty *Motherboard::getProperty(std::string const &iPropertyPath) c
 //------------------------------------------------------------------------
 // Motherboard::addObject
 //------------------------------------------------------------------------
-impl::JboxObject *Motherboard::addObject(std::string const &iObjectPath)
+impl::JboxObject *Motherboard::addObject(JboxObjectType iType, std::string const &iObjectPath)
 {
-  auto id = fJboxObjects.add([&iObjectPath](auto id) -> auto {
-    return std::make_unique<impl::JboxObject>(iObjectPath, id);
+  auto id = fJboxObjects.add([iType, &iObjectPath](auto id) -> auto {
+    return std::make_unique<impl::JboxObject>(iType, iObjectPath, id);
   });
   fJboxObjectRefs[iObjectPath] = id;
   return fJboxObjects.get(id).get();
@@ -1320,7 +1332,7 @@ std::string Motherboard::toString(JboxValue const &iValue, char const *iFormat) 
 //------------------------------------------------------------------------
 std::string Motherboard::getObjectPath(TJBox_ObjectRef iObjectRef) const
 {
-  return getObject(iObjectRef)->fObjectPath;
+  return getObject(iObjectRef)->fInfo.fObjectPath;
 }
 
 //------------------------------------------------------------------------
@@ -1963,15 +1975,15 @@ void Motherboard::disableRTCBindings()
 //------------------------------------------------------------------------
 // JboxObject::JboxObject
 //------------------------------------------------------------------------
-impl::JboxObject::JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iObjectRef) :
-  fObjectPath{iObjectPath}, fObjectRef{iObjectRef} {}
+impl::JboxObject::JboxObject(JboxObjectType iType, std::string const &iObjectPath, TJBox_ObjectRef iObjectRef) :
+  fInfo{iType, iObjectPath, iObjectRef} {}
 
 //------------------------------------------------------------------------
 // JboxObject::getProperty
 //------------------------------------------------------------------------
 impl::JboxProperty *impl::JboxObject::getProperty(std::string const &iPropertyName) const
 {
-  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName, fObjectPath);
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName, fInfo.fObjectPath);
   return fProperties.at(iPropertyName).get();
 }
 
@@ -1983,7 +1995,7 @@ impl::JboxProperty *impl::JboxObject::getProperty(TJBox_Tag iPropertyTag) const
   auto iter = std::find_if(fProperties.begin(),
                            fProperties.end(),
                            [iPropertyTag](auto const &p) { return p.second->fInfo.fTag == iPropertyTag; } );
-  RE_MOCK_ASSERT(iter != fProperties.end(), "missing property tag [%d] for object [%s]", iPropertyTag, fObjectPath);
+  RE_MOCK_ASSERT(iter != fProperties.end(), "missing property tag [%d] for object [%s]", iPropertyTag, fInfo.fObjectPath);
   return iter->second.get();
 }
 
@@ -2091,7 +2103,7 @@ void impl::JboxObject::addProperty(const std::string &iPropertyName,
                                    lua::EPersistence iPersistence,
                                    value_validator_t iValueValidator)
 {
-  RE_MOCK_ASSERT(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", iPropertyName, fObjectPath);
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) == fProperties.end(), "duplicate property [%s] for object [%s]", iPropertyName, fInfo.fObjectPath);
   // create a validator that checks the step count (if none provided)
   if(iStepCount > 0 && !iValueValidator)
   {
@@ -2103,8 +2115,8 @@ void impl::JboxObject::addProperty(const std::string &iPropertyName,
     };
   }
   fProperties[iPropertyName] =
-    std::make_unique<JboxProperty>(JBox_MakePropertyRef(fObjectRef, iPropertyName.c_str()),
-                                   fmt::printf("%s/%s", fObjectPath, iPropertyName),
+    std::make_unique<JboxProperty>(JBox_MakePropertyRef(fInfo.fObjectRef, iPropertyName.c_str()),
+                                   fmt::printf("%s/%s", fInfo.fObjectPath, iPropertyName),
                                    iValueType,
                                    iStepCount,
                                    iOwner,
@@ -2119,7 +2131,7 @@ void impl::JboxObject::addProperty(const std::string &iPropertyName,
 //------------------------------------------------------------------------
 impl::JboxPropertyDiff impl::JboxObject::watchPropertyForChange(std::string const &iPropertyName)
 {
-  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName, fObjectPath);
+  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName, fInfo.fObjectPath);
   return fProperties[iPropertyName]->watchForChange();
 }
 

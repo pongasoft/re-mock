@@ -192,6 +192,7 @@ public: // used by regular code
   PropertyOwner getPropertyOwner(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fInfo.fOwner; }
   JboxPropertyInfo const &getPropertyInfo(std::string const &iPropertyPath) const { return getProperty(iPropertyPath)->fInfo; }
   std::vector<JboxPropertyInfo> getPropertyInfos() const;
+  std::vector<JboxObjectInfo> getObjectInfos() const;
   Info const &getDeviceInfo() const { return fConfig.info(); }
 
   void enableRTCNotify();
@@ -269,7 +270,7 @@ protected:
 
   std::string toString(JboxValue const &iValue, char const *iFormat = nullptr) const;
 
-  impl::JboxObject *addObject(std::string const &iObjectPath);
+  impl::JboxObject *addObject(JboxObjectType iType, std::string const &iObjectPath);
   inline impl::JboxObject *getObject(std::string const &iObjectPath) const { return getObject(getObjectRef(iObjectPath)); }
   impl::JboxObject *getObject(TJBox_ObjectRef iObjectRef) const;
   impl::JboxProperty *getProperty(std::string const &iPropertyPath) const;

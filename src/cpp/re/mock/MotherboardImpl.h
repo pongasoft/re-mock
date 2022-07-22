@@ -81,6 +81,13 @@ private:
   motherboard_value_t fMotherboardValue{nil_t{}};
 };
 
+struct JboxObjectInfo
+{
+  JboxObjectType fType;
+  std::string fObjectPath;
+  TJBox_ObjectRef fObjectRef;
+};
+
 struct JboxPropertyInfo
 {
   TJBox_PropertyRef fPropertyRef;
@@ -171,7 +178,7 @@ protected:
 
 struct JboxObject
 {
-  explicit JboxObject(std::string const &iObjectPath, TJBox_ObjectRef iObjectRef);
+  JboxObject(JboxObjectType iType, std::string const &iObjectPath, TJBox_ObjectRef iObjectRef);
 
   ~JboxObject() = default;
 
@@ -185,8 +192,9 @@ struct JboxObject
   impl::JboxPropertyDiff watchPropertyForChange(std::string const &iPropertyName);
   bool hasProperty(TJBox_Tag iPropertyTag) const;
 
-  const std::string fObjectPath;
-  const TJBox_ObjectRef fObjectRef;
+  JboxObjectInfo const &getInfo() const { return fInfo; }
+
+  const JboxObjectInfo fInfo;
 
   friend class re::mock::Motherboard;
 
