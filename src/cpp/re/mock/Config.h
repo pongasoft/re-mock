@@ -49,20 +49,21 @@ enum class DeviceType
   kNotePlayer
 };
 
-enum class JboxObjectType
+enum class JboxObjectType : int
 {
-  kAudioInput,
-  kAudioOutput,
-  kCustomProperties,
-  kCVInput,
-  kCVOutput,
-  kDeviceHost,
-  kEnvironment,
-  kGlobalRTC,
-  kNoteStates,
-  kPatterns,
-  kTransport,
-  kUserSamples
+  kUnknown          = 0,
+  kAudioInput       = 1 << 0,
+  kAudioOutput      = 1 << 1,
+  kCustomProperties = 1 << 2,
+  kCVInput          = 1 << 3,
+  kCVOutput         = 1 << 4,
+  kDeviceHost       = 1 << 5,
+  kEnvironment      = 1 << 6,
+  kGlobalRTC        = 1 << 7,
+  kNoteStates       = 1 << 8,
+  kPatterns         = 1 << 9,
+  kTransport        = 1 << 10,
+  kUserSamples      = 1 << 11,
 };
 
 struct Realtime
