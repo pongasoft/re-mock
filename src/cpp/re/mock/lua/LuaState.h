@@ -64,6 +64,8 @@ public:
   std::optional<std::string> getTableValueAsOptionalString(char const *iKey, int idx = -1);
   lua_Unsigned getTableSize(int idx = -1);
 
+  lua_Integer getArrayValueAsInteger(int iKey, int idx = -1);
+
   void setTableValue(char const *iKey, lua_Number iValue);
   void setTableValue(char const *iKey, std::string const &iValue);
 

@@ -172,6 +172,18 @@ lua_Integer LuaState::getTableValueAsInteger(char const *iKey, int idx)
 }
 
 //------------------------------------------------------------------------
+// LuaState::getArrayValueAsInteger
+//------------------------------------------------------------------------
+lua_Integer LuaState::getArrayValueAsInteger(int iKey, int idx)
+{
+  luaL_checktype(L, idx, LUA_TTABLE);
+  lua_geti(L, idx, iKey);
+  auto res = lua_tointeger(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
 // LuaState::getTableValueAsOptionalInteger
 //------------------------------------------------------------------------
 std::optional<lua_Integer> LuaState::getTableValueAsOptionalInteger(char const *iKey, int idx)
