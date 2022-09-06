@@ -260,6 +260,7 @@ protected:
 
   std::shared_ptr<const JboxValue> getJboxValue(std::string const &iPropertyPath) const;
   std::shared_ptr<JboxValue> getJboxValue(std::string const &iPropertyPath);
+  void *findInstance() const;
 
   void storeProperty(TJBox_PropertyRef const &iProperty, std::shared_ptr<const JboxValue> const &iValue, TJBox_UInt16 iAtFrameIndex = 0);
   void storeProperty(TJBox_ObjectRef iObject, TJBox_Tag iTag, std::shared_ptr<const JboxValue> const &iValue, TJBox_UInt16 iAtFrameIndex = 0);

@@ -231,6 +231,19 @@ std::shared_ptr<JboxValue> Motherboard::getJboxValue(std::string const &iPropert
 }
 
 //------------------------------------------------------------------------
+// Motherboard::findInstance
+//------------------------------------------------------------------------
+void *Motherboard::findInstance() const
+{
+  auto ref = getObjectRef("/custom_properties");
+  auto &customProperties = fJboxObjects.get(ref);
+  auto instance = customProperties->findValue("instance");
+  if(!instance || instance->isNil())
+    return nullptr;
+  return instance->getNativeObject().fNativeObject;
+}
+
+//------------------------------------------------------------------------
 // Motherboard::to_TJBox_Value
 //------------------------------------------------------------------------
 TJBox_Value Motherboard::to_TJBox_Value(std::shared_ptr<const JboxValue> const &iValue) const
@@ -860,7 +873,7 @@ void Motherboard::nextBatch()
   // next we call render_realtime
   diffs = std::move(fRTCNotifyDiffs);
 
-  auto const instance = getInstance<void *>();
+  auto const instance = findInstance();
 
   if(instance != nullptr && fRealtime.render_realtime)
   {
@@ -1983,8 +1996,24 @@ impl::JboxObject::JboxObject(JboxObjectType iType, std::string const &iObjectPat
 //------------------------------------------------------------------------
 impl::JboxProperty *impl::JboxObject::getProperty(std::string const &iPropertyName) const
 {
-  RE_MOCK_ASSERT(fProperties.find(iPropertyName) != fProperties.end(), "missing property [%s] for object [%s]", iPropertyName, fInfo.fObjectPath);
-  return fProperties.at(iPropertyName).get();
+  auto prop = findProperty(iPropertyName);
+  RE_MOCK_ASSERT(prop != nullptr, "missing property [%s] for object [%s]", iPropertyName, fInfo.fObjectPath);
+  return prop;
+}
+
+//------------------------------------------------------------------------
+// JboxObject::findProperty
+//------------------------------------------------------------------------
+impl::JboxProperty *impl::JboxObject::findProperty(std::string const &iPropertyName) const
+{
+  auto iter = fProperties.find(iPropertyName);
+  if(iter == fProperties.end())
+    return nullptr;
+  else
+  {
+    auto &prop = iter->second;
+    return prop.get();
+  }
 }
 
 //------------------------------------------------------------------------
@@ -2043,6 +2072,15 @@ std::shared_ptr<const JboxValue> impl::JboxObject::loadValue(TJBox_Tag iProperty
 std::shared_ptr<JboxValue> impl::JboxObject::loadValue(std::string const &iPropertyName)
 {
   return getProperty(iPropertyName)->loadValue();
+}
+
+//------------------------------------------------------------------------
+// JboxObject::findValue
+//------------------------------------------------------------------------
+std::shared_ptr<JboxValue> impl::JboxObject::findValue(std::string const &iPropertyName)
+{
+  auto property = findProperty(iPropertyName);
+  return property ? property->loadValue() : nullptr;
 }
 
 //------------------------------------------------------------------------

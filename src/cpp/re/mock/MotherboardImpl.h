@@ -185,6 +185,7 @@ struct JboxObject
   std::shared_ptr<const JboxValue> loadValue(std::string const &iPropertyName) const;
   std::shared_ptr<const JboxValue> loadValue(TJBox_Tag iPropertyTag) const;
   std::shared_ptr<JboxValue> loadValue(std::string const &iPropertyName);
+  std::shared_ptr<JboxValue> findValue(std::string const &iPropertyName);
   std::shared_ptr<JboxValue> loadValue(TJBox_Tag iPropertyTag);
   impl::JboxPropertyDiff storeValue(std::string const &iPropertyName, std::shared_ptr<JboxValue> iValue);
   impl::JboxPropertyDiff storeValue(TJBox_Tag iPropertyTag, std::shared_ptr<JboxValue> iValue);
@@ -217,6 +218,7 @@ protected:
                    value_validator_t iValueValidator = {});
 
   JboxProperty *getProperty(std::string const &iPropertyName) const;
+  JboxProperty *findProperty(std::string const &iPropertyName) const;
   JboxProperty *getProperty(TJBox_Tag iPropertyTag) const;
 
   std::vector<JboxPropertyInfo> getPropertyInfos() const;
