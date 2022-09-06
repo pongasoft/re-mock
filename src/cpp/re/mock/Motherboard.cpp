@@ -129,6 +129,7 @@ Motherboard::Motherboard(int iInstanceId, int iSampleRate, Config const &iConfig
   transport->addProperty("request_reset_audio", PropertyOwner::kHostOwner, makeNumber(0), kJBox_TransportRequestResetAudio);
   transport->addProperty("request_run", PropertyOwner::kHostOwner, makeNumber(0), kJBox_TransportRequestRun);
   transport->addProperty("request_stop", PropertyOwner::kHostOwner, makeNumber(0), kJBox_TransportRequestStop);
+  transport->addProperty("muted", PropertyOwner::kHostOwner, makeBoolean(false), kJBox_TransportMuted);
 }
 
 //------------------------------------------------------------------------
