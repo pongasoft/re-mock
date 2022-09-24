@@ -225,8 +225,11 @@ jbox_native_object::param_t MotherboardDef::toParam(int idx)
     case LUA_TNUMBER:
       return static_cast<TJBox_Float64>(lua_tonumber(L, idx));
 
+    case LUA_TSTRING:
+      return std::string(lua_tostring(L, idx));
+
     default:
-      RE_MOCK_ASSERT(false, "Invalid type for jbox.native_object param (only boolean or number allowed)");
+      RE_MOCK_ASSERT(false, "Invalid type for jbox.native_object param (only boolean, number or string allowed)");
       return false; // statement never reached (compiler does not know)
   }
 }

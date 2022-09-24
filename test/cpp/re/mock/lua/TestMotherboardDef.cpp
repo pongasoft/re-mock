@@ -177,10 +177,11 @@ TEST(MotherboardDef, All)
   {
     auto ptr = std::get<std::shared_ptr<jbox_native_object>>(customProperties->rtc_owner["instance_with_default"]);
     ASSERT_EQ(ptr->fDefaultValue.operation, "Operation");
-    ASSERT_EQ(ptr->fDefaultValue.params.size(), 3);
+    ASSERT_EQ(ptr->fDefaultValue.params.size(), 4);
     ASSERT_FLOAT_EQ(std::get<TJBox_Float64>(ptr->fDefaultValue.params[0]), 0.5);
     ASSERT_EQ(std::get<bool>(ptr->fDefaultValue.params[1]), true);
     ASSERT_FLOAT_EQ(std::get<TJBox_Float64>(ptr->fDefaultValue.params[2]), 48000);
+    ASSERT_EQ(std::get<std::string>(ptr->fDefaultValue.params[3]), "abc");
     ASSERT_EQ(ptr->fPersistence, EPersistence::kNone);
   }
 

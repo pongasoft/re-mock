@@ -55,7 +55,7 @@ custom_properties = jbox.property_set {
       instance = jbox.native_object{ },
       instance_with_default = jbox.native_object{
         property_tag = 103,
-        default = { "Operation", { 0.5, true, 48000 } }
+        default = { "Operation", { 0.5, true, 48000, "abc" } }
       },
     }
   },

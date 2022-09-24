@@ -434,6 +434,7 @@ resource::String Config::rtc_owner_property(std::string const &iPropertyName, lu
   struct visitor {
     std::string operator()(bool v) { return (v ? "true" : "false"); }
     std::string operator()(TJBox_Float64 v) { return std::to_string(v); }
+    std::string operator()(std::string v) { return fmt::printf(R"("%s")", v); }
   };
 
   std::vector<std::string> params{};

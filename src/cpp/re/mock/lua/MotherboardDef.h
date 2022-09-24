@@ -41,7 +41,7 @@ enum class EPersistence
 };
 
 struct jbox_native_object {
-  using param_t = std::variant<TJBox_Float64, bool>;
+  using param_t = std::variant<TJBox_Float64, bool, std::string>;
 
   int fPropertyTag{};
 

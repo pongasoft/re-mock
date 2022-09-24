@@ -317,6 +317,74 @@ std::vector<TJBox_UInt8> to_TJBox_UInt8_vector(std::string s)
   return res;
 }
 
+// RackExtension.Motherboard_NativeObject
+TEST(RackExtension, Motherboard_NativeObject)
+{
+  Rack rack{};
+
+  struct NativeObject
+  {
+    NativeObject(TJBox_Float64 iNumberValue, bool iBoolValue, std::string iStringValue) :
+      fNumberValue{iNumberValue},
+      fBoolValue{iBoolValue},
+      fStringValue{std::move(iStringValue)}
+    {}
+
+    TJBox_Float64 fNumberValue;
+    bool fBoolValue;
+    std::string fStringValue;
+  };
+
+
+  auto c = DeviceConfig<MockDevice>::fromSkeleton()
+    .mdef(Config::rtc_owner_property("native_object",
+                                     lua::jbox_native_object{}.default_value("NativeObject", {12.98f, true, std::string("abc")})))
+    .rt([](Realtime &rt) {
+      rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[],
+                                   TJBox_UInt32 iCount) -> void * {
+        RE_MOCK_LOG_INFO("rt.create_native_object(%s)", iOperation);
+        if(std::strcmp(iOperation, "Instance") == 0)
+        {
+          if(iCount >= 1)
+          {
+            TJBox_Float64 sampleRate = JBox_GetNumber(iParams[0]);
+            return new MockDevice(static_cast<int>(sampleRate));
+          }
+        }
+
+        if(std::strcmp(iOperation, "NativeObject") == 0)
+        {
+          RE_MOCK_ASSERT(iCount == 3);
+          auto size = JBox_GetStringLength(iParams[2]);
+          char buf[1024];
+          JBox_GetSubstring(iParams[2], 0, size, buf);
+          return new NativeObject(JBox_GetNumber(iParams[0]), JBox_GetBoolean(iParams[1]), buf);
+        }
+
+        return nullptr;
+      };
+
+      rt.destroy_native_object = [](const char iOperation[], void *iNativeObject) {
+        RE_MOCK_LOG_INFO("rt.destroy_native_object(%s)", iOperation);
+        if(std::strcmp(iOperation, "Instance") == 0)
+        {
+          delete reinterpret_cast<MockDevice *>(iNativeObject);
+        }
+        if(std::strcmp(iOperation, "NativeObject") == 0)
+        {
+          delete reinterpret_cast<NativeObject *>(iNativeObject);
+        }
+      };
+    });
+
+  auto re = rack.newDevice(c);
+
+  auto o = re.getNativeObjectRO<NativeObject>("/custom_properties/native_object");
+  ASSERT_FLOAT_EQ(12.98f, o->fNumberValue);
+  ASSERT_TRUE(o->fBoolValue);
+  ASSERT_EQ("abc", o->fStringValue);
+}
+
 // RackExtension.RealtimeController_NativeObject
 TEST(RackExtension, RealtimeController_NativeObject)
 {

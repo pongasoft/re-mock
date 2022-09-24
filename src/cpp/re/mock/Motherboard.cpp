@@ -600,6 +600,7 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
         struct JboxValueVisitor {
           std::shared_ptr<const JboxValue> operator()(bool v) const { return fMotherboard->makeBoolean(v); }
           std::shared_ptr<const JboxValue> operator()(TJBox_Float64 v) const { return fMotherboard->makeNumber(v); }
+          std::shared_ptr<const JboxValue> operator()(std::string v) const { return fMotherboard->makeString(v); }
           Motherboard *fMotherboard;
         };
 
