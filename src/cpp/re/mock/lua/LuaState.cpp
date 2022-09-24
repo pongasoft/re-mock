@@ -160,6 +160,19 @@ lua_Number LuaState::getTableValueAsNumber(char const *iKey, int idx)
 }
 
 //------------------------------------------------------------------------
+// LuaState::getTableValueAsOptionalNumber
+//------------------------------------------------------------------------
+std::optional<lua_Number> LuaState::getTableValueAsOptionalNumber(char const *iKey, int idx)
+{
+  std::optional<lua_Number> res{};
+  luaL_checktype(L, idx, LUA_TTABLE);
+  if(lua_getfield(L, idx, iKey) != LUA_TNIL)
+    res = lua_tonumber(L, -1);
+  lua_pop(L, 1);
+  return res;
+}
+
+//------------------------------------------------------------------------
 // LuaState::getTableValueAsInteger
 //------------------------------------------------------------------------
 lua_Integer LuaState::getTableValueAsInteger(char const *iKey, int idx)
