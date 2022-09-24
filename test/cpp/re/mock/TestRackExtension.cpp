@@ -244,7 +244,7 @@ end
   ASSERT_FLOAT_EQ(112.0, re.getCVSocketValue("/cv_outputs/C"));
 
   auto infos = re.getPropertyInfos();
-  ASSERT_EQ(44, infos.size());
+  ASSERT_EQ(45, infos.size());
   auto expectedInfos =
     "/audio_inputs/L/buffer,\n"
     "/audio_inputs/L/connected,\n"
@@ -281,6 +281,7 @@ end
     "/transport/loop_enabled,\n"
     "/transport/loop_end_pos,\n"
     "/transport/loop_start_pos,\n"
+    "/transport/muted,\n"
     "/transport/play_pos,\n"
     "/transport/playing,\n"
     "/transport/request_reset_audio,\n"
