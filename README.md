@@ -83,6 +83,15 @@ Links
 Release notes
 -------------
 
+#### 1.1.0 - 2022-09-25
+
+- Handle discrete properties
+- `instance` is now optional (although it does not make a lot of sense for a real device, some examples in the SDK do not have one!)
+- added missing `/transport/muted` property
+- allow string parameter in `jbox.native_object` default parameter list
+- Exposes more internal APIS (like `JboxPropertyInfo`) in order to build other tools on top of `re-mock`
+- Fixed various bugs
+
 #### 1.0.1 - 2022-02-01
 
 - Fixes for Windows 10
