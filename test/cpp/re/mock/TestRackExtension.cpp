@@ -439,8 +439,8 @@ TEST(RackExtension, RealtimeController_NativeObject)
       .mdef(Config::rtc_owner_property("prop_function_return", lua::jbox_string_property{}))
       .mdef(Config::rtc_owner_property("prop_gain", lua::jbox_native_object{}.property_tag(3000)))
 
-      .rtc(resource::File{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
-                                "RackExtension_RealtimeController_NativeObject.lua")})
+      .rtc(resource::File{fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "lua" /
+                                "RackExtension_RealtimeController_NativeObject.lua"})
       .rt([](Realtime &rt) {
         rt.create_native_object = [](const char iOperation[], const TJBox_Value iParams[],
                                      TJBox_UInt32 iCount) -> void * {
@@ -565,7 +565,7 @@ TEST(RackExtension, RealtimeController_Blob)
 
   std::vector<char> blobData{'A', 'L', '\0', 'z'};
 
-  auto const blobFilePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
+  auto const blobFilePath = fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "audio" / "sine.wav";
 
   auto c = DeviceConfig<Device>::fromSkeleton()
     .mdef(Config::document_owner_property("prop_function",
@@ -583,8 +583,8 @@ TEST(RackExtension, RealtimeController_Blob)
 
     .resource_loading_context("/Private/blob.file", resource::LoadingContext{}.status(resource::LoadStatus::kPartiallyResident).resident_size(100))
 
-    .rtc(resource::File{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
-                              "RackExtension_RealtimeController_Blob.lua")});
+    .rtc(resource::File{fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "lua" /
+                              "RackExtension_RealtimeController_Blob.lua"});
 
   auto re = rack.newDevice(c);
 
@@ -775,14 +775,14 @@ TEST(RackExtension, RealtimeController_Sample)
     .mdef(Config::rtc_owner_property("prop_sample", lua::jbox_sample_property{}.property_tag(5000)))
 
     .sample_data("/Private/sample.default", resource::Sample{}.sample_rate(44100).channels(1).data({0,1,2,3}))
-    .sample_file("/Private/mono_sample.file", fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio",
-                                                        "sine.wav"))
+    .sample_file("/Private/mono_sample.file", fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "audio" /
+                                                        "sine.wav")
     .sample_data("/Private/stereo_sample.data", resource::Sample{}.sample_rate(44100).channels(2).data(sampleStereoData))
 
     .resource_loading_context("/Private/stereo_sample.data", resource::LoadingContext{}.status(resource::LoadStatus::kPartiallyResident).resident_size(2))
 
-    .rtc(resource::File{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
-                              "RackExtension_RealtimeController_Sample.lua")});
+    .rtc(resource::File{fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "lua" /
+                              "RackExtension_RealtimeController_Sample.lua"});
 
   auto re = rack.newDevice(c);
 
@@ -1095,8 +1095,8 @@ TEST(RackExtension, RealtimeController_UserSample)
 
     .resource_loading_context("/Private/stereo_sample.data", resource::LoadingContext{}.status(resource::LoadStatus::kPartiallyResident).resident_size(2))
 
-    .rtc(resource::File{fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua",
-                              "RackExtension_RealtimeController_UserSample.lua")});
+    .rtc(resource::File{fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "lua" /
+                              "RackExtension_RealtimeController_UserSample.lua"});
 
   auto re = rack.newDevice(c);
 

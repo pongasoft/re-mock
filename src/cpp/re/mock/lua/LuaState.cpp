@@ -293,9 +293,9 @@ void LuaState::setTableValue(char const *iKey, std::string const &iValue)
 //------------------------------------------------------------------------
 // LuaState::runLuaFile
 //------------------------------------------------------------------------
-int LuaState::runLuaFile(std::string const &iFilename)
+int LuaState::runLuaFile(fs::path const &iFilename)
 {
-  auto const res = luaL_dofile(L, iFilename.c_str());
+  auto const res = luaL_dofile(L, iFilename.string().c_str());
 
   if(res != LUA_OK)
   {

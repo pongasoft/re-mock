@@ -2,7 +2,7 @@ Requirements
 ------------
 
 * CMake 3.17+
-* For Mac: tested on macOS Mojave (10.14.6) / Xcode 11.3.1
+* For Mac: tested on macOS Big Sur (11.7) / Xcode 13.2.1 (requires macOS 15+)
 * For Windows: tested on Windows 10 / "Visual Studio 16 2019"
 * RE SDK 4.1.0+
 

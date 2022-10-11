@@ -89,7 +89,7 @@ struct Realtime
   static Realtime byDefault();
 };
 
-struct ConfigFile { std::string fFilename{}; };
+struct ConfigFile { fs::path fFilename{}; };
 struct ConfigString { std::string fString{}; };
 
 using ConfigSource = std::variant<resource::File, resource::String>;
@@ -111,7 +111,7 @@ struct Info
   static Info from(resource::File iFile);
   static Info from(resource::String iString);
   static Info from_string(std::string iString) { return from(resource::String{iString}); }
-  static Info from_file(std::string iFile) { return from(resource::File{iFile}); }
+  static Info from_file(fs::path iFile) { return from(resource::File{iFile}); }
 };
 
 struct Config
@@ -171,23 +171,23 @@ struct Config
   Config &default_patch(std::string const &s) { fInfo.default_patch(s); return *this; }
   Config &accept_notes(bool b) { fInfo.accept_notes(b); return *this; }
 
-  std::optional<std::string> device_root_dir() const { return fDeviceRootDir; };
-  Config &device_root_dir(std::string s) { fDeviceRootDir = s; return *this;}
+  std::optional<fs::path> device_root_dir() const { return fDeviceRootDir; };
+  Config &device_root_dir(fs::path s) { fDeviceRootDir = s; return *this;}
 
-  std::optional<std::string> device_resources_dir() const { return fDeviceResourcesDir; };
-  Config &device_resources_dir(std::string s) { fDeviceResourcesDir = s; return *this; }
+  std::optional<fs::path> device_resources_dir() const { return fDeviceResourcesDir; };
+  Config &device_resources_dir(fs::path s) { fDeviceResourcesDir = s; return *this; }
 
   std::vector<ConfigSource> const &mdef() const { return fMotherboardDefs; }
   Config &mdef(resource::File iFile) { fMotherboardDefs.emplace_back(iFile); return *this; }
   Config &mdef(resource::String iString) { fMotherboardDefs.emplace_back(iString); return *this; }
   Config &mdef_string(std::string iString) { return mdef(resource::String{iString}); }
-  Config &mdef_file(std::string iFile) { return mdef(resource::File{iFile}); }
+  Config &mdef_file(fs::path iFile) { return mdef(resource::File{iFile}); }
 
   std::vector<ConfigSource> const &rtc() const { return fRealtimeControllers; }
   Config &rtc(resource::File iFile) { fRealtimeControllers.emplace_back(iFile); return *this; }
   Config &rtc(resource::String iString) { fRealtimeControllers.emplace_back(iString); return *this; }
   Config &rtc_string(std::string iString) { return rtc(resource::String{iString}); }
-  Config &rtc_file(std::string iFile) { return rtc(resource::File{iFile}); }
+  Config &rtc_file(fs::path iFile) { return rtc(resource::File{iFile}); }
 
   rt_callback_t rt() const { return fRealtime; }
   Config &rt(rt_callback_t iCallback)
@@ -214,13 +214,13 @@ struct Config
   Config &rt_jbox_export(std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
   Config& patch_string(std::string iResourcePath, std::string const &iPatchString) { fResources[iResourcePath] = ConfigResource::Patch{resource::String{iPatchString}}; return *this; }
-  Config& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fResources[iResourcePath] = ConfigResource::Patch{resource::File{iPatchFile}}; return *this; }
+  Config& patch_file(std::string iResourcePath, fs::path const &iPatchFile) { fResources[iResourcePath] = ConfigResource::Patch{resource::File{iPatchFile}}; return *this; }
   Config& patch_data(std::string iResourcePath, resource::Patch iPatch) { fResources[iResourcePath] = ConfigResource::Patch{std::move(iPatch)}; return *this; }
 
-  Config& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fResources[iResourcePath] = ConfigResource::Blob{resource::File{iBlobFile}}; return *this; }
+  Config& blob_file(std::string iResourcePath, fs::path const &iBlobFile) { fResources[iResourcePath] = ConfigResource::Blob{resource::File{iBlobFile}}; return *this; }
   Config& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fResources[iResourcePath] = ConfigResource::Blob{resource::Blob{std::move(iBlobData)}}; return *this; }
 
-  Config& sample_file(std::string iResourcePath, std::string const &iSampleFile) { fResources[iResourcePath] = ConfigResource::Sample{resource::File{iSampleFile}}; return *this; }
+  Config& sample_file(std::string iResourcePath, fs::path const &iSampleFile) { fResources[iResourcePath] = ConfigResource::Sample{resource::File{iSampleFile}}; return *this; }
   Config& sample_data(std::string iResourcePath, resource::Sample iSample) { fResources[iResourcePath] = ConfigResource::Sample{std::move(iSample)}; return *this; }
 
   Config& resource_loading_context(std::string iResourcePath, resource::LoadingContext iCtx) { fResourceLoadingContexts[iResourcePath] = std::move(iCtx); return *this; }
@@ -228,9 +228,9 @@ struct Config
   /**
    * Returns the resource relative to `device_resources_dir()` (if device_resources_dir exists).
    *
-   * @param iRelativeResourcePath must use Unix like path
+   * @param iRelativeResourcePath must use Unix like path (in other words, must be a `generic_path`)
    *                              (which is what the SDK uses (for example: `/Public/Default.repatch`)) */
-  std::optional<resource::File> resource_file(resource::File iRelativeResourcePath) const;
+  std::optional<resource::File> resource_file(fs::path const &iRelativeResourcePath) const;
 
   std::unique_ptr<resource::Patch> findPatchResource(std::string const &iResourcePath) const;
   std::unique_ptr<resource::Blob> findBlobResource(std::string const &iResourcePath) const;
@@ -257,8 +257,8 @@ protected:
   bool fDebugConfig{};
   bool fTraceEnabled{true};
   Info fInfo{};
-  std::optional<std::string> fDeviceRootDir{};
-  std::optional<std::string> fDeviceResourcesDir{};
+  std::optional<fs::path> fDeviceRootDir{};
+  std::optional<fs::path> fDeviceResourcesDir{};
   std::vector<ConfigSource> fMotherboardDefs{};
   std::vector<ConfigSource> fRealtimeControllers{};
   rt_callback_t fRealtime{};
@@ -276,10 +276,10 @@ struct DeviceConfig
 
   bool debug() const { return fConfig.debug_config(); }
   Info const &info() const { return fConfig.info(); }
-  std::optional<std::string> device_root_dir() const { return fConfig.device_root_dir(); };
-  std::optional<std::string> device_resources_dir() const { return fConfig.device_resources_dir(); };
+  std::optional<fs::path> device_root_dir() const { return fConfig.device_root_dir(); };
+  std::optional<fs::path> device_resources_dir() const { return fConfig.device_resources_dir(); };
 
-  std::optional<resource::File> resource_file(resource::File iRelativeResourcePath) const { return fConfig.resource_file(iRelativeResourcePath); }
+  std::optional<resource::File> resource_file(std::string const &iRelativeResourcePath) const { return fConfig.resource_file(iRelativeResourcePath); }
 
   std::unique_ptr<resource::Patch> findPatchResource(std::string const &iResourcePath) const { return fConfig.findPatchResource(iResourcePath); }
   std::unique_ptr<resource::Blob> findBlobResource(std::string const &iResourcePath) const { return fConfig.findBlobResource(iResourcePath); }
@@ -290,8 +290,8 @@ struct DeviceConfig
   DeviceConfig &enable_trace() { fConfig.enable_trace(); return *this; }
   DeviceConfig &disable_trace() { fConfig.disable_trace(); return *this; }
 
-  DeviceConfig &device_root_dir(std::string s) { fConfig.device_root_dir(s); return *this;}
-  DeviceConfig &device_resources_dir(std::string s) { fConfig.device_resources_dir(s); return *this;}
+  DeviceConfig &device_root_dir(fs::path s) { fConfig.device_root_dir(s); return *this;}
+  DeviceConfig &device_resources_dir(fs::path s) { fConfig.device_resources_dir(s); return *this;}
 
   DeviceConfig &default_patch(std::string s) { fConfig.default_patch(s); return *this; }
   DeviceConfig &accept_notes(bool b) { fConfig.accept_notes(b); return *this; }
@@ -299,12 +299,12 @@ struct DeviceConfig
   DeviceConfig &mdef(resource::File iFile) { fConfig.mdef(iFile); return *this; }
   DeviceConfig &mdef(resource::String iString) { fConfig.mdef(iString); return *this; }
   DeviceConfig &mdef_string(std::string iString) { return mdef(resource::String{iString}); }
-  DeviceConfig &mdef_file(std::string iFile) { return mdef(resource::File{iFile}); }
+  DeviceConfig &mdef_file(fs::path iFile) { return mdef(resource::File{iFile}); }
 
   DeviceConfig &rtc(resource::File iFile) { fConfig.rtc(iFile); return *this; }
   DeviceConfig &rtc(resource::String iString) { fConfig.rtc(iString); return *this; }
   DeviceConfig &rtc_string(std::string iString) { return rtc(resource::String{iString}); }
-  DeviceConfig &rtc_file(std::string iFile) { return rtc(resource::File{iFile}); }
+  DeviceConfig &rtc_file(fs::path iFile) { return rtc(resource::File{iFile}); }
 
   DeviceConfig &rt(rt_callback_t iCallback) { fConfig.rt(std::move(iCallback)); return *this; }
 
@@ -317,23 +317,23 @@ struct DeviceConfig
   DeviceConfig clone() const { return *this; }
 
   DeviceConfig& patch_string(std::string iResourcePath, std::string const &iPatchString) { fConfig.patch_string(iResourcePath, iPatchString); return *this; }
-  DeviceConfig& patch_file(std::string iResourcePath, std::string const &iPatchFile) { fConfig.patch_file(iResourcePath, iPatchFile); return *this; }
+  DeviceConfig& patch_file(std::string iResourcePath, fs::path const &iPatchFile) { fConfig.patch_file(iResourcePath, iPatchFile); return *this; }
   DeviceConfig& patch_data(std::string iResourcePath, resource::Patch iPatch) { fConfig.patch_data(iResourcePath, std::move(iPatch)); return *this; }
 
-  DeviceConfig& blob_file(std::string iResourcePath, std::string const &iBlobFile) { fConfig.blob_file(iResourcePath, iBlobFile); return *this; }
+  DeviceConfig& blob_file(std::string iResourcePath, fs::path const &iBlobFile) { fConfig.blob_file(iResourcePath, iBlobFile); return *this; }
   DeviceConfig& blob_data(std::string iResourcePath, std::vector<char> iBlobData) { fConfig.blob_data(iResourcePath, iBlobData); return *this; }
 
-  DeviceConfig& sample_file(std::string iResourcePath, std::string const &iSampleFile) { fConfig.sample_file(iResourcePath, iSampleFile); return *this; }
+  DeviceConfig& sample_file(std::string iResourcePath, fs::path const &iSampleFile) { fConfig.sample_file(iResourcePath, iSampleFile); return *this; }
   DeviceConfig& sample_data(std::string iResourcePath, resource::Sample iSample) { fConfig.sample_data(iResourcePath, std::move(iSample)); return *this; }
 
   DeviceConfig& resource_loading_context(std::string iResourcePath, resource::LoadingContext iCtx) { fConfig.resource_loading_context(iResourcePath, iCtx); return *this; }
 
-  static DeviceConfig fromJBoxExport(std::string const &iDeviceRootFolder,
+  static DeviceConfig fromJBoxExport(fs::path const &iDeviceRootFolder,
                                      std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
-  static DeviceConfig fromJBoxExport(std::string const &iInfoFile,
-                                     std::string const &iMotherboardDefFile,
-                                     std::string const &iRealtimeControllerFile,
+  static DeviceConfig fromJBoxExport(fs::path const &iInfoFile,
+                                     fs::path const &iMotherboardDefFile,
+                                     fs::path const &iRealtimeControllerFile,
                                      std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject = Realtime::destroyer<T>());
 
   static DeviceConfig fromSkeleton(Info const &iInfo);
@@ -426,9 +426,9 @@ Config &Config::rt_jbox_export(std::optional<Realtime::destroy_native_object_t> 
 // DeviceConfig::fromJBoxExport
 //------------------------------------------------------------------------
 template<typename T>
-DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iInfoFile,
-                                                std::string const &iMotherboardDefFile,
-                                                std::string const &iRealtimeControllerFile,
+DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(fs::path const &iInfoFile,
+                                                fs::path const &iMotherboardDefFile,
+                                                fs::path const &iRealtimeControllerFile,
                                                 std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject)
 {
   return DeviceConfig<T>(Info::from_file(iInfoFile))
@@ -441,14 +441,14 @@ DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iInfoFile,
 // DeviceConfig::fromSkeleton
 //------------------------------------------------------------------------
 template<typename T>
-DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(std::string const &iDeviceRootFolder,
+DeviceConfig<T> DeviceConfig<T>::fromJBoxExport(fs::path const &iDeviceRootFolder,
                                                 std::optional<Realtime::destroy_native_object_t> iDestroyNativeObject)
 {
-  return DeviceConfig<T>(Info::from_file(fmt::path(iDeviceRootFolder, "info.lua")))
+  return DeviceConfig<T>(Info::from_file(iDeviceRootFolder / "info.lua"))
     .device_root_dir(iDeviceRootFolder)
-    .device_resources_dir(fmt::path(iDeviceRootFolder, "Resources"))
-    .mdef_file(fmt::path(iDeviceRootFolder, "motherboard_def.lua"))
-    .rtc_file(fmt::path(iDeviceRootFolder, "realtime_controller.lua"))
+    .device_resources_dir(iDeviceRootFolder / "Resources")
+    .mdef_file(iDeviceRootFolder / "motherboard_def.lua")
+    .rtc_file(iDeviceRootFolder / "realtime_controller.lua")
     .rt_jbox_export(iDestroyNativeObject);
 }
 

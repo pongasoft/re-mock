@@ -39,7 +39,7 @@ public:
 
   std::string getStackString(char const *iMessage = nullptr) { return L.getStackString(iMessage); }
 
-  int loadFile(std::string const &iLuaFilename);
+  int loadFile(fs::path const &iLuaFilename);
   int loadString(std::string const &iLuaCode);
 
   /**

@@ -627,7 +627,7 @@ TEST(Rack, Transport)
   Rack rack{};
 
   auto rack_transport = [&rack]() {
-    return fmt::printf("p=%s,pp=%d,t=%.0f,ft=%.0f,ta=%s,tsn=%d,tsd=%d,le=%s,lsp=%d,lep=%d,bsp=%d",
+    return fmt::printf("p=%s,pp=%lld,t=%.0f,ft=%.0f,ta=%s,tsn=%d,tsd=%d,le=%s,lsp=%lld,lep=%lld,bsp=%lld",
                        rack.getTransportPlaying() ? "true": "false",
                        rack.getTransportPlayPos(),
                        rack.getTransportTempo(),

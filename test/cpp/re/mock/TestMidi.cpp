@@ -74,7 +74,7 @@ TEST(Midi, Tempo)
 
   auto tester = InstrumentTester<Device>(c, 48000);
 
-  auto playMidi = [&tester](std::string iMidiFile, int iTrack, int iExpectedTempo, std::string iExpectedOutput) {
+  auto playMidi = [&tester](fs::path iMidiFile, int iTrack, int iExpectedTempo, std::string iExpectedOutput) {
     tester.nextBatch(); // clearing "all notes stop" batch
     tester.sequencerTrack().reset(); // removes all notes from sequencer track
     tester.importMidi(resource::File{iMidiFile}, iTrack); // import midi notes
@@ -89,7 +89,7 @@ TEST(Midi, Tempo)
     ASSERT_EQ(iExpectedOutput, tester.device()->fOutput);
   };
 
-  auto Reason_1track_99tempo = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "midi", "Reason_1track_99tempo.mid");
+  auto Reason_1track_99tempo = fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "midi" / "Reason_1track_99tempo.mid";
   auto expected_Reason_1track_99tempo = R"(1.1.1.0 | 60 | 100
 1.1.1.120 | 60 | 0
 1.2.1.0 | 62 | 101
@@ -104,7 +104,7 @@ TEST(Midi, Tempo)
 
   playMidi(Reason_1track_99tempo, -1, 99, expected_Reason_1track_99tempo);
 
-  auto Reason_2track_99tempo = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "midi", "Reason_2track_99tempo.mid");
+  auto Reason_2track_99tempo = fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "midi" / "Reason_2track_99tempo.mid";
   auto expected_Reason_2track_99tempo = R"(1.1.1.0 | 60 | 100
 1.1.1.120 | 60 | 0
 1.2.1.0 | 62 | 101
@@ -133,11 +133,11 @@ TEST(Midi, Tempo)
   playMidi(Reason_2track_99tempo, 2, 99, expected_Reason_2track_99tempo_track2);
 
   // Logic uses a ppq of 480 (vs 15360 for Reason) so conversion will happen
-  auto Logic_1track_99tempo = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "midi", "Logic_1track_99tempo.mid");
+  auto Logic_1track_99tempo = fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "midi" / "Logic_1track_99tempo.mid";
 
   playMidi(Logic_1track_99tempo, -1, 99, expected_Reason_1track_99tempo);
 
-  auto Logic_2track_99tempo = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "midi", "Logic_2track_99tempo.mid");
+  auto Logic_2track_99tempo = fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "midi" / "Logic_2track_99tempo.mid";
 
   // play all tracks (track 1 + track 2)
   playMidi(Logic_2track_99tempo, -1, 99, expected_Reason_2track_99tempo);
@@ -149,7 +149,7 @@ TEST(Midi, Tempo)
   // play only track 2 (which is the same as just one note)
   playMidi(Logic_2track_99tempo, 2, 99, expected_Reason_2track_99tempo_track2);
 
-  // Make sure that there is an exception if we try to read a non existent track
+  // Make sure that there is an exception if we try to read a non-existent track
   ASSERT_THROW(tester.importMidi(resource::File{Reason_1track_99tempo}, 3), Exception);
 }
 

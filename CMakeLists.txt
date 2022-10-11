@@ -19,8 +19,8 @@ cmake_minimum_required(VERSION 3.17)
 # Setting up project
 project(re-mock LANGUAGES CXX)
 set(re-mock_VERSION_MAJOR 1)
-set(re-mock_VERSION_MINOR 0)
-set(re-mock_VERSION_PATCH 1)
+set(re-mock_VERSION_MINOR 2)
+set(re-mock_VERSION_PATCH 0)
 set(re-mock_VERSION "${re-mock_VERSION_MAJOR}.${re-mock_VERSION_MINOR}.${re-mock_VERSION_PATCH}")
 
 # Using C++17

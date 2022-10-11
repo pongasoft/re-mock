@@ -48,7 +48,7 @@ automation_highlight_color = {r = 60, g = 255, b = 2}
 //------------------------------------------------------------------------
 // InfoLua::fromFile
 //------------------------------------------------------------------------
-std::unique_ptr<InfoLua> InfoLua::fromFile(std::string const &iLuaFilename)
+std::unique_ptr<InfoLua> InfoLua::fromFile(fs::path const &iLuaFilename)
 {
   auto res = std::make_unique<InfoLua>();
   res->loadFile(iLuaFilename);

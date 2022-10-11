@@ -66,7 +66,7 @@ public:
                      std::shared_ptr<const JboxValue> const &iNewValue);
 
   static RealtimeController *loadFromRegistry(lua_State *L);
-  static std::unique_ptr<RealtimeController> fromFile(std::string const &iLuaFilename);
+  static std::unique_ptr<RealtimeController> fromFile(fs::path const &iLuaFilename);
   static std::unique_ptr<RealtimeController> fromString(std::string const &iLuaCode);
 
 protected:

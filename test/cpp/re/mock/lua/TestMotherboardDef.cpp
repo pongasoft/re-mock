@@ -27,9 +27,9 @@ namespace re::mock::lua::Test {
 
 using namespace testing;
 
-std::string getResourceFile(std::string iFilename)
+fs::path getResourceFile(std::string iFilename)
 {
-  return fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "lua", iFilename);
+  return fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "lua" / iFilename;
 }
 
 // MotherboardDef.Empty

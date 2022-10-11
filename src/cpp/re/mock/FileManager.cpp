@@ -107,7 +107,7 @@ std::unique_ptr<resource::Blob> FileManager::loadBlob(resource::File const &iFil
 std::unique_ptr<smf::MidiFile> FileManager::loadMidi(resource::File const &iFile, bool iConvertToReasonPPQ)
 {
   auto midiFile = std::make_unique<smf::MidiFile>();
-  midiFile->read(iFile.fFilePath);
+  midiFile->read(iFile.fFilePath.string().c_str());
   if(!midiFile->status())
   {
     RE_MOCK_LOG_ERROR("Error opening midi file [%s]", iFile.fFilePath);
@@ -253,7 +253,7 @@ std::unique_ptr<resource::Sample> FileManager::loadSample(resource::File const &
   if(!FileManager::fileExists(iFile))
     return nullptr;
 
-  SndfileHandle sndFile(iFile.fFilePath.c_str());
+  SndfileHandle sndFile(iFile.fFilePath.string().c_str());
 
   if(!sndFile.rawHandle())
   {
@@ -291,7 +291,7 @@ void FileManager::saveSample(TJBox_UInt32 iChannels,
                              std::vector<TJBox_AudioSample> const &iData,
                              resource::File const &iToFile)
 {
-  SndfileHandle sndFile(iToFile.fFilePath.c_str(),
+  SndfileHandle sndFile(iToFile.fFilePath.string().c_str(),
                         SFM_WRITE, // open for writing
                         SF_FORMAT_WAV | SF_FORMAT_PCM_32,
                         iChannels,

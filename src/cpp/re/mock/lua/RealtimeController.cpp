@@ -153,7 +153,7 @@ RealtimeController *RealtimeController::loadFromRegistry(lua_State *L)
 //------------------------------------------------------------------------
 // RealtimeController::fromFile
 //------------------------------------------------------------------------
-std::unique_ptr<RealtimeController> RealtimeController::fromFile(std::string const &iLuaFilename)
+std::unique_ptr<RealtimeController> RealtimeController::fromFile(fs::path const &iLuaFilename)
 {
   auto res = std::make_unique<RealtimeController>();
   res->loadFile(iLuaFilename);

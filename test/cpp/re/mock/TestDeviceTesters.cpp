@@ -76,13 +76,13 @@ TEST(StudioEffectTester, Sample)
   auto c = DeviceConfig<Device>::fromSkeleton(DeviceType::kStudioFX)
     .mdef(Config::stereo_audio_out())
     .mdef(Config::stereo_audio_in())
-    .device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"));
+    .device_resources_dir(fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources");
 
   StudioEffectTester<Device> tester(c);
   tester.wireMainIn(MockAudioDevice::LEFT_SOCKET, MockAudioDevice::RIGHT_SOCKET);
   tester.wireMainOut(MockAudioDevice::LEFT_SOCKET, MockAudioDevice::RIGHT_SOCKET);
 
-  auto sinePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
+  auto sinePath = fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "audio" / "sine.wav";
   auto const sine = tester.loadSample(resource::File{sinePath});
 
   {

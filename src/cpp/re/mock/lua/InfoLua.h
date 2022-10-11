@@ -66,7 +66,7 @@ public:
   int device_height_ru();
 
 public:
-  static std::unique_ptr<InfoLua> fromFile(std::string const &iLuaFilename);
+  static std::unique_ptr<InfoLua> fromFile(fs::path const &iLuaFilename);
   static std::unique_ptr<InfoLua> fromString(std::string const &iLuaCode);
 
 };

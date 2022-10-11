@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include "fs.h"
 #include "stl.h"
 
 namespace re::mock::fmt {
@@ -41,6 +42,10 @@ constexpr auto printf_arg(T const &t) { return t; }
 // Handles std::string without having to call c_str all the time
 template<>
 inline auto printf_arg<std::string>(std::string const &s) { return s.c_str(); }
+
+// Handles std::string without having to call c_str all the time
+template<>
+inline auto printf_arg<fs::path>(fs::path const &s) { return s.c_str(); }
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -220,6 +225,7 @@ inline std::string printf(const std::string& format, Args ... args)
 //------------------------------------------------------------------------
 // path
 //------------------------------------------------------------------------
+[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
 inline std::string path(std::string const &path)
 {
   return path;
@@ -228,18 +234,24 @@ inline std::string path(std::string const &path)
 //------------------------------------------------------------------------
 // path
 //------------------------------------------------------------------------
+[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
 inline std::string path(std::vector<std::string> const &children)
 {
   return stl::join_to_string(children, std::string(1, impl::pathSeparator));
 }
 
+//------------------------------------------------------------------------
+// path
+//------------------------------------------------------------------------
 template<typename ... Args>
+[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
 std::string path(std::string const &dir, std::vector<std::string> const &children, Args ... more);
 
 //------------------------------------------------------------------------
 // path
 //------------------------------------------------------------------------
 template<typename ... Args>
+[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
 inline std::string path(std::string const &dir, std::string const &child, Args ... children)
 {
   return path(dir + impl::pathSeparator + child, std::forward<Args>(children)...);
@@ -249,6 +261,7 @@ inline std::string path(std::string const &dir, std::string const &child, Args .
 // path
 //------------------------------------------------------------------------
 template<typename ... Args>
+[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
 inline std::string path(std::string const &dir, std::vector<std::string> const &children, Args ... more)
 {
   return path(dir, path(children), std::forward<Args>(more)...);

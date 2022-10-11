@@ -24,14 +24,14 @@ namespace re::mock::Test {
 using namespace mock;
 
 // Fmt.path
-TEST(Fmt, path)
-{
-  std::vector<std::string> v{"a1", "a2"};
-
-  auto sep = std::string(1, fmt::impl::pathSeparator);
-
-  ASSERT_EQ("root" + sep + "c1" + sep + "a1" + sep + "a2" + sep + "c2", fmt::path("root", "c1", v, "c2"));
-}
+//TEST(Fmt, path)
+//{
+//  std::vector<std::string> v{"a1", "a2"};
+//
+//  auto sep = std::string(1, fmt::impl::pathSeparator);
+//
+//  ASSERT_EQ("root" + sep + "c1" + sep + "a1" + sep + "a2" + sep + "c2", fmt::path("root", "c1", v, "c2"));
+//}
 
 // Fmt.printf
 TEST(Fmt, printf)

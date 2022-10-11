@@ -297,7 +297,7 @@ public:
 
   static MotherboardDef *loadFromRegistry(lua_State *L);
 
-  static std::unique_ptr<MotherboardDef> fromFile(std::string const &iLuaFilename);
+  static std::unique_ptr<MotherboardDef> fromFile(fs::path const &iLuaFilename);
 
   static std::unique_ptr<MotherboardDef> fromString(std::string const &iLuaCode);
 

@@ -313,7 +313,7 @@ int MotherboardDef::luaNumber()
   populatePropertyTag(p);
   p->fPersistence = getPersistence();
   p->fDefaultValue = L.getTableValueAsNumber("default", 1);
-  p->fSteps = L.getTableValueAsOptionalInteger("steps", 1);
+  p->fSteps = stl::optional_static_cast<int>(L.getTableValueAsOptionalInteger("steps", 1));
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -338,7 +338,7 @@ int MotherboardDef::luaString()
   populatePropertyTag(p);
   p->fPersistence = getPersistence();
   p->fDefaultValue = L.getTableValueAsString("default", 1);
-  p->fMaxSize = L.getTableValueAsNumber("max_size", 1);
+  p->fMaxSize = static_cast<int>(L.getTableValueAsNumber("max_size", 1));
   return addObjectOnTopOfStack(std::move(p));
 }
 
@@ -675,7 +675,7 @@ std::optional<EPersistence> MotherboardDef::getPersistence()
 //------------------------------------------------------------------------
 // MotherboardDef::fromFile
 //------------------------------------------------------------------------
-std::unique_ptr<MotherboardDef> MotherboardDef::fromFile(std::string const &iLuaFilename)
+std::unique_ptr<MotherboardDef> MotherboardDef::fromFile(fs::path const &iLuaFilename)
 {
   auto res = std::make_unique<MotherboardDef>();
   res->loadFile(iLuaFilename);

@@ -30,6 +30,7 @@ extern "C" {
 #include <string>
 #include <iostream>
 #include <optional>
+#include "../fs.h"
 
 namespace re::mock::lua {
 
@@ -39,7 +40,7 @@ public:
   LuaState();
   ~LuaState();
 
-  int runLuaFile(std::string const &iFilename);
+  int runLuaFile(fs::path const &iFilename);
   int runLuaCode(std::string const &iSource);
 
   lua_State *getLuaState() { return L; }

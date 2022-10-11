@@ -218,7 +218,7 @@ std::unique_ptr<resource::Patch> createPatch(XMLDocument const &iDoc)
 std::unique_ptr<resource::Patch> PatchParser::from(resource::File iPatchFile)
 {
   XMLDocument doc;
-  auto res = doc.LoadFile(iPatchFile.fFilePath.c_str());
+  auto res = doc.LoadFile(iPatchFile.fFilePath.string().c_str());
   RE_MOCK_ASSERT(res == XMLError::XML_SUCCESS, "Error [%d], while parsing patch file %s", res, iPatchFile.fFilePath);
   auto patch = impl::createPatch(doc);
   return patch;

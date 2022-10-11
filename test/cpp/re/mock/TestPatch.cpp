@@ -185,7 +185,7 @@ TEST(Patch, Load)
   std::vector<TJBox_AudioSample> sampleStereoData{1,10,2,20,3,30,4,40,5,50};
 
   auto c = DeviceConfig<Device>::fromSkeleton()
-    .device_resources_dir(fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources"))
+    .device_resources_dir(fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources")
     .default_patch("/Public/default.repatch")
     .mdef(Config::gui_owner_property("gui_prop_float", lua::jbox_number_property{}.default_value(0.9).persistence(lua::EPersistence::kPatch))) // ignored
     .mdef(Config::document_owner_property("prop_float", lua::jbox_number_property{}.default_value(0.8)))
@@ -276,7 +276,7 @@ TEST(Patch, Load)
   }
 
   // load a patch file (via absolute path) (2 changes)
-  re.loadPatch(*c.resource_file(resource::File{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
+  re.loadPatch(*c.resource_file("re/mock/patches/Kooza_test0.repatch"));
   rack.nextBatch();
   ASSERT_EQ(4, re->fDiffs.size());
 
@@ -292,7 +292,7 @@ TEST(Patch, Load)
   }
 
   // load the same patch file (no change!)
-  re.loadPatch(*c.resource_file(resource::File{fmt::path("re", "mock", "patches", "Kooza_test0.repatch")}));
+  re.loadPatch(*c.resource_file("re/mock/patches/Kooza_test0.repatch"));
   rack.nextBatch();
   ASSERT_EQ(0, re->fDiffs.size());
 
@@ -313,7 +313,7 @@ TEST(Patch, Load)
   }
 
   // invalid path
-  ASSERT_THROW(re.loadPatch(resource::File{fmt::path("invalid", "path", "to", "patch")}), Exception);
+  ASSERT_THROW(re.loadPatch(resource::File{fs::path("invalid") / "path" / "to" / "patch"}), Exception);
 
   // we revert to the default values
   re.reset();

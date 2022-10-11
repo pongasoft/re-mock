@@ -23,7 +23,7 @@ namespace re::mock::lua::Test {
 
 using namespace testing;
 
-std::string getResourceFile(std::string iFilename);
+fs::path getResourceFile(std::string iFilename);
 
 // InfoLua.Empty
 TEST(InfoLua, Empty)

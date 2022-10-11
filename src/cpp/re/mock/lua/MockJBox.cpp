@@ -52,7 +52,7 @@ MockJBox *MockJBox::loadFromRegistry(lua_State *L)
 //------------------------------------------------------------------------
 // MockJBox::loadFile
 //------------------------------------------------------------------------
-int MockJBox::loadFile(std::string const &iLuaFilename)
+int MockJBox::loadFile(fs::path const &iLuaFilename)
 {
   return L.runLuaFile(iLuaFilename);
 }

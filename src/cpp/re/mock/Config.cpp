@@ -461,11 +461,11 @@ resource::String Config::rtc_owner_property(std::string const &iPropertyName, lu
 //------------------------------------------------------------------------
 // Config::resource_file
 //------------------------------------------------------------------------
-std::optional<resource::File> Config::resource_file(resource::File iRelativeResourcePath) const
+std::optional<resource::File> Config::resource_file(fs::path const &iRelativeResourcePath) const
 {
   if(fDeviceResourcesDir)
   {
-    return resource::File{fmt::path(*fDeviceResourcesDir, fmt::split(iRelativeResourcePath.fFilePath, '/'))};
+    return resource::File{*fDeviceResourcesDir / iRelativeResourcePath.relative_path()};
   }
   else
     return std::nullopt;
@@ -500,7 +500,7 @@ std::unique_ptr<resource::Patch> Config::findPatchResource(std::string const &iR
     return PatchParser::from(resourceFile);
 
   // resolve the path against the resource dir
-  auto resolvedResource = resource_file(resourceFile);
+  auto resolvedResource = resource_file(resourceFile.fFilePath);
   if(resolvedResource && FileManager::fileExists(*resolvedResource))
     return PatchParser::from(*resolvedResource);
 
@@ -530,7 +530,7 @@ std::unique_ptr<resource::Blob> Config::findBlobResource(std::string const &iRes
     return blob;
 
   // resolve the path against the resource dir
-  auto resolvedResource = resource_file(resourceFile);
+  auto resolvedResource = resource_file(resourceFile.fFilePath);
   if(resolvedResource && FileManager::fileExists(*resolvedResource))
     return FileManager::loadBlob(*resolvedResource);
 
@@ -561,7 +561,7 @@ std::unique_ptr<resource::Sample> Config::findSampleResource(std::string const &
     return sample;
 
   // resolve the path against the resource dir
-  auto resolvedResource = resource_file(resourceFile);
+  auto resolvedResource = resource_file(resourceFile.fFilePath);
   if(resolvedResource)
     return FileManager::loadSample(*resolvedResource);
 

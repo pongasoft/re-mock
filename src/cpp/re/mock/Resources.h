@@ -28,7 +28,7 @@
 namespace re::mock::resource {
 
 //! Define a resource file (defined by its path)
-struct File { std::string fFilePath{}; };
+struct File { fs::path fFilePath{}; };
 
 //! Define a resource string (the entire resource is defined by the content of the string)
 struct String { std::string fString{}; };

@@ -26,6 +26,7 @@
 #include <ostream>
 #include <string>
 #include <variant>
+#include <optional>
 
 namespace re::mock::stl {
 
@@ -166,6 +167,17 @@ inline constexpr auto variant_cast(const std::variant<Args...>& v) -> stl::impl:
 {
   return {v};
 }
+
+/**
+ * Cast for optional */
+template<typename T, typename U>
+constexpr std::optional<T> optional_static_cast(std::optional<U> const &v) {
+  if(v)
+    return static_cast<T>(*v);
+  else
+    return std::nullopt;
+}
+
 
 }
 
