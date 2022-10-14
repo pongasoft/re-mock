@@ -1,0 +1,2 @@
+Version 8b5f1f37b5b75829fc72d38e7b5d4bcbf8a26d55 from https://github.com/nothings/stb 2022/19/14
+stb_sprintf.h version 1.10

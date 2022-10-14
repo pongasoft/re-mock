@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include "fs.h"
 #include "stl.h"
+#include <stb_sprintf.h>
 
 namespace re::mock::fmt {
 
@@ -56,12 +57,12 @@ inline auto printf_arg<fs::path>(fs::path const &s) { return s.c_str(); }
 template<typename ... Args>
 std::string printf(const std::string& format, Args ... args )
 {
-  int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
-  if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
+  int size_s = stbsp_snprintf(nullptr, 0, format.c_str(), args ...) + 1; // Extra space for '\0'
+  if(size_s <= 0) { throw std::runtime_error("Error during formatting."); }
   auto size = static_cast<size_t>( size_s );
-  auto buf = std::make_unique<char[]>( size );
-  std::snprintf( buf.get(), size, format.c_str(), args ... );
-  return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+  auto buf = std::make_unique<char[]>(size);
+  stbsp_snprintf(buf.get(), size, format.c_str(), args ...);
+  return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
 }
 #ifdef __clang__
 #pragma clang diagnostic pop

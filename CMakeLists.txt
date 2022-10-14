@@ -108,6 +108,9 @@ set(re-mock_BUILD_SOURCES
 # Defines the include directories
 set(re-mock_INCLUDE_DIRECTORIES "${re-mock_CPP_SRC_DIR}")
 
+# Including stb
+add_subdirectory(external/nothings/stb)
+
 # Including lua lib/headers
 add_subdirectory(external/lua-cmake)
 
@@ -127,7 +130,7 @@ endfunction()
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
-target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2 midifile)
+target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2 midifile stb)
 
 if(NOT APPLE)
 #  target_compile_options(${target} PUBLIC "/std:c++latest")
