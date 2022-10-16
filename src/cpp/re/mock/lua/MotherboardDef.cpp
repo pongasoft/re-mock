@@ -504,7 +504,7 @@ std::optional<document_jbox_property> to_document_jbox_property(std::string iKey
         default:
           // should not be reached
           RE_MOCK_ASSERT(o->fPersistence == std::nullopt,
-                         "[%s] only modwhell and expression properties can be persisted",
+                         "[%s] only modwheel and expression properties can be persisted",
                          fKey);
           break;
       }

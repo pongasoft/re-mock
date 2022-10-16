@@ -17,6 +17,7 @@
  */
 
 #include <re/mock/lua/InfoLua.h>
+#include <re/mock/Errors.h>
 #include <gtest/gtest.h>
 
 namespace re::mock::lua::Test {
@@ -53,6 +54,41 @@ TEST(InfoLua, Basic)
   ASSERT_EQ(def->default_patch(), "/Public/Plain Sinus.repatch");
 
   ASSERT_EQ(def->getStackString(), "<empty>");
+}
+
+// InfoLua.Invalid
+TEST(InfoLua, Invalid)
+{
+  try
+  {
+    InfoLua::fromFile(getResourceFile("invalid1.lua"));
+    FAIL(); // should not be reached
+  }
+  catch(Exception &e)
+  {
+    RE_MOCK_LOG_INFO("invalid1.lua\n%s", e.what());
+  }
+
+  try
+  {
+    InfoLua::fromFile(getResourceFile("invalid2.lua"));
+    FAIL(); // should not be reached
+  }
+  catch(Exception &e)
+  {
+    RE_MOCK_LOG_INFO("invalid.lua\n%s", e.what());
+  }
+
+  try
+  {
+    InfoLua::fromFile(getResourceFile("not_exists.lua"));
+    FAIL(); // should not be reached
+  }
+  catch(Exception &e)
+  {
+    RE_MOCK_LOG_INFO("not_exists.lua\n%s", e.what());
+  }
+
 }
 
 }

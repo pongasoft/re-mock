@@ -291,11 +291,46 @@ void LuaState::setTableValue(char const *iKey, std::string const &iValue)
 }
 
 //------------------------------------------------------------------------
+// error_handler
+// Add the stack trace
+//------------------------------------------------------------------------
+int error_handler(lua_State *L)
+{
+  // make sure the argument is a string
+  if(!lua_isstring(L, 1))
+    return 1;  // keep it intact
+
+  lua_getglobal(L, "debug");
+  if(!lua_istable(L, -1))
+  {
+    lua_pop(L, 1);
+    return 1;
+  }
+
+  lua_getfield(L, -1, "traceback");
+  if(!lua_isfunction(L, -1))
+  {
+    lua_pop(L, 2);
+    return 1;
+  }
+
+  lua_pushvalue(L, 1);  // pass error message
+  lua_pushinteger(L, 2);  // skip this function and traceback
+  lua_call(L, 2, 1);  // call debug.traceback
+  return 1;
+}
+
+//------------------------------------------------------------------------
 // LuaState::runLuaFile
 //------------------------------------------------------------------------
 int LuaState::runLuaFile(fs::path const &iFilename)
 {
-  auto const res = luaL_dofile(L, iFilename.string().c_str());
+  // pushing error handler on the stack
+  lua_pushcfunction(L, error_handler);
+  auto msgh = lua_gettop(L);
+
+  // 1. load the file (fails if file does not exist)
+  auto res = luaL_loadfile(L, iFilename.string().c_str());
 
   if(res != LUA_OK)
   {
@@ -303,6 +338,19 @@ int LuaState::runLuaFile(fs::path const &iFilename)
     lua_pop(L, 1);
     RE_MOCK_ASSERT(res == LUA_OK, "%s", errorMsg);
   }
+
+  // 2. execute the file (with error handling)
+  res = lua_pcall(L, 0, LUA_MULTRET, msgh);
+
+  if(res != LUA_OK)
+  {
+    std::string errorMsg{lua_tostring(L, -1)};
+    lua_pop(L, 1);
+    RE_MOCK_ASSERT(res == LUA_OK, "%s", errorMsg);
+  }
+
+  // 3. remove the error_handler from the stack
+  lua_pop(L, 1);
 
   return res;
 }
