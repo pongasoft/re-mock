@@ -416,6 +416,10 @@ Motherboard *RealtimeController::getCurrentMotherboard() const
   return fMotherboard;
 }
 
+namespace impl {
+extern int error_handler(lua_State *L);
+}
+
 //------------------------------------------------------------------------
 // RealtimeController::invokeBinding
 //------------------------------------------------------------------------
@@ -430,25 +434,43 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
   RE_MOCK_ASSERT(stl::contains_key(fReverseBindings, iBindingName), "No rtc binding named [%s] found", iBindingName);
   RE_MOCK_ASSERT(stl::contains_key(fReverseBindings.at(iBindingName), iSourcePropertyPath), "Property [%s] is not a source for rtc binding [%s]", iSourcePropertyPath, iBindingName);
 
+  lua_pushcfunction(L, impl::error_handler);
+  auto msgh = lua_gettop(L);
+
   fMotherboard = iMotherboard;
   fCurrentBindingName = iBindingName;
   putBindingOnTopOfStack(iBindingName);
   lua_pushstring(L, iSourcePropertyPath.c_str());
   pushJBoxValue(iNewValue);
-  auto const res = lua_pcall(L, 2, 0, 0);
+  auto const res = lua_pcall(L, 2, 0, msgh);
   if(res != LUA_OK)
   {
+    lua_rawgeti(L, -1, 1);
     std::string errorMsg{lua_tostring(L, -1)};
     lua_pop(L, 1);
-    RE_MOCK_ASSERT(res == LUA_OK, "Error executing binding %s(%s, %s) | %s",
-                   iBindingName.c_str(),
-                   iSourcePropertyPath.c_str(),
-                   fMotherboard->toString(*iNewValue).c_str(),
-                   errorMsg.c_str());
+
+    lua_rawgeti(L, -1, 2);
+    auto lineNumber = static_cast<int>(lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    lua_rawgeti(L, -1, 3);
+    auto source = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_pop(L, 1);
+
+    LuaException::throwException({source, lineNumber}, "Error executing binding %s(%s, %s) | %s",
+                                 iBindingName.c_str(),
+                                 iSourcePropertyPath.c_str(),
+                                 fMotherboard->toString(*iNewValue).c_str(),
+                                 errorMsg);
   }
   fCurrentBindingName = "";
   fMotherboard = nullptr;
   fJboxValues.reset();
+
+  // remove the error_handler from the stack
+  lua_pop(L, 1);
 }
 
 //------------------------------------------------------------------------

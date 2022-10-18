@@ -10,7 +10,7 @@ global_rtc = {
   init_instance = function(source_property_path, new_value)
     local sample_rate = jbox.load_property("/environment/system_sample_rate")
     local new_no = jbox.make_native_object_rw("Instance", { sample_rate })
-    jbox.store_property("/custom_properties/instance", new_no);
+    jbox.store_property("/custom_properties/instance", new_no)
   end,
 
   on_prop_function = function(source_property_path, new_value)

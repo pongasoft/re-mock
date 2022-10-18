@@ -53,7 +53,7 @@ int lastlevel(lua_State *L)
 
 //------------------------------------------------------------------------
 // error_handler
-// Returns array with { errorMsg, lineNumer }
+// Returns array with { errorMsg, lineNumer, source }
 //------------------------------------------------------------------------
 int error_handler(lua_State *L)
 {
@@ -62,12 +62,14 @@ int error_handler(lua_State *L)
     return 1;  // keep it intact
 
   auto lastLevel = lastlevel(L);
-  int lineNumber = -1;
+  int lineNumber{-1};
+  char const *source{};
   lua_Debug ar;
   if(lua_getstack(L, lastLevel, &ar))
   {
-    lua_getinfo(L, "l", &ar);
+    lua_getinfo(L, "Sl", &ar);
     lineNumber = ar.currentline;
+    source = ar.source;
   }
 
   lua_getglobal(L, "debug");
@@ -96,6 +98,8 @@ int error_handler(lua_State *L)
   lua_rawseti(L, t, 1); // t[1] = msg;
   lua_pushinteger(L, lineNumber);
   lua_rawseti(L, t, 2); // t[2] = lineNumber;
+  lua_pushstring(L, source);
+  lua_rawseti(L, t, 3); // t[3] = source;
   return 1; // error message + line number
 }
 
@@ -398,9 +402,13 @@ int LuaState::runLuaFile(fs::path const &iFilename)
     auto lineNumber = static_cast<int>(lua_tointeger(L, -1));
     lua_pop(L, 1);
 
+    lua_rawgeti(L, -1, 3);
+    auto source = lua_tostring(L, -1);
     lua_pop(L, 1);
 
-    LuaException::throwException({fmt::printf("@%s", iFilename), lineNumber}, errorMsg);
+    lua_pop(L, 1);
+
+    LuaException::throwException({source, lineNumber}, errorMsg);
   }
 
   // 3. remove the error_handler from the stack
@@ -441,9 +449,13 @@ int LuaState::runLuaCode(std::string const &iSource)
     auto lineNumber = static_cast<int>(lua_tointeger(L, -1));
     lua_pop(L, 1);
 
+    lua_rawgeti(L, -1, 3);
+    auto source = lua_tostring(L, -1);
     lua_pop(L, 1);
 
-    LuaException::throwException({iSource, lineNumber}, errorMsg);
+    lua_pop(L, 1);
+
+    LuaException::throwException({source, lineNumber}, errorMsg);
   }
 
   // 3. remove the error_handler from the stack
