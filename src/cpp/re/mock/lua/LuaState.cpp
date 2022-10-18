@@ -19,29 +19,105 @@
 #include "LuaState.h"
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <re/mock/fmt.h>
 #include <re/mock/Errors.h>
 
-extern "C" {
-static int lua_panic(lua_State *L)
+namespace re::mock::lua {
+
+namespace impl {
+
+//------------------------------------------------------------------------
+// lastlevel (copied from lauxlib.c because not exported :( )
+//------------------------------------------------------------------------
+int lastlevel(lua_State *L)
 {
-  re::mock::lua::LuaState::dumpStack(L, "panic");
-  if(lua_gettop(L) > 0)
-    throw std::runtime_error(lua_tostring(L, -1));
-  else
-    throw std::runtime_error("panic");
-}
+  lua_Debug ar;
+  int li = 1, le = 1;
+  /* find an upper bound */
+  while(lua_getstack(L, le, &ar))
+  {
+    li = le;
+    le *= 2;
+  }
+  /* do a binary search */
+  while(li < le)
+  {
+    int m = (li + le) / 2;
+    if(lua_getstack(L, m, &ar)) li = m + 1;
+    else le = m;
+  }
+  return le - 1;
 }
 
-namespace re::mock::lua {
+//------------------------------------------------------------------------
+// error_handler
+// Returns array with { errorMsg, lineNumer }
+//------------------------------------------------------------------------
+int error_handler(lua_State *L)
+{
+  // make sure the argument is a string
+  if(!lua_isstring(L, 1))
+    return 1;  // keep it intact
+
+  auto lastLevel = lastlevel(L);
+  int lineNumber = -1;
+  lua_Debug ar;
+  if(lua_getstack(L, lastLevel, &ar))
+  {
+    lua_getinfo(L, "l", &ar);
+    lineNumber = ar.currentline;
+  }
+
+  lua_getglobal(L, "debug");
+  if(!lua_istable(L, -1))
+  {
+    lua_pop(L, 1);
+    return 1;
+  }
+
+  lua_getfield(L, -1, "traceback");
+  if(!lua_isfunction(L, -1))
+  {
+    lua_pop(L, 2);
+    return 1;
+  }
+
+  lua_pushvalue(L, 1);  // pass error message
+  lua_pushinteger(L, 2);  // skip this function and traceback
+
+  lua_call(L, 2, 1);  // call debug.traceback
+
+  auto msg = lua_gettop(L);
+  lua_newtable(L);
+  auto t = lua_gettop(L);
+  lua_pushvalue(L, msg); // copy msg on top of the stack
+  lua_rawseti(L, t, 1); // t[1] = msg;
+  lua_pushinteger(L, lineNumber);
+  lua_rawseti(L, t, 2); // t[2] = lineNumber;
+  return 1; // error message + line number
+}
+
+//------------------------------------------------------------------------
+// lua_panic
+//------------------------------------------------------------------------
+static int lua_panic(lua_State *L)
+{
+  if(lua_gettop(L) > 0)
+    throw re::mock::Exception(lua_tostring(L, -1));
+  else
+    throw re::mock::Exception("panic");
+}
+
+}
 
 //------------------------------------------------------------------------
 // LuaState::LuaState
 //------------------------------------------------------------------------
 LuaState::LuaState() : L{luaL_newstate()}
 {
-  lua_atpanic(L, lua_panic);
+  lua_atpanic(L, impl::lua_panic);
   luaL_openlibs(L);
 }
 
@@ -291,42 +367,12 @@ void LuaState::setTableValue(char const *iKey, std::string const &iValue)
 }
 
 //------------------------------------------------------------------------
-// error_handler
-// Add the stack trace
-//------------------------------------------------------------------------
-int error_handler(lua_State *L)
-{
-  // make sure the argument is a string
-  if(!lua_isstring(L, 1))
-    return 1;  // keep it intact
-
-  lua_getglobal(L, "debug");
-  if(!lua_istable(L, -1))
-  {
-    lua_pop(L, 1);
-    return 1;
-  }
-
-  lua_getfield(L, -1, "traceback");
-  if(!lua_isfunction(L, -1))
-  {
-    lua_pop(L, 2);
-    return 1;
-  }
-
-  lua_pushvalue(L, 1);  // pass error message
-  lua_pushinteger(L, 2);  // skip this function and traceback
-  lua_call(L, 2, 1);  // call debug.traceback
-  return 1;
-}
-
-//------------------------------------------------------------------------
 // LuaState::runLuaFile
 //------------------------------------------------------------------------
 int LuaState::runLuaFile(fs::path const &iFilename)
 {
   // pushing error handler on the stack
-  lua_pushcfunction(L, error_handler);
+  lua_pushcfunction(L, impl::error_handler);
   auto msgh = lua_gettop(L);
 
   // 1. load the file (fails if file does not exist)
@@ -336,7 +382,7 @@ int LuaState::runLuaFile(fs::path const &iFilename)
   {
     std::string errorMsg{lua_tostring(L, -1)};
     lua_pop(L, 1);
-    RE_MOCK_ASSERT(res == LUA_OK, "%s", errorMsg);
+    throw re::mock::Exception(errorMsg);
   }
 
   // 2. execute the file (with error handling)
@@ -344,9 +390,17 @@ int LuaState::runLuaFile(fs::path const &iFilename)
 
   if(res != LUA_OK)
   {
+    lua_rawgeti(L, -1, 1);
     std::string errorMsg{lua_tostring(L, -1)};
     lua_pop(L, 1);
-    RE_MOCK_ASSERT(res == LUA_OK, "%s", errorMsg);
+
+    lua_rawgeti(L, -1, 2);
+    auto lineNumber = static_cast<int>(lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    lua_pop(L, 1);
+
+    LuaException::throwException({fmt::printf("@%s", iFilename), lineNumber}, errorMsg);
   }
 
   // 3. remove the error_handler from the stack
@@ -360,16 +414,135 @@ int LuaState::runLuaFile(fs::path const &iFilename)
 //------------------------------------------------------------------------
 int LuaState::runLuaCode(std::string const &iSource)
 {
-  auto const res = luaL_dostring(L, iSource.c_str());
+  // pushing error handler on the stack
+  lua_pushcfunction(L, impl::error_handler);
+  auto msgh = lua_gettop(L);
+
+  // 1. load the string
+  auto res = luaL_loadstring(L, iSource.c_str());
 
   if(res != LUA_OK)
   {
     std::string errorMsg{lua_tostring(L, -1)};
     lua_pop(L, 1);
-    RE_MOCK_ASSERT(res == LUA_OK, "%s | %s", iSource, errorMsg);
+    throw re::mock::Exception(errorMsg);
   }
+
+  // 2. execute the code (with error handling)
+  res = lua_pcall(L, 0, LUA_MULTRET, msgh);
+
+  if(res != LUA_OK)
+  {
+    lua_rawgeti(L, -1, 1);
+    std::string errorMsg{lua_tostring(L, -1)};
+    lua_pop(L, 1);
+
+    lua_rawgeti(L, -1, 2);
+    auto lineNumber = static_cast<int>(lua_tointeger(L, -1));
+    lua_pop(L, 1);
+
+    lua_pop(L, 1);
+
+    LuaException::throwException({iSource, lineNumber}, errorMsg);
+  }
+
+  // 3. remove the error_handler from the stack
+  lua_pop(L, 1);
 
   return res;
 }
 
+//------------------------------------------------------------------------
+// LuaState::getSourceFile
+//------------------------------------------------------------------------
+std::string LuaStackInfo::getSourceFile() const
+{
+  if(!fSource.empty())
+  {
+    if(fSource[0] == '@')
+      return fSource.substr(1);
+  }
+  return "...";
+}
+
+//------------------------------------------------------------------------
+// LuaState::computeSnippet
+//------------------------------------------------------------------------
+std::optional<std::string> LuaStackInfo::computeSnippet(int lineCount) const
+{
+  if(fSource.empty())
+    return std::nullopt;
+
+  try
+  {
+    if(fSource[0] == '@')
+    {
+      return computeSnippetFromFile(fSource.substr(1), fLineNumber, lineCount);
+    }
+    else
+    {
+      return computeSnippetFromString(fSource, fLineNumber, lineCount);
+    }
+  }
+  catch(...)
+  {
+    RE_MOCK_LOG_WARNING("Error while computing snippet for %s:%d", fSource, fLineNumber);
+  }
+
+  return std::nullopt;
+}
+
+//------------------------------------------------------------------------
+// LuaState::computeSnippetFromStream
+//------------------------------------------------------------------------
+std::string LuaStackInfo::computeSnippetFromStream(std::istream &iStream, int lineNumber, int lineCount)
+{
+  RE_MOCK_ASSERT(lineNumber >= 1);
+  RE_MOCK_ASSERT(lineCount >= 0);
+
+  std::stringstream res{};
+  int startLine = std::max(lineNumber - lineCount, 1);
+  int endLine = lineNumber + lineCount;
+  int currentLine = 1;
+  std::string line;
+  while(std::getline(iStream, line, '\n'))
+  {
+    if(currentLine >= startLine)
+      res << (currentLine == lineNumber ? "->" : "  ") << "[" << currentLine << "]\t" << line << "\n";
+    currentLine++;
+    if(currentLine > endLine)
+      break;
+  }
+  return res.str();
+}
+
+//------------------------------------------------------------------------
+// LuaState::computeSnippetFromString
+//------------------------------------------------------------------------
+std::string LuaStackInfo::computeSnippetFromString(std::string const &iSource, int lineNumber, int lineCount)
+{
+  std::istringstream stream(iSource);
+  return computeSnippetFromStream(stream, lineNumber, lineCount);
+}
+
+//------------------------------------------------------------------------
+// LuaState::computeSnippetFromFile
+//------------------------------------------------------------------------
+std::string LuaStackInfo::computeSnippetFromFile(fs::path const &iFilepath, int lineNumber, int lineCount)
+{
+  std::fstream f{iFilepath};
+  return computeSnippetFromStream(f, lineNumber, lineCount);
+}
+
+//------------------------------------------------------------------------
+// LuaState::extractSnippet
+//------------------------------------------------------------------------
+void LuaException::throwException(LuaStackInfo const &iStackInfo, char const *iMessage)
+{
+  auto errorMessage = fmt::printf("%s:%d | %s", iStackInfo.getSourceFile(), iStackInfo.fLineNumber, iMessage);
+  auto snippet = iStackInfo.computeSnippet(5);
+  if(snippet)
+    errorMessage = fmt::printf("%s\nsnippet:\n%s", errorMessage, *snippet);
+  throw LuaException(iStackInfo, errorMessage);
+}
 }

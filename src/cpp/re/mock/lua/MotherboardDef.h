@@ -199,7 +199,15 @@ using jbox_object = std::variant<
   std::shared_ptr<impl::jbox_property_set>,
   std::shared_ptr<impl::jbox_socket>
   >;
+
+struct LuaJBoxObject
+{
+  jbox_object fObject;
+  LuaStackInfo fCreationStackInfo;
+};
+
 }
+
 
 using jbox_property = std::variant<
   std::shared_ptr<jbox_native_object>,
@@ -303,12 +311,12 @@ public:
 
 
 protected:
-  using jbox_object_map_t = std::map<std::string, impl::jbox_object>;
+  using jbox_object_map_t = std::map<std::string, impl::LuaJBoxObject>;
   using jbox_property_map_t = std::map<std::string, jbox_property>;
 
   int addObjectOnTopOfStack(impl::jbox_object iObject);
 
-  std::optional<impl::jbox_object> getObjectOnTopOfStack();
+  std::optional<impl::LuaJBoxObject> getObjectOnTopOfStack();
 
   void luaPropertySet(char const *iKey, jbox_object_map_t &oMap);
 
@@ -323,17 +331,17 @@ protected:
 
   std::optional<EPersistence> getPersistence();
 
-  template<typename jbox_property_type>
+  template<typename jbox_property_type, typename F>
   void filter(jbox_object_map_t &iMap,
               std::map<std::string, jbox_property_type> &oMap,
-              std::function<std::optional<jbox_property_type>(std::string, std::optional<impl::jbox_object>)> iFilter);
+              F iFilter);
 
-  jbox_native_object::param_t toParam(int idx = -1);
+  jbox_native_object::param_t toParam(int iStackIndex, int iElementIndex);
 
   std::shared_ptr<JboxPropertySet> doGetCustomProperties();
 
 private:
-  ObjectManager<impl::jbox_object> fObjects{};
+  ObjectManager<impl::LuaJBoxObject> fObjects{};
   std::shared_ptr<JboxPropertySet> fCustomProperties{};
 };
 

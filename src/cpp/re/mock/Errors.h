@@ -65,7 +65,7 @@ struct Exception : public std::logic_error {
 
   [[ noreturn ]] static void throwException(char const *iMessage, char const *iFile, int iLine)
   {
-    throw Exception(fmt::printf("%s | %s:%d", iMessage, iFile, iLine));
+    throw Exception(fmt::printf("%s:%d | %s", iFile, iLine, iMessage));
   }
 
   template<typename ... Args>

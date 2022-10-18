@@ -31,8 +31,46 @@ extern "C" {
 #include <iostream>
 #include <optional>
 #include "../fs.h"
+#include "../fmt.h"
+#include "../Errors.h"
 
 namespace re::mock::lua {
+
+struct LuaStackInfo
+{
+  std::string getSourceFile() const;
+  std::optional<std::string> computeSnippet(int lineCount = 0) const;
+
+  std::string fSource{};
+  int fLineNumber{-1};
+
+  static std::string computeSnippetFromStream(std::istream &iStream, int lineNumber, int lineCount = 0);
+  static std::string computeSnippetFromString(std::string const &iSource, int lineNumber, int lineCount = 0);
+  static std::string computeSnippetFromFile(fs::path const &iFilepath, int lineNumber, int lineCount = 0);
+};
+
+struct LuaException : public re::mock::Exception {
+  explicit LuaException(LuaStackInfo const &iStackInfo, std::string const &s) :
+    re::mock::Exception(s.c_str()),
+    fStackInfo(iStackInfo)
+  {}
+
+  explicit LuaException(LuaStackInfo const &iStackInfo, char const *s) :
+    re::mock::Exception(s),
+    fStackInfo(iStackInfo)
+  {}
+
+  [[ noreturn ]] static void throwException(LuaStackInfo const &iStackInfo, char const *iMessage);
+
+  template<typename ... Args>
+  [[ noreturn ]] static void throwException(LuaStackInfo const &iStackInfo, const std::string& format, Args ... args)
+  {
+    throwException(iStackInfo, fmt::printf(format, args...).c_str());
+  }
+
+  LuaStackInfo fStackInfo{};
+};
+
 
 class LuaState
 {
@@ -71,12 +109,29 @@ public:
   void setTableValue(char const *iKey, lua_Number iValue);
   void setTableValue(char const *iKey, std::string const &iValue);
 
+  template<typename ... Args>
+  [[ noreturn ]] void parseError(const std::string& format, Args ... args);
+
   static std::string getStackString(lua_State *L, char const *iMessage = nullptr);
   static void dumpStack(lua_State *L, char const *iMessage = nullptr, std::ostream &oStream = std::cout);
 
 private:
   lua_State *L{}; // using common naming in all lua apis...
 };
+
+//------------------------------------------------------------------------
+// LuaState::parseError
+//------------------------------------------------------------------------
+template<typename... Args>
+void LuaState::parseError(const std::string& format, Args ... args)
+{
+  lua_pushstring(L, fmt::printf(format, args...).c_str());
+  lua_error(L); // This function does a long jump, and therefore never returns
+  throw 0; // lua_error is not marked [[ noreturn ]]
+}
+
+#define RE_MOCK_LUA_PARSE_ASSERT(test, format, ...) (test) == true ? (void)0 : L.parseError((format), ##__VA_ARGS__)
+#define RE_MOCK_LUA_RUNTIME_ASSERT(test, stack, format, ...) (test) == true ? (void)0 : re::mock::lua::LuaException::throwException((stack), (format), ##__VA_ARGS__)
 
 }
 

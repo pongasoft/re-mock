@@ -30,4 +30,22 @@ TEST(LuaState, Basic)
   ASSERT_EQ(lua.getStackString("test"), "test: <empty>");
 }
 
+// LuaStackInfo.Snippet
+TEST(LuaStackInfo, Snippet)
+{
+  auto source = R"(line1
+line2
+line3
+line4
+line5
+line6
+line7)";
+
+  ASSERT_EQ(LuaStackInfo::computeSnippetFromString("", 3), "");
+  ASSERT_EQ(LuaStackInfo::computeSnippetFromString(source, 3), "->[3]\tline3\n");
+  ASSERT_EQ(LuaStackInfo::computeSnippetFromString(source, 3, 1), "  [2]\tline2\n->[3]\tline3\n  [4]\tline4\n");
+  ASSERT_EQ(LuaStackInfo::computeSnippetFromString(source, 2, 2), "  [1]\tline1\n->[2]\tline2\n  [3]\tline3\n  [4]\tline4\n");
+  ASSERT_EQ(LuaStackInfo::computeSnippetFromString(source, 7, 1), "  [6]\tline6\n->[7]\tline7\n");
+}
+
 }

@@ -182,14 +182,21 @@ MotherboardDef *MotherboardDef::loadFromRegistry(lua_State *L)
 int MotherboardDef::addObjectOnTopOfStack(impl::jbox_object iObject)
 {
   auto ud = JBoxObjectUD::New(L);
-  ud->fId = fObjects.add(std::move(iObject));
+  lua_Debug ar;
+  if(lua_getstack(L, 1, &ar))
+    lua_getinfo(L, "Sl", &ar);
+  auto o = impl::LuaJBoxObject{
+    std::move(iObject),
+    { ar.source, ar.currentline }
+  };
+  ud->fId = fObjects.add(std::move(o));
   return 1;
 }
 
 //------------------------------------------------------------------------
 // MotherboardDef::getObjectOnTopOfStack
 //------------------------------------------------------------------------
-std::optional<impl::jbox_object> MotherboardDef::getObjectOnTopOfStack()
+std::optional<impl::LuaJBoxObject> MotherboardDef::getObjectOnTopOfStack()
 {
   if(lua_type(L, -1) == LUA_TNIL)
   {
@@ -197,10 +204,17 @@ std::optional<impl::jbox_object> MotherboardDef::getObjectOnTopOfStack()
     return std::nullopt;
   }
 
-  luaL_checktype(L, -1, LUA_TUSERDATA);
-  auto ud = reinterpret_cast<JBoxObjectUD *>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  return fObjects.get(ud->fId);
+  if(lua_type(L, -1) == LUA_TUSERDATA)
+  {
+    auto ud = reinterpret_cast<JBoxObjectUD *>(lua_touserdata(L, -1));
+    lua_pop(L, 1);
+    return fObjects.get(ud->fId);
+  }
+  else
+  {
+    lua_pop(L, 1);
+    return std::nullopt;
+  }
 }
 
 //------------------------------------------------------------------------
@@ -214,23 +228,22 @@ int MotherboardDef::luaIgnored()
 //------------------------------------------------------------------------
 // MotherboardDef::toParam
 //------------------------------------------------------------------------
-jbox_native_object::param_t MotherboardDef::toParam(int idx)
+jbox_native_object::param_t MotherboardDef::toParam(int iStackIndex, int iElementIndex)
 {
-  int t = lua_type(L, idx);
+  int t = lua_type(L, iStackIndex);
   switch(t)
   {
     case LUA_TBOOLEAN:
-      return static_cast<bool>(lua_toboolean(L, idx));
+      return static_cast<bool>(lua_toboolean(L, iStackIndex));
 
     case LUA_TNUMBER:
-      return static_cast<TJBox_Float64>(lua_tonumber(L, idx));
+      return static_cast<TJBox_Float64>(lua_tonumber(L, iStackIndex));
 
     case LUA_TSTRING:
-      return std::string(lua_tostring(L, idx));
+      return std::string(lua_tostring(L, iStackIndex));
 
     default:
-      RE_MOCK_ASSERT(false, "Invalid type for jbox.native_object param (only boolean, number or string allowed)");
-      return false; // statement never reached (compiler does not know)
+      L.parseError("Invalid type for jbox.native_object param #%d (only boolean, number or string allowed)", iElementIndex);
   }
 }
 
@@ -269,7 +282,7 @@ int MotherboardDef::luaNativeObject()
       for(int i = 1; i <= numParams; i++)
       {
         lua_geti(L, paramsTableIdx, i);
-        p->fDefaultValue.params.emplace_back(toParam());
+        p->fDefaultValue.params.emplace_back(toParam(-1, i));
         lua_pop(L, 1);
       }
       lua_pop(L, 1);
@@ -402,8 +415,8 @@ int MotherboardDef::luaUserSample()
 
   lua_getfield(L, 1, "sample_parameters");
   iterateLuaTable([this, &p](lua_table_key_t key) {
-    RE_MOCK_ASSERT(std::holds_alternative<int>(key), "malformed sample_parameters list");
-    luaL_checktype(L, -1, LUA_TSTRING);
+    RE_MOCK_LUA_PARSE_ASSERT(std::holds_alternative<int>(key), "malformed sample_parameters list");
+    RE_MOCK_LUA_PARSE_ASSERT(lua_type(L, -1) == LUA_TSTRING, "bad argument #%d in sample_parameters list (not a string)", std::get<int>(key));
     p->sample_parameter(lua_tostring(L, -1));
     lua_pop(L, 1);
   });
@@ -421,8 +434,8 @@ void setDefaultPersistence(T o, EPersistence p) { if(!o->fPersistence) o->fPersi
 // setNoPersistence
 //------------------------------------------------------------------------
 template<typename T>
-void setNoPersistence(std::string name, T o) {
-  RE_MOCK_ASSERT(o->fPersistence == std::nullopt, "[%s] property cannot be persisted", name);
+void setNoPersistence(LuaStackInfo const &iStackInfo, std::string name, T o) {
+  RE_MOCK_LUA_RUNTIME_ASSERT(o->fPersistence == std::nullopt, iStackInfo, "[%s] property cannot be persisted", name);
   o->fPersistence = EPersistence::kNone;
 }
 
@@ -431,7 +444,7 @@ void setNoPersistence(std::string name, T o) {
 // From the doc: Properties in the gui_owner scope are not stored in
 // documents and patches by default.
 //------------------------------------------------------------------------
-std::optional<gui_jbox_property> to_gui_jbox_property(std::string iKey, std::optional<impl::jbox_object> iObject)
+std::optional<gui_jbox_property> to_gui_jbox_property(std::string iKey, std::optional<impl::LuaJBoxObject> iObject)
 {
   struct visitor
   {
@@ -452,10 +465,13 @@ std::optional<gui_jbox_property> to_gui_jbox_property(std::string iKey, std::opt
   if(!iObject)
     return std::nullopt;
 
-  auto res = std::visit(visitor{}, iObject.value());
+  auto res = std::visit(visitor{}, iObject->fObject);
   if(res)
-    std::visit([iKey](auto p) {
-                 RE_MOCK_ASSERT(p->fPropertyTag == 0, "[%s] gui_owner property cannot have a property_tag", iKey);
+    std::visit([iKey, &o = *iObject](auto p) {
+                 RE_MOCK_LUA_RUNTIME_ASSERT(p->fPropertyTag == 0,
+                                            o.fCreationStackInfo,
+                                            "[%s] gui_owner property cannot have a property_tag",
+                                            iKey);
                  setDefaultPersistence(p, EPersistence::kNone);
                },
                *res);
@@ -467,11 +483,12 @@ std::optional<gui_jbox_property> to_gui_jbox_property(std::string iKey, std::opt
 // From the doc: Properties in the document_owner scope are stored in
 // song documents and patches by default (except for performance properties)
 //------------------------------------------------------------------------
-std::optional<document_jbox_property> to_document_jbox_property(std::string iKey, std::optional<impl::jbox_object> iObject)
+std::optional<document_jbox_property> to_document_jbox_property(std::string iKey, std::optional<impl::LuaJBoxObject> iObject)
 {
   struct visitor
   {
     std::string fKey{};
+    LuaStackInfo &fStackInfo;
 
     std::optional<document_jbox_property> operator()(std::shared_ptr<impl::jbox_ignored>) { return std::nullopt; }
     std::optional<document_jbox_property> operator()(std::shared_ptr<jbox_native_object>) { return std::nullopt; }
@@ -503,9 +520,10 @@ std::optional<document_jbox_property> to_document_jbox_property(std::string iKey
 
         default:
           // should not be reached
-          RE_MOCK_ASSERT(o->fPersistence == std::nullopt,
-                         "[%s] only modwheel and expression properties can be persisted",
-                         fKey);
+          RE_MOCK_LUA_RUNTIME_ASSERT(o->fPersistence == std::nullopt,
+                                     fStackInfo,
+                                     "[%s] only modwheel and expression properties can be persisted",
+                                     fKey);
           break;
       }
       setDefaultPersistence(o, EPersistence::kNone);
@@ -516,14 +534,14 @@ std::optional<document_jbox_property> to_document_jbox_property(std::string iKey
   if(!iObject)
     return std::nullopt;
 
-  return std::visit(visitor{iKey}, iObject.value());
+  return std::visit(visitor{iKey, iObject->fCreationStackInfo}, iObject->fObject);
 }
 
 //------------------------------------------------------------------------
 // to_rtc_jbox_property
 // Cannot be persisted
 //------------------------------------------------------------------------
-std::optional<rtc_jbox_property> to_rtc_jbox_property(std::string iKey, std::optional<impl::jbox_object> iObject)
+std::optional<rtc_jbox_property> to_rtc_jbox_property(std::string iKey, std::optional<impl::LuaJBoxObject> iObject)
 {
   struct visitor
   {
@@ -544,9 +562,9 @@ std::optional<rtc_jbox_property> to_rtc_jbox_property(std::string iKey, std::opt
   if(!iObject)
     return std::nullopt;
 
-  auto res = std::visit(visitor{}, iObject.value());
+  auto res = std::visit(visitor{}, iObject->fObject);
   if(res)
-    std::visit([iKey](auto p) { setNoPersistence(iKey, p); }, *res);
+    std::visit([iKey, &stackInfo = iObject->fCreationStackInfo] (auto p) { setNoPersistence(stackInfo, iKey, p); }, *res);
   return res;
 }
 
@@ -554,7 +572,7 @@ std::optional<rtc_jbox_property> to_rtc_jbox_property(std::string iKey, std::opt
 // to_rt_jbox_property
 // Cannot be persisted
 //------------------------------------------------------------------------
-std::optional<rt_jbox_property> to_rt_jbox_property(std::string iKey, std::optional<impl::jbox_object> iObject)
+std::optional<rt_jbox_property> to_rt_jbox_property(std::string iKey, std::optional<impl::LuaJBoxObject> iObject)
 {
   struct visitor
   {
@@ -575,9 +593,9 @@ std::optional<rt_jbox_property> to_rt_jbox_property(std::string iKey, std::optio
   if(!iObject)
     return std::nullopt;
 
-  auto res = std::visit(visitor{}, iObject.value());
+  auto res = std::visit(visitor{}, iObject->fObject);
   if(res)
-    std::visit([iKey](auto p) { setNoPersistence(iKey, p); }, *res);
+    std::visit([iKey, &stackInfo = iObject->fCreationStackInfo](auto p) { setNoPersistence(stackInfo, iKey, p); }, *res);
   return res;
 }
 
@@ -627,10 +645,10 @@ std::unique_ptr<jbox_sockets> MotherboardDef::doGetSockets(char const *iSocketNa
   {
     jbox_object_map_t m{};
     populateMapFromLuaTable(m);
-    for(auto &iter : m)
+    for(auto &[name, o] : m)
     {
-      RE_MOCK_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(iter.second)->fType == iSocketType, "[%s] wrong socket type", iter.first);
-      sockets->fNames.emplace_back(iter.first);
+      RE_MOCK_LUA_RUNTIME_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(o.fObject)->fType == iSocketType, o.fCreationStackInfo, "[%s] wrong socket type", name);
+      sockets->fNames.emplace_back(name);
     }
   }
   else
@@ -644,7 +662,7 @@ std::unique_ptr<jbox_sockets> MotherboardDef::doGetSockets(char const *iSocketNa
 //------------------------------------------------------------------------
 void MotherboardDef::populatePropertyTag(jbox_property iProperty)
 {
-  RE_MOCK_ASSERT(lua_gettop(L) > 0, "Missing table... Did you use () instead of {}?");
+  luaL_checktype(L, 1, LUA_TTABLE);
   auto const propertyTag = static_cast<int>(L.getTableValueAsInteger("property_tag", 1));
   std::visit([propertyTag](auto &t) { t->fPropertyTag = propertyTag; }, iProperty);
 }
@@ -654,7 +672,7 @@ void MotherboardDef::populatePropertyTag(jbox_property iProperty)
 //------------------------------------------------------------------------
 std::optional<EPersistence> MotherboardDef::getPersistence()
 {
-  RE_MOCK_ASSERT(lua_gettop(L) > 0, "Missing table... Did you use () instead of {}?");
+  luaL_checktype(L, 1, LUA_TTABLE);
 
   std::optional<EPersistence> persistence = std::nullopt;
 
@@ -666,7 +684,7 @@ std::optional<EPersistence> MotherboardDef::getPersistence()
     else if(*persistenceString == "song")
       persistence = EPersistence::kSong;
     else
-      RE_MOCK_ASSERT(*persistenceString == "none", "persistence [%s] should be patch/song/none", persistenceString->c_str());
+      RE_MOCK_LUA_PARSE_ASSERT(*persistenceString == "none", "persistence [%s] should be patch/song/none", persistenceString->c_str());
   }
 
   return persistence;
@@ -719,7 +737,7 @@ std::shared_ptr<JboxPropertySet> MotherboardDef::doGetCustomProperties()
 
     if(o)
     {
-      auto jps = std::get<std::shared_ptr<impl::jbox_property_set>>(o.value());
+      auto jps = std::get<std::shared_ptr<impl::jbox_property_set>>(o->fObject);
 
       lua_rawgeti(L, LUA_REGISTRYINDEX, jps->fCustomPropertiesRef);
 
@@ -755,17 +773,19 @@ std::shared_ptr<JboxPropertySet> MotherboardDef::doGetCustomProperties()
   int stringKeyCount = 0;
   int indexKeyCount = 0;
   iterateLuaTable([this, &set, &stringKeyCount, &indexKeyCount](lua_table_key_t key) {
-    auto userSample = std::get<std::shared_ptr<jbox_user_sample_property>>(*getObjectOnTopOfStack());
+    auto o = getObjectOnTopOfStack();
+    RE_MOCK_LUA_PARSE_ASSERT(o != std::nullopt, "malformed user_samples (only jbox.user_sample{} allowed)");
+    auto userSample = std::get<std::shared_ptr<jbox_user_sample_property>>(o->fObject);
     setDefaultPersistence(userSample, EPersistence::kPatch);
     if(std::holds_alternative<std::string>(key))
     {
-      RE_MOCK_ASSERT(indexKeyCount == 0, "Cannot mix and match named and indexed sample in user_samples");
+      RE_MOCK_LUA_RUNTIME_ASSERT(indexKeyCount == 0, o->fCreationStackInfo, "Cannot mix and match named and indexed sample in user_samples");
       userSample->name(std::get<std::string>(key));
       stringKeyCount++;
     }
     else
     {
-      RE_MOCK_ASSERT(stringKeyCount == 0, "Cannot mix and match named and indexed sample in user_samples");
+      RE_MOCK_LUA_RUNTIME_ASSERT(stringKeyCount == 0, o->fCreationStackInfo, "Cannot mix and match named and indexed sample in user_samples");
       indexKeyCount++;
     }
     set->user_samples.emplace_back(userSample);
@@ -779,9 +799,9 @@ std::shared_ptr<JboxPropertySet> MotherboardDef::doGetCustomProperties()
 //------------------------------------------------------------------------
 // MotherboardDef::filter
 //------------------------------------------------------------------------
-template<typename jbox_property_type>
+template<typename jbox_property_type, typename F>
 void MotherboardDef::filter(jbox_object_map_t &iMap, std::map<std::string, jbox_property_type> &oMap,
-                            std::function<std::optional<jbox_property_type>(std::string, std::optional<impl::jbox_object>)> iFilter)
+                            F iFilter)
 {
   for(auto iter: iMap)
   {
@@ -800,7 +820,7 @@ int MotherboardDef::getNumPatterns()
   if(lua_getglobal(L, "patterns") != LUA_TNIL)
   {
     res = L.getTableValueAsInteger("num_patterns");
-    RE_MOCK_ASSERT(res >= 1 && res <= 32, "num_patterns [%d] must be between 1 and 32", res);
+    RE_MOCK_LUA_PARSE_ASSERT(res >= 1 && res <= 32, "num_patterns [%d] must be between 1 and 32", res);
   }
 
   lua_pop(L, 1);

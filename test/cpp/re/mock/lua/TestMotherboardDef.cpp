@@ -235,4 +235,35 @@ TEST(MotherboardDef, Multiple)
   ASSERT_THAT(def.getAudioOutputs()->fNames, UnorderedElementsAre("au_out1", "au_out2"));
 }
 
+// MotherboardDef.Invalid
+TEST(MotherboardDef, Invalid)
+{
+  auto exec = [](char const *code) {
+    try
+    {
+      MotherboardDef::fromString(code);
+      FAIL(); // should not be reached
+    }
+    catch(Exception &e)
+    {
+      RE_MOCK_LOG_INFO("%s", e.what());
+    }
+  };
+
+  exec("jbox.boolean()");
+
+  try
+  {
+    auto def = MotherboardDef::fromFile(getResourceFile("invalid-motherboard_def.lua"));
+    def->getCustomProperties();
+    FAIL(); // should not be reached
+  }
+  catch(Exception &e)
+  {
+    RE_MOCK_LOG_INFO("%s", e.what());
+  }
+
+}
+
+
 }
