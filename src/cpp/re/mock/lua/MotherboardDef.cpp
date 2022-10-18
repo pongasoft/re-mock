@@ -380,15 +380,17 @@ int MotherboardDef::luaPropertySet()
 //------------------------------------------------------------------------
 // MotherboardDef::luaPropertySet
 //------------------------------------------------------------------------
-void MotherboardDef::luaPropertySet(char const *iKey, jbox_object_map_t &oMap)
+void MotherboardDef::luaPropertySet(LuaStackInfo const &iStackInfo, char const *iKey, jbox_object_map_t &oMap)
 {
   luaL_checktype(L, 1, LUA_TTABLE);
 
   if(lua_getfield(L, 1, iKey) != LUA_TNIL)
   {
-    luaL_checktype(L, 2, LUA_TTABLE);
+    RE_MOCK_LUA_RUNTIME_ASSERT(lua_type(L, 2) == LUA_TTABLE,
+                               iStackInfo,
+                               "%s must be a lua table (got %s)", iKey, luaL_typename(L, 2));
     if(lua_getfield(L, 2, "properties") != LUA_TNIL)
-      populateMapFromLuaTable(oMap);
+      populateMapFromLuaTable(iStackInfo, fmt::printf("%s[\"properties\"]", iKey).c_str(), oMap);
   }
 
   lua_pop(L, 1);
@@ -602,18 +604,22 @@ std::optional<rt_jbox_property> to_rt_jbox_property(std::string iKey, std::optio
 //------------------------------------------------------------------------
 // MotherboardDef::populateMapFromLuaTable
 //------------------------------------------------------------------------
-void MotherboardDef::populateMapFromLuaTable(jbox_object_map_t &oMap)
+void MotherboardDef::populateMapFromLuaTable(LuaStackInfo const &iStackInfo, char const *iKey, jbox_object_map_t &oMap)
 {
   int mapStackIndex = lua_gettop(L);
   // check for NIL
   if(lua_type(L, mapStackIndex) != LUA_TNIL)
   {
-    luaL_checktype(L, mapStackIndex, LUA_TTABLE);
+    RE_MOCK_LUA_RUNTIME_ASSERT(lua_type(L, mapStackIndex) == LUA_TTABLE,
+                               iStackInfo,
+                               "%s must be a lua table (got %s)", iKey, luaL_typename(L, mapStackIndex));
 
     lua_pushnil(L);  /* first key */
     while(lua_next(L, mapStackIndex) != 0)
     {
-      luaL_checktype(L, -2, LUA_TSTRING);
+      RE_MOCK_LUA_RUNTIME_ASSERT(lua_type(L, -2) == LUA_TSTRING,
+                                 iStackInfo,
+                                 "%s map must have string keys (got %s)", iKey, luaL_typename(L, -2));
       auto name = lua_tostring(L, -2);
       auto object = getObjectOnTopOfStack();
       if(object)
@@ -644,7 +650,7 @@ std::unique_ptr<jbox_sockets> MotherboardDef::doGetSockets(char const *iSocketNa
   if(lua_getglobal(L, iSocketName) != LUA_TNIL)
   {
     jbox_object_map_t m{};
-    populateMapFromLuaTable(m);
+    populateMapFromLuaTable({}, iSocketName, m);
     for(auto &[name, o] : m)
     {
       RE_MOCK_LUA_RUNTIME_ASSERT(std::get<std::shared_ptr<impl::jbox_socket>>(o.fObject)->fType == iSocketType, o.fCreationStackInfo, "[%s] wrong socket type", name);
@@ -743,25 +749,25 @@ std::shared_ptr<JboxPropertySet> MotherboardDef::doGetCustomProperties()
 
       {
         jbox_object_map_t map{};
-        luaPropertySet("gui_owner", map);
+        luaPropertySet(o->fCreationStackInfo, "gui_owner", map);
         filter<gui_jbox_property>(map, set->gui_owner, to_gui_jbox_property);
       }
 
       {
         jbox_object_map_t map{};
-        luaPropertySet("document_owner", map);
+        luaPropertySet(o->fCreationStackInfo, "document_owner", map);
         filter<document_jbox_property>(map, set->document_owner, to_document_jbox_property);
       }
 
       {
         jbox_object_map_t map{};
-        luaPropertySet("rtc_owner", map);
+        luaPropertySet(o->fCreationStackInfo, "rtc_owner", map);
         filter<rtc_jbox_property>(map, set->rtc_owner, to_rtc_jbox_property);
       }
 
       {
         jbox_object_map_t map{};
-        luaPropertySet("rt_owner", map);
+        luaPropertySet(o->fCreationStackInfo, "rt_owner", map);
         filter<rt_jbox_property>(map, set->rt_owner, to_rt_jbox_property);
       }
     }
@@ -774,7 +780,8 @@ std::shared_ptr<JboxPropertySet> MotherboardDef::doGetCustomProperties()
   int indexKeyCount = 0;
   iterateLuaTable([this, &set, &stringKeyCount, &indexKeyCount](lua_table_key_t key) {
     auto o = getObjectOnTopOfStack();
-    RE_MOCK_LUA_PARSE_ASSERT(o != std::nullopt, "malformed user_samples (only jbox.user_sample{} allowed)");
+    RE_MOCK_LUA_PARSE_ASSERT(o != std::nullopt && std::holds_alternative<std::shared_ptr<jbox_user_sample_property>>(o->fObject),
+                             "malformed user_samples (only jbox.user_sample{} allowed)");
     auto userSample = std::get<std::shared_ptr<jbox_user_sample_property>>(o->fObject);
     setDefaultPersistence(userSample, EPersistence::kPatch);
     if(std::holds_alternative<std::string>(key))

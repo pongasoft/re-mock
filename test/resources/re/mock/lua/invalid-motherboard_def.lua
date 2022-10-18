@@ -1,7 +1,7 @@
 format_version = "2.0"
 
 local documentOwnerProperties = {
-   invalid_boolean = jbox.boolean()
+  invalid_boolean = jbox.boolean()
 }
 
 local rtOwnerProperties = {
@@ -24,6 +24,7 @@ cv_outputs = {}
 
 audio_inputs["au_in"] = jbox.audio_input { ui_name = jbox.ui_text("au_in") }
 audio_outputs["au_out"] = jbox.audio_output { ui_name = jbox.ui_text("au_out") }
+-- audio_outputs["au_out2"] = jbox.audio_input { ui_name = jbox.ui_text("au_out") }
 cv_inputs["cv_in"] = jbox.cv_input { ui_name = jbox.ui_text("cv_in") }
 cv_outputs["cv_out"] = jbox.cv_output { ui_name = jbox.ui_text("cv_out") }
 

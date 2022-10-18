@@ -318,11 +318,11 @@ protected:
 
   std::optional<impl::LuaJBoxObject> getObjectOnTopOfStack();
 
-  void luaPropertySet(char const *iKey, jbox_object_map_t &oMap);
+  void luaPropertySet(LuaStackInfo const &iStackInfo, char const *iKey, jbox_object_map_t &oMap);
 
   /**
    * Assumes lua table is at the top of the stack. Removes the map from the stack! */
-  void populateMapFromLuaTable(jbox_object_map_t &oMap);
+  void populateMapFromLuaTable(LuaStackInfo const &iStackInfo, char const *iKey, jbox_object_map_t &oMap);
 
   std::unique_ptr<jbox_sockets> getSockets(char const *iSocketName, jbox_sockets::Type iSocketType) const;
   std::unique_ptr<jbox_sockets> doGetSockets(char const *iSocketName, jbox_sockets::Type iSocketType);

@@ -256,6 +256,7 @@ TEST(MotherboardDef, Invalid)
   {
     auto def = MotherboardDef::fromFile(getResourceFile("invalid-motherboard_def.lua"));
     def->getCustomProperties();
+    def->getAudioOutputs();
     FAIL(); // should not be reached
   }
   catch(Exception &e)
