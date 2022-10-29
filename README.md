@@ -87,7 +87,7 @@ Release notes
 
 - Much better error reporting (when error in lua files)
 - Use of `std::filesystem` throughout the APIs
-- Use `stb_printf` for better performance
+- Use `stb_sprintf` for better performance
 
 > #### Note
 > On macOS, the `std::filesystem` APIs were introduced in macOS 10.15, so as a result, `re-mock` now requires a minimum of macOS 10.15
@@ -139,5 +139,7 @@ License
 - This project includes [lua 5.4.1](https://www.lua.org/) released under an [MIT License](https://www.lua.org/license.html)
 
 - This project includes [midifile](https://github.com/craigsapp/midifile) released under a [BSD 2-Clause "Simplified" License](external/craigsapp-midifile/LICENSE.txt)
+
+- This project includes [stb_sprintf](https://github.com/nothings/stb) released under a [Public Domain License](https://github.com/nothings/stb/blob/master/LICENSE)
 
 - This project (optionally) uses [libsndfile](https://github.com/libsndfile/libsndfile) relased under an [LGPL-2.1 License](https://github.com/libsndfile/libsndfile/blob/master/COPYING)
