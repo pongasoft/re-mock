@@ -83,6 +83,15 @@ Links
 Release notes
 -------------
 
+#### 1.2.0 - 2022-10-29
+
+- Much better error reporting (when error in lua files)
+- Use of `std::filesystem` throughout the APIs
+- Use `stb_printf` for better performance
+
+> #### Note
+> On macOS, the `std::filesystem` APIs were introduced in macOS 10.15, so as a result, `re-mock` now requires a minimum of macOS 10.15
+
 #### 1.1.0 - 2022-09-25
 
 - Handle discrete properties
