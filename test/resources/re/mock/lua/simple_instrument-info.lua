@@ -3,7 +3,7 @@ format_version = "1.0"
 -- Note that changing this file requires a Reason/Recon restart
 
 -- Max 40 chars
-long_name = "Simple Instrument"
+long_name = "Simple Instrument (long)"
 
 -- Max 20 chars
 medium_name = "Simple Instrument"

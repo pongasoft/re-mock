@@ -70,7 +70,47 @@ std::unique_ptr<InfoLua> InfoLua::fromString(std::string const &iLuaCode)
 //------------------------------------------------------------------------
 std::string InfoLua::long_name()
 {
-  return "";
+  return L.getGlobalAsString("long_name");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::medium_name
+//------------------------------------------------------------------------
+std::string InfoLua::medium_name()
+{
+  return L.getGlobalAsString("medium_name");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::short_name
+//------------------------------------------------------------------------
+std::string InfoLua::short_name()
+{
+  return L.getGlobalAsString("short_name");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::product_id
+//------------------------------------------------------------------------
+std::string InfoLua::product_id()
+{
+  return L.getGlobalAsString("product_id");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::manufacturer
+//------------------------------------------------------------------------
+std::string InfoLua::manufacturer()
+{
+  return L.getGlobalAsString("manufacturer");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::version_number
+//------------------------------------------------------------------------
+std::string InfoLua::version_number()
+{
+  return L.getGlobalAsString("version_number");
 }
 
 //------------------------------------------------------------------------
@@ -103,6 +143,30 @@ std::string InfoLua::device_type()
 bool InfoLua::accepts_notes()
 {
   return L.getGlobalAsBoolean("accepts_notes");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::auto_create_track
+//------------------------------------------------------------------------
+bool InfoLua::auto_create_track()
+{
+  return L.getGlobalAsBoolean("auto_create_track");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::auto_create_note_lane
+//------------------------------------------------------------------------
+bool InfoLua::auto_create_note_lane()
+{
+  return L.getGlobalAsBoolean("auto_create_note_lane");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::supports_performance_automation
+//------------------------------------------------------------------------
+bool InfoLua::supports_performance_automation()
+{
+  return L.getGlobalAsBoolean("supports_performance_automation");
 }
 
 //------------------------------------------------------------------------

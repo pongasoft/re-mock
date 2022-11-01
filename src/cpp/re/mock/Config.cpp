@@ -604,6 +604,15 @@ Info fromInfoLua(lua::InfoLua &iInfo)
   res.fSupportPatches = iInfo.supports_patches();
   res.fAcceptNotes = iInfo.accepts_notes();
   res.fDeviceHeightRU = iInfo.device_height_ru();
+  res.fLongName = iInfo.long_name();
+  res.fMediumName = iInfo.medium_name();
+  res.fShortName = iInfo.short_name();
+  res.fProductId = iInfo.product_id();
+  res.fManufacturer = iInfo.manufacturer();
+  res.fVersionNumber = iInfo.version_number();
+  res.fAutoCreateTrack = iInfo.auto_create_track();
+  res.fAutoCreateNoteLane = iInfo.auto_create_note_lane();
+  res.fSupportsPerformanceAutomation = iInfo.supports_performance_automation();
 
   return res;
 }

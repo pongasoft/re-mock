@@ -49,9 +49,20 @@ TEST(InfoLua, Basic)
 
   ASSERT_EQ(def->getStackString(), "<empty>");
 
+  ASSERT_EQ(def->long_name(), "Simple Instrument (long)");
+  ASSERT_EQ(def->medium_name(), "Simple Instrument");
+  ASSERT_EQ(def->short_name(), "SimpInstr");
+  ASSERT_EQ(def->product_id(), "se.propellerheads.SimpleInstrument");
+  ASSERT_EQ(def->manufacturer(), "Propellerhead Software");
+  ASSERT_EQ(def->version_number(), "1.0.0d1");
   ASSERT_EQ(def->device_type(), "instrument");
   ASSERT_TRUE(def->supports_patches());
   ASSERT_EQ(def->default_patch(), "/Public/Plain Sinus.repatch");
+  ASSERT_TRUE(def->accepts_notes());
+  ASSERT_TRUE(def->auto_create_track());
+  ASSERT_TRUE(def->auto_create_note_lane());
+  ASSERT_TRUE(def->supports_performance_automation());
+  ASSERT_EQ(def->device_height_ru(), 2);
 
   ASSERT_EQ(def->getStackString(), "<empty>");
 }

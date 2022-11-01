@@ -101,6 +101,15 @@ struct Info
   std::string fDefaultPatch{};
   bool fAcceptNotes{};
   int fDeviceHeightRU{1};
+  std::string fLongName{};
+  std::string fMediumName{};
+  std::string fShortName{};
+  std::string fProductId{};
+  std::string fManufacturer{};
+  std::string fVersionNumber{};
+  bool fAutoCreateTrack{};
+  bool fAutoCreateNoteLane{};
+  bool fSupportsPerformanceAutomation{};
 
   Info &device_type(DeviceType t) { fDeviceType = t; return *this; }
   Info &default_patch(std::string s) { fDefaultPatch = std::move(s); fSupportPatches = !fDefaultPatch.empty(); return *this; }
