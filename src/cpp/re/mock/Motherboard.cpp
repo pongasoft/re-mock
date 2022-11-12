@@ -384,8 +384,8 @@ void Motherboard::addDeviceHostProperties(int iUserSampleCount)
 {
   auto deviceHost = addObject(JboxObjectType::kDeviceHost, "/device_host");
   deviceHost->addProperty("sample_context", PropertyOwner::kDocOwner, makeNumber(0), kJBox_DeviceHostSampleContext, iUserSampleCount, lua::EPersistence::kPatch);
-  deviceHost->addProperty("delete_sample", PropertyOwner::kDocOwner, makeNumber(0), kJBox_DeviceHostDeleteSample);
-  deviceHost->addProperty("edit_sample", PropertyOwner::kDocOwner, makeNumber(0), kJBox_DeviceHostEditSample);
+  deviceHost->addProperty("delete_sample", PropertyOwner::kDocOwner, makeBoolean(false), kJBox_DeviceHostDeleteSample);
+  deviceHost->addProperty("edit_sample", PropertyOwner::kDocOwner, makeBoolean(false), kJBox_DeviceHostEditSample);
 }
 
 //------------------------------------------------------------------------
@@ -396,7 +396,7 @@ void Motherboard::addPatterns(int iPatternCount)
   RE_MOCK_ASSERT(iPatternCount >= 1 && iPatternCount <= 32, "num_patterns [%d] must be between 1 and 32", iPatternCount);
 
   auto transport = getObject("/transport");
-  transport->addProperty("pattern_index", PropertyOwner::kHostOwner, makeNumber(kJBox_NoPatternIndex),
+  transport->addProperty("pattern_index", PropertyOwner::kDocOwner, makeNumber(kJBox_NoPatternIndex),
                          kJBox_TransportPatternIndex,
                          iPatternCount,
                          lua::EPersistence::kPatch,
@@ -404,7 +404,7 @@ void Motherboard::addPatterns(int iPatternCount)
                            auto index = iValue.getNumber();
                            return index == kJBox_NoPatternIndex || (index >= 0 && index <= iPatternCount - 1);
                          });
-  transport->addProperty("pattern_start_pos", PropertyOwner::kHostOwner, makeNumber(0), kJBox_TransportPatternStartPos, 0, lua::EPersistence::kPatch);
+  transport->addProperty("pattern_start_pos", PropertyOwner::kDocOwner, makeNumber(0), kJBox_TransportPatternStartPos, 0, lua::EPersistence::kPatch);
 
   for(int i = 0; i < iPatternCount; i++)
   {
@@ -2157,8 +2157,8 @@ void impl::JboxObject::addProperty(const std::string &iPropertyName,
 
         case kJBox_Number:
         {
-      auto step = static_cast<int>(iValue.getNumber());
-      return step >= 0 && step < iStepCount;
+          auto step = static_cast<int>(iValue.getNumber());
+          return step >= 0 && step < iStepCount;
         }
 
         case kJBox_Boolean:
