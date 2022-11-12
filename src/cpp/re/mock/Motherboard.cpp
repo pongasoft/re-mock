@@ -654,7 +654,7 @@ void Motherboard::addProperty(TJBox_ObjectRef iParentObject,
 
   struct StepCountVisitor
   {
-    int operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return 0; }
+    int operator()(const std::shared_ptr<lua::jbox_boolean_property>& o) const { return 2; }
     int operator()(const std::shared_ptr<lua::jbox_number_property>& o) const { return o->fSteps ? o->fSteps.value() : 0; }
     int operator()(const std::shared_ptr<lua::jbox_performance_property>& o) const { return 0; }
     int operator()(const std::shared_ptr<lua::jbox_native_object>& o) const { return 0; }
@@ -2150,8 +2150,23 @@ void impl::JboxObject::addProperty(const std::string &iPropertyName,
     iValueValidator = [iStepCount](auto const &iValue) {
       if(iValue.getValueType() == kJBox_Nil)
         return true;
+      switch(iValue.getValueType())
+      {
+        case kJBox_Nil:
+          return true;
+
+        case kJBox_Number:
+        {
       auto step = static_cast<int>(iValue.getNumber());
       return step >= 0 && step < iStepCount;
+        }
+
+        case kJBox_Boolean:
+          return iStepCount == 2;
+
+        default:
+          return false;
+      }
     };
   }
   fProperties[iPropertyName] =
