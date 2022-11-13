@@ -2217,7 +2217,7 @@ impl::JboxProperty::JboxProperty(TJBox_PropertyRef const &iPropertyRef,
                                  lua::EPersistence iPersistence) :
 fInfo{iPropertyRef,
       std::move(iPropertyPath),
-      iValueType,
+      toJboxPropertyType(iValueType),
       iStepCount,
       iOwner,
       iTag,
@@ -2271,7 +2271,7 @@ impl::JboxPropertyDiff impl::JboxProperty::watchForChange()
 //------------------------------------------------------------------------
 void impl::JboxProperty::validateValue(std::shared_ptr<JboxValue> const &iValue)
 {
-  RE_MOCK_ASSERT(iValue->getValueType() == fInfo.fValueType ||
+  RE_MOCK_ASSERT(iValue->getValueType() == toJBoxValueType(fInfo.fValueType) ||
                  iValue->getValueType() == TJBox_ValueType::kJBox_Nil,
                  "invalid property type for [%s]", fInfo.fPropertyPath);
 

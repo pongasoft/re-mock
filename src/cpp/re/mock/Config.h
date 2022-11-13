@@ -31,22 +31,23 @@
 
 namespace re::mock {
 
-enum class PropertyOwner {
-  kHostOwner,
-  kRTOwner,
-  kRTCOwner,
-  kDocOwner,
-  kGUIOwner
+enum class PropertyOwner : int {
+  kUnknown   = 0,
+  kHostOwner = 1 << 0,
+  kRTOwner   = 1 << 1,
+  kRTCOwner  = 1 << 2,
+  kDocOwner  = 1 << 3,
+  kGUIOwner  = 1 << 4
 };
 
-enum class DeviceType
+enum class DeviceType : int
 {
-  kUnknown,
-  kInstrument,
-  kCreativeFX,
-  kStudioFX,
-  kHelper,
-  kNotePlayer
+  kUnknown    = 0,
+  kInstrument = 1 << 0,
+  kCreativeFX = 1 << 1,
+  kStudioFX   = 1 << 2,
+  kHelper     = 1 << 3,
+  kNotePlayer = 1 << 4
 };
 
 enum class JboxObjectType : int
@@ -63,8 +64,77 @@ enum class JboxObjectType : int
   kNoteStates       = 1 << 8,
   kPatterns         = 1 << 9,
   kTransport        = 1 << 10,
-  kUserSamples      = 1 << 11,
+  kUserSamples      = 1 << 11
 };
+
+enum class JboxPropertyType : int
+{
+  kUnknown      = 0,
+  kNil          = 1 << 0,
+  kNumber       = 1 << 1,
+  kString       = 1 << 2,
+  kBoolean      = 1 << 3,
+  kSample       = 1 << 4,
+  kBlob         = 1 << 5,
+  kDSPBuffer    = 1 << 6,
+  kNativeObject = 1 << 7,
+  kIncompatible = 1 << 8
+};
+
+constexpr JboxPropertyType toJboxPropertyType(TJBox_ValueType v)
+{
+  switch(v)
+  {
+    case kJBox_Nil:
+      return JboxPropertyType::kNil;
+    case kJBox_Number:
+      return JboxPropertyType::kNumber;
+    case kJBox_String:
+      return JboxPropertyType::kString;
+    case kJBox_Boolean:
+      return JboxPropertyType::kBoolean;
+    case kJBox_Sample:
+      return JboxPropertyType::kSample;
+    case kJBox_BLOB:
+      return JboxPropertyType::kBlob;
+    case kJBox_DSPBuffer:
+      return JboxPropertyType::kDSPBuffer;
+    case kJBox_NativeObject:
+      return JboxPropertyType::kNativeObject;
+    case kJBox_Incompatible:
+      return JboxPropertyType::kIncompatible;
+    default:
+      return JboxPropertyType::kUnknown;
+  }
+}
+
+constexpr TJBox_ValueType toJBoxValueType(JboxPropertyType v)
+{
+  switch(v)
+  {
+    case JboxPropertyType::kUnknown:
+    case JboxPropertyType::kNil:
+      return kJBox_Nil;
+    case JboxPropertyType::kNumber:
+      return kJBox_Number;
+    case JboxPropertyType::kString:
+      return kJBox_String;
+    case JboxPropertyType::kBoolean:
+      return kJBox_Boolean;
+    case JboxPropertyType::kSample:
+      return kJBox_Sample;
+    case JboxPropertyType::kBlob:
+      return kJBox_BLOB;
+    case JboxPropertyType::kDSPBuffer:
+      return kJBox_DSPBuffer;
+    case JboxPropertyType::kNativeObject:
+      return kJBox_NativeObject;
+    case JboxPropertyType::kIncompatible:
+      return kJBox_Incompatible;
+    default:
+      RE_MOCK_FAIL("not reached");
+  }
+}
 
 struct Realtime
 {

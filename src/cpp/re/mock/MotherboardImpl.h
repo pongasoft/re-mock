@@ -92,7 +92,7 @@ struct JboxPropertyInfo
 {
   TJBox_PropertyRef fPropertyRef;
   std::string fPropertyPath;
-  TJBox_ValueType fValueType;
+  JboxPropertyType fValueType;
   int fStepCount;
   PropertyOwner fOwner;
   TJBox_Tag fTag;
