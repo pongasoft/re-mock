@@ -83,6 +83,13 @@ Links
 Release notes
 -------------
 
+#### 1.3.0 - 2022-11-20
+
+- Adjusted property type and owner (`/device_host/delete_sample`, `/device_host/edit_sample`, `/transport/pattern_index`, `/transport/pattern_start_pos`)
+- Made boolean a stepped property (2 steps)
+- Read all fields from `info.lua`
+- Introduced `JboxPropertyType` for symetry in the APIs and made some enums bitmasks
+
 #### 1.2.0 - 2022-10-29
 
 - Much better error reporting (when error in lua files)
