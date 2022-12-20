@@ -83,6 +83,11 @@ Links
 Release notes
 -------------
 
+#### 1.3.1 - 2022-12-20
+
+- Updated libsnfile and GoogleTest to new versions
+- Download the version instead of cloning the full repo
+
 #### 1.3.0 - 2022-11-20
 
 - Adjusted property type and owner (`/device_host/delete_sample`, `/device_host/edit_sample`, `/transport/pattern_index`, `/transport/pattern_start_pos`)

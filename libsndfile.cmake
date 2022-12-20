@@ -10,20 +10,19 @@ else()
 endif()
 
 set(LIBSNDFILE_GIT_REPO "https://github.com/libsndfile/libsndfile" CACHE STRING "libsndfile git repository url" FORCE)
-# Release 1.0.31 / 2021/01/24
-set(LIBSNDFILE_GIT_TAG d60deb5d8691997b6bb28d88e3b43f322073d146 CACHE STRING "libsndfile git tag" FORCE)
+# Release 1.1.0 / 2022/03/27
+set(LIBSNDFILE_GIT_TAG 1.1.0 CACHE STRING "libsndfile git tag" FORCE)
+set(LIBSNDFILE_DOWNLOAD_URL "${LIBSNDFILE_GIT_REPO}/archive/refs/tags/${LIBSNDFILE_GIT_TAG}.zip" CACHE STRING "libsndfile download url" FORCE)
 
 FetchContent_Declare(libsndfile
-      GIT_REPOSITORY    ${LIBSNDFILE_GIT_REPO}
-      GIT_TAG           ${LIBSNDFILE_GIT_TAG}
-      GIT_CONFIG        advice.detachedHead=false
-#      GIT_SHALLOW       true
-      SOURCE_DIR        "${CMAKE_BINARY_DIR}/libsndfile"
-      BINARY_DIR        "${CMAKE_BINARY_DIR}/libsndfile-build"
-      CONFIGURE_COMMAND ""
-      BUILD_COMMAND     ""
-      INSTALL_COMMAND   ""
-      TEST_COMMAND      ""
+      URL                        "${LIBSNDFILE_DOWNLOAD_URL}"
+      SOURCE_DIR                 "${CMAKE_BINARY_DIR}/libsndfile"
+      BINARY_DIR                 "${CMAKE_BINARY_DIR}/libsndfile-build"
+      DOWNLOAD_EXTRACT_TIMESTAMP true
+      CONFIGURE_COMMAND          ""
+      BUILD_COMMAND              ""
+      INSTALL_COMMAND            ""
+      TEST_COMMAND               ""
       )
 
 FetchContent_GetProperties(libsndfile)
@@ -33,7 +32,7 @@ if(NOT libsndfile_POPULATED)
   if(FETCHCONTENT_SOURCE_DIR_LIBSNDFILE)
     message(STATUS "Using libsndfile from local ${FETCHCONTENT_SOURCE_DIR_LIBSNDFILE}")
   else()
-    message(STATUS "Fetching libsndfile ${LIBSNDFILE_GIT_REPO}/tree/${LIBSNDFILE_GIT_TAG}")
+    message(STATUS "Fetching libsndfile from ${LIBSNDFILE_DOWNLOAD_URL}")
   endif()
 
   FetchContent_Populate(libsndfile)
