@@ -826,7 +826,7 @@ int MotherboardDef::getNumPatterns()
   int res = 0;
   if(lua_getglobal(L, "patterns") != LUA_TNIL)
   {
-    res = L.getTableValueAsInteger("num_patterns");
+    res = static_cast<int>(L.getTableValueAsInteger("num_patterns"));
     RE_MOCK_LUA_PARSE_ASSERT(res >= 1 && res <= 32, "num_patterns [%d] must be between 1 and 32", res);
   }
 

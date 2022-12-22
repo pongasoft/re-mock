@@ -497,7 +497,7 @@ void Motherboard::init()
   // user_samples
   if(!customProperties->user_samples.empty())
   {
-    addDeviceHostProperties(customProperties->user_samples.size());
+    addDeviceHostProperties(static_cast<int>(customProperties->user_samples.size()));
     for(int i = 0; i < customProperties->user_samples.size(); i++)
       addUserSample(i, customProperties->user_samples[i]);
   }
@@ -722,8 +722,6 @@ void Motherboard::addUserSample(int iSampleIndex, std::shared_ptr<lua::jbox_user
 
   fUserSamplePropertyPaths.emplace_back(userSample->getProperty("item")->fInfo.fPropertyPath);
 
-  auto userSampleRef = userSample->fInfo.fObjectRef;
-
   for(auto &sampleParameter: iProperty->fSampleParameters)
   {
     auto defaultValue = impl::SAMPLE_PARAMETERS.find(sampleParameter);
@@ -906,7 +904,7 @@ void Motherboard::nextBatch()
       rtDiffs.emplace_back(d);
     }
 
-    fRealtime.render_realtime(instance, rtDiffs.data(), rtDiffs.size());
+    fRealtime.render_realtime(instance, rtDiffs.data(), static_cast<TJBox_UInt32>(rtDiffs.size()));
   }
 
   // clearing current values
@@ -996,7 +994,7 @@ std::unique_ptr<JboxValue> Motherboard::makeNativeObject(std::string const &iOpe
     std::vector<TJBox_Value> params{};
     for(auto &p: iParams)
       params.emplace_back(to_TJBox_Value(p));
-    auto nativeObject = fRealtime.create_native_object(iOperation.c_str(), params.data(), params.size());
+    auto nativeObject = fRealtime.create_native_object(iOperation.c_str(), params.data(), static_cast<TJBox_UInt32>(params.size()));
     if(nativeObject)
     {
       auto res = std::make_unique<JboxValue>();
@@ -1425,7 +1423,7 @@ TJBox_UInt32 Motherboard::getStringLength(TJBox_Value const &iValue) const
 {
   auto const &s = from_TJBox_Value(iValue)->getString();
   RE_MOCK_ASSERT(!s.isRTString());
-  return s.fValue.size();
+  return static_cast<TJBox_UInt32>(s.fValue.size());
 }
 
 //------------------------------------------------------------------------
@@ -1526,7 +1524,7 @@ void Motherboard::addRTCNotifyDiff(impl::JboxPropertyDiff const &iDiff)
   if(fRTCNotifyEnabled)
   {
     impl::JboxPropertyDiff diff{iDiff};
-    diff.fInsertIndex = fRTCNotifyDiffs.size();
+    diff.fInsertIndex = static_cast<int>(fRTCNotifyDiffs.size());
     fRTCNotifyDiffs.emplace_back(diff);
   }
 }

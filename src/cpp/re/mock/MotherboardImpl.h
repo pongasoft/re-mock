@@ -288,8 +288,8 @@ struct Sample
   TJBox_SampleInfo getSampleInfo() const;
   bool isUserSample() const { return fSampleItem > 0; };
 
-  TJBox_AudioFramePos getFrameCount() const { return fLoadingContext.isLoadOk() ? fData.size() / fChannels : 0; }
-  TJBox_AudioFramePos getResidentFrameCount() const { return fLoadingContext.fResidentSize; }
+  TJBox_AudioFramePos getFrameCount() const { return fLoadingContext.isLoadOk() ? static_cast<TJBox_AudioFramePos>(fData.size() / fChannels) : 0; }
+  TJBox_AudioFramePos getResidentFrameCount() const { return static_cast<TJBox_AudioFramePos>(fLoadingContext.fResidentSize); }
 
   TJBox_UInt32 fChannels{1};
   TJBox_UInt32 fSampleRate{1};

@@ -67,7 +67,7 @@ bool MockAudioDevice::copyBuffer(TJBox_ObjectRef const &iFromSocket, MockAudioDe
   if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "connected"))))
   {
     auto dspFromBuffer = JBox_LoadMOMProperty(JBox_MakePropertyRef(iFromSocket, "buffer"));
-    JBox_GetDSPBufferData(dspFromBuffer, 0, iToBuffer.size(), iToBuffer.data());
+    JBox_GetDSPBufferData(dspFromBuffer, 0, static_cast<TJBox_AudioFramePos>(iToBuffer.size()), iToBuffer.data());
     return true;
   }
   return false;
@@ -81,7 +81,7 @@ bool MockAudioDevice::copyBuffer(buffer_type const &iFromBuffer, TJBox_ObjectRef
   if(JBox_GetBoolean(JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "connected"))))
   {
     auto dspToBuffer = JBox_LoadMOMProperty(JBox_MakePropertyRef(iToSocket, "buffer"));
-    JBox_SetDSPBufferData(dspToBuffer, 0, iFromBuffer.size(), iFromBuffer.data());
+    JBox_SetDSPBufferData(dspToBuffer, 0, static_cast<TJBox_AudioFramePos>(iFromBuffer.size()), iFromBuffer.data());
     return true;
   }
   return false;
@@ -997,7 +997,6 @@ void MockAudioDevice::Sample::maybeGrowExponentially(size_t iNewCapacity)
   if(fData.capacity() < iNewCapacity)
   {
     iNewCapacity = std::max(iNewCapacity, fData.capacity() * 2);
-    auto oldCapacity = fData.capacity();
     fData.reserve(iNewCapacity);
   }
 }

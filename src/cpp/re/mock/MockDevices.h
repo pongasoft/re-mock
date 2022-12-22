@@ -205,12 +205,12 @@ public:
     std::vector<TJBox_AudioSample> const &getData() const { return fData; }
 
     //! Return the number of samples total
-    TJBox_AudioFramePos getSampleCount() const { return fData.size(); }
+    TJBox_AudioFramePos getSampleCount() const { return static_cast<TJBox_AudioFramePos>(fData.size()); }
 
     //! Return the number of samples per channel
     TJBox_AudioFramePos getFrameCount() const {
       RE_MOCK_ASSERT(fData.size() % fChannels == 0);
-      return fData.size() / fChannels;
+      return static_cast<TJBox_AudioFramePos>(fData.size() / fChannels);
     }
 
     //! Return the duration of the sample in milliseconds

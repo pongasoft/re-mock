@@ -97,7 +97,16 @@ public:
   lua_Number getTableValueAsNumber(char const *iKey, int idx = -1);
   std::optional<lua_Number> getTableValueAsOptionalNumber(char const *iKey, int idx = -1);
   lua_Integer getTableValueAsInteger(char const *iKey, int idx = -1);
-  std::optional<lua_Integer> getTableValueAsOptionalInteger(char const *iKey, int idx = -1);
+  std::optional<lua_Integer> getTableValueAsOptionalLuaInteger(char const *iKey, int idx = -1);
+  template<typename Int = lua_Integer>
+  std::optional<Int> getTableValueAsOptionalInteger(char const *iKey, int idx = -1)
+  {
+    auto v = getTableValueAsOptionalLuaInteger(iKey, idx);
+    if(v)
+      return static_cast<Int>(*v);
+    else
+      return std::nullopt;
+  }
   bool getTableValueAsBoolean(char const *iKey, int idx = -1);
   std::optional<bool> getTableValueAsOptionalBoolean(char const *iKey, int idx = -1);
   std::string getTableValueAsString(char const *iKey, int idx = -1);

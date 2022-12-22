@@ -61,7 +61,7 @@ std::string printf(const std::string& format, Args ... args )
   if(size_s <= 0) { throw std::runtime_error("Error during formatting."); }
   auto size = static_cast<size_t>( size_s );
   auto buf = std::make_unique<char[]>(size);
-  stbsp_snprintf(buf.get(), size, format.c_str(), args ...);
+  stbsp_snprintf(buf.get(), size_s, format.c_str(), args ...);
   return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
 }
 #ifdef __clang__

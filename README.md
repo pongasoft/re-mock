@@ -83,6 +83,10 @@ Links
 Release notes
 -------------
 
+#### 1.3.2 - 2022-12-21
+
+- Removed warnings
+
 #### 1.3.1 - 2022-12-20
 
 - Updated libsnfile and GoogleTest to new versions
