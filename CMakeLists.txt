@@ -19,8 +19,8 @@ cmake_minimum_required(VERSION 3.17)
 # Setting up project
 project(re-mock LANGUAGES CXX)
 set(re-mock_VERSION_MAJOR 1)
-set(re-mock_VERSION_MINOR 3)
-set(re-mock_VERSION_PATCH 2)
+set(re-mock_VERSION_MINOR 4)
+set(re-mock_VERSION_PATCH 0)
 set(re-mock_VERSION "${re-mock_VERSION_MAJOR}.${re-mock_VERSION_MINOR}.${re-mock_VERSION_PATCH}")
 
 # Using C++17
@@ -120,26 +120,19 @@ add_subdirectory(external/tinyxml2-9.0.0)
 # Including midifile
 add_subdirectory(external/craigsapp-midifile)
 
-# Function to add support for audio file loading (.wav/.aiff)
-function(re_mock_add_support_for_audio_file target)
-  include(libsndfile.cmake)
-  target_compile_definitions(${target} PUBLIC RE_MOCK_SUPPORT_FOR_AUDIO_FILE=1)
-  target_link_libraries(${target} PUBLIC SndFile::sndfile)
-endfunction()
+# Including miniaudio (for file loading/saving)
+add_subdirectory(external/miniaudio)
 
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
 target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
-target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2 midifile stb)
+target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2 midifile stb miniaudio)
 
 if(NOT APPLE)
 #  target_compile_options(${target} PUBLIC "/std:c++latest")
 endif()
 
 if(re-mock_DEV_BUILD)
-  # We always include libsndfile in this case
-  re_mock_add_support_for_audio_file(${target})
-
   target_compile_definitions(${target} PUBLIC ENABLE_RE_MOCK_INTERNAL_ASSERT=1)
 
   # Generate the re_mock_build.h file
@@ -185,9 +178,4 @@ if(re-mock_DEV_BUILD)
   target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}" "${GENERATED_FILES_DIR}")
 
   gtest_discover_tests("${target_test}")
-else()
-  option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE "Whether re-mock can load audio files (.wav / .aiff). Only needed if the device handles samples." OFF)
-  if(RE_MOCK_SUPPORT_FOR_AUDIO_FILE)
-    re_mock_add_support_for_audio_file(${target})
-  endif()
 endif()

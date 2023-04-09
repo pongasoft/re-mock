@@ -178,6 +178,25 @@ constexpr std::optional<T> optional_static_cast(std::optional<U> const &v) {
     return std::nullopt;
 }
 
+/**
+ * An action that gets executed when the destructor of this class runs */
+template<typename F>
+class DeferrableAction
+{
+public:
+  explicit constexpr DeferrableAction(F &&iAction) : fAction{std::move(iAction)} {}
+  DeferrableAction(DeferrableAction const &) = delete;
+  DeferrableAction &operator=(DeferrableAction const &) = delete;
+  ~DeferrableAction() { fAction(); }
+private:
+  F fAction{};
+};
+
+/**
+ * Convenient call to ensure that an action gets executed whenever the current method/function ends (useful for
+ * calling C code who needs cleanup for example) */
+template<typename F>
+[[nodiscard]] constexpr DeferrableAction<F> defer(F iAction) { return DeferrableAction<F>(std::move(iAction)); }
 
 }
 

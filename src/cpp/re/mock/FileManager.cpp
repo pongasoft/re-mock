@@ -19,9 +19,7 @@
 #include "FileManager.h"
 #include "Constants.h"
 
-#if RE_MOCK_SUPPORT_FOR_AUDIO_FILE
-#include <sndfile.hh>
-#endif
+#include <miniaudio.h>
 
 namespace re::mock {
 
@@ -168,83 +166,6 @@ std::ostream &operator<<(std::ostream &os, smf::MidiFile const &iMidiFile)
   return os;
 }
 
-#if RE_MOCK_SUPPORT_FOR_AUDIO_FILE
-
-namespace impl {
-//------------------------------------------------------------------------
-// loadSample
-//------------------------------------------------------------------------
-template<typename Container, size_t BUFFER_SIZE = 1024>
-long loadSample(SndfileHandle &iFileHandle, Container &oBuffer)
-{
-  const auto frameCount = iFileHandle.frames();
-  const auto channelCount = iFileHandle.channels();
-
-  std::vector<TJBox_AudioSample> interleavedBuffer(static_cast<unsigned long>(channelCount * BUFFER_SIZE));
-
-  auto expectedFrames = frameCount;
-  bool complete = false;
-
-  while(!complete)
-  {
-    // read up to BUFFER_SIZE frames
-    auto frameCountRead = iFileHandle.readf(interleavedBuffer.data(), BUFFER_SIZE);
-
-    // handle error
-    if(frameCountRead == 0)
-      return -1;
-
-    std::copy(std::begin(interleavedBuffer), std::begin(interleavedBuffer) + (channelCount * frameCountRead),
-              std::back_inserter(oBuffer));
-
-    // adjust number of frames to read
-    expectedFrames -= frameCountRead;
-    complete = expectedFrames == 0;
-  }
-
-  return frameCount;
-}
-
-//------------------------------------------------------------------------
-// loadSample
-//------------------------------------------------------------------------
-template<typename Container, size_t BUFFER_SIZE = 1024>
-bool saveSample(Container const &iBuffer, SndfileHandle &iFileHandle)
-{
-  const auto channelCount = iFileHandle.channels();
-
-  std::vector<TJBox_AudioSample> interleavedBuffer(static_cast<unsigned long>(channelCount * BUFFER_SIZE));
-
-  auto framesToWrite = iBuffer.size() / channelCount;
-  auto samplesWritten = 0;
-  bool complete = false;
-
-  while(!complete)
-  {
-    // fill interleaved buffer
-    auto numFrames = std::min<unsigned long>(framesToWrite, BUFFER_SIZE);
-    auto numSamplesWrite = numFrames * channelCount;
-
-    std::copy(std::begin(iBuffer) + samplesWritten,
-              std::begin(iBuffer) + samplesWritten + numSamplesWrite,
-              std::begin(interleavedBuffer));
-
-    auto writeCount = iFileHandle.writef(interleavedBuffer.data(), numFrames);
-    if(writeCount != numFrames)
-    {
-      return false;
-    }
-
-    samplesWritten += numSamplesWrite;
-    framesToWrite -= numFrames;
-    complete = framesToWrite == 0;
-  }
-
-  return true;
-}
-
-}
-
 //------------------------------------------------------------------------
 // FileManager::loadSample
 //------------------------------------------------------------------------
@@ -253,34 +174,62 @@ std::unique_ptr<resource::Sample> FileManager::loadSample(resource::File const &
   if(!FileManager::fileExists(iFile))
     return nullptr;
 
-  SndfileHandle sndFile(iFile.fFilePath.string().c_str());
-
-  if(!sndFile.rawHandle())
+  ma_decoder decoder;
+  ma_decoder_config config = ma_decoder_config_init_default();
+  config.format = ma_format_f32;
+  ma_result result = ma_decoder_init_file(iFile.fFilePath.string().c_str(), &config, &decoder);
+  if(result != MA_SUCCESS)
   {
     RE_MOCK_LOG_ERROR("Error opening sample file [%s] %d/%s",
                       iFile.fFilePath.c_str(),
-                      sndFile.error(),
-                      sndFile.strError());
+                      result,
+                      ma_result_description(result));
+    return nullptr;
+  }
+  auto decoderUninit = stl::defer([&decoder] { ma_decoder_uninit(&decoder); });
+
+  ma_format format;
+  ma_uint32 channelCount;
+  ma_uint32 sampleRate;
+  result = ma_decoder_get_data_format(&decoder, &format, &channelCount, &sampleRate, nullptr, 0);
+  if(result != MA_SUCCESS)
+  {
+    RE_MOCK_LOG_ERROR("Error reading sample file [%s] %d/%s",
+                      iFile.fFilePath.c_str(),
+                      result,
+                      ma_result_description(result));
+    return nullptr;
+  }
+
+  ma_uint64 frameCount;
+  result = ma_data_source_get_length_in_pcm_frames(&decoder, &frameCount);
+  if(result != MA_SUCCESS)
+  {
+    RE_MOCK_LOG_ERROR("Error reading sample file [%s] %d/%s",
+                      iFile.fFilePath.c_str(),
+                      result,
+                      ma_result_description(result));
     return nullptr;
   }
 
   auto sample = std::make_unique<resource::Sample>();
-  sample->fData.reserve(sndFile.frames() * sndFile.channels());
+  sample->fData.resize(frameCount * channelCount);
 
-  if(impl::loadSample(sndFile, sample->fData) >= 0)
-  {
-    sample->fSampleRate = sndFile.samplerate();
-    sample->fChannels = sndFile.channels();
-    return sample;
-  }
-  else
+  ma_uint64 framesRead;
+  result = ma_data_source_read_pcm_frames(&decoder, sample->fData.data(), frameCount, &framesRead);
+  if(result != MA_SUCCESS)
   {
     RE_MOCK_LOG_ERROR("Error reading sample file [%s] %d/%s",
                       iFile.fFilePath.c_str(),
-                      sndFile.error(),
-                      sndFile.strError());
+                      result,
+                      ma_result_description(result));
     return nullptr;
   }
+  RE_MOCK_INTERNAL_ASSERT(frameCount == framesRead);
+
+  sample->fSampleRate = sampleRate;
+  sample->fChannels = channelCount;
+  return sample;
 }
 
 //------------------------------------------------------------------------
@@ -291,57 +240,32 @@ void FileManager::saveSample(TJBox_UInt32 iChannels,
                              std::vector<TJBox_AudioSample> const &iData,
                              resource::File const &iToFile)
 {
-  SndfileHandle sndFile(iToFile.fFilePath.string().c_str(),
-                        SFM_WRITE, // open for writing
-                        SF_FORMAT_WAV | SF_FORMAT_PCM_32,
-                        iChannels,
-                        static_cast<int>(iSampleRate));
-
-  if(!sndFile.rawHandle())
-  {
-    RE_MOCK_LOG_ERROR("Error opening sample file [%s] %d/%s",
-                      iToFile.fFilePath.c_str(),
-                      sndFile.error(),
-                      sndFile.strError());
-    return;
-  }
-
-  if(!impl::saveSample(iData, sndFile))
+  ma_encoder_config config = ma_encoder_config_init(ma_encoding_format_wav, ma_format_f32, iChannels, iSampleRate);
+  ma_encoder encoder;
+  ma_result result = ma_encoder_init_file(iToFile.fFilePath.string().c_str(), &config, &encoder);
+  if(result != MA_SUCCESS)
   {
     RE_MOCK_LOG_ERROR("Error writing sample file [%s] %d/%s",
                       iToFile.fFilePath.c_str(),
-                      sndFile.error(),
-                      sndFile.strError());
+                      result,
+                      ma_result_description(result));
+    return;
   }
+  auto encoderUninit = stl::defer([&encoder] { ma_encoder_uninit(&encoder); });
+
+  ma_uint64 framesToWrite = iData.size() / iChannels;
+  ma_uint64 framesWritten;
+  result = ma_encoder_write_pcm_frames(&encoder, iData.data(), framesToWrite, &framesWritten);
+  if(result != MA_SUCCESS)
+  {
+    RE_MOCK_LOG_ERROR("Error writing sample file [%s] %d/%s",
+                      iToFile.fFilePath.c_str(),
+                      result,
+                      ma_result_description(result));
+    return;
+  }
+  RE_MOCK_INTERNAL_ASSERT(framesToWrite == framesWritten);
 }
-
-
-#else
-//------------------------------------------------------------------------
-// FileManager::loadSample
-//------------------------------------------------------------------------
-std::unique_ptr<resource::Sample> FileManager::loadSample(resource::File const &iFile)
-{
-  RE_MOCK_ASSERT(false,
-                 "Loading sample is disabled by default. To enable, define option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE \"\" ON) "
-                 "before including re-mock  in your CMakeLists.txt (and make sure you do a fresh cmake reconfigure).");
-  return nullptr;
-}
-
-//------------------------------------------------------------------------
-// FileManager::saveSample
-//------------------------------------------------------------------------
-void FileManager::saveSample(TJBox_UInt32 iChannels,
-                             TJBox_UInt32 iSampleRate,
-                             std::vector<TJBox_AudioSample> const &iData,
-                             resource::File const &iToFile)
-{
-  RE_MOCK_ASSERT(false,
-                "Saving a sample is disabled by default. To enable, define option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE \"\" ON) "
-                "before including re-mock  in your CMakeLists.txt (and make sure you do a fresh cmake reconfigure).");
-
-}
-#endif
 
 
 }

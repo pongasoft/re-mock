@@ -124,21 +124,31 @@ TEST(StudioEffectTester, Sample)
   }
 }
 
-//// DeviceTesters.SaveSample
+// DeviceTesters.SaveSample
 // TODO write a non hardcoded version of this test
-//TEST(DeviceTesters, SaveSample)
-//{
-//  StudioEffectTester<MAUPst> tester(MAUPst::CONFIG);
-//
-//  auto sinePath = fmt::path(RE_MOCK_PROJECT_DIR, "test", "resources", "re", "mock", "audio", "sine.wav");
-//  auto sine = tester.loadSample(resource::File{sinePath});
-//
-//  tester.saveSample(sine, resource::File{"/tmp/sine2.wav"});
-//
-//  auto sine2 = tester.loadSample(resource::File{"/tmp/sine2.wav"});
-//
-//  ASSERT_EQ(sine, sine2);
-//}
+TEST(DeviceTesters, SaveSample)
+{
+  StudioEffectTester<MAUPst> tester(MAUPst::CONFIG);
+
+  // Implementation note: sine.wav is encoded as 16-bit signed integer
+  // sine2.wav is encoded as 32-bit floating point
+
+  auto sinePath = fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "audio" / "sine.wav";
+  auto sine = tester.loadSample(resource::File{sinePath});
+
+  tester.saveSample(*sine.get(), resource::File{"/tmp/sine2.wav"});
+
+  auto sine2 = tester.loadSample(resource::File{"/tmp/sine2.wav"});
+
+  ASSERT_EQ(sine->getChannels(), sine2->getChannels());
+  ASSERT_EQ(sine->getFrameCount(), sine2->getFrameCount());
+  ASSERT_EQ(sine->getSampleCount(), sine2->getSampleCount());
+  // due to math precision of conversion, we need to check with ASSERT_FLOAT_EQ
+  for(auto i = 0; i < sine->getSampleCount(); i++)
+  {
+    ASSERT_FLOAT_EQ(sine->getData()[i], sine2->getData()[i]);
+  }
+}
 
 // Duration.Conversion
 TEST(Duration, Conversion)

@@ -158,4 +158,4 @@ License
 
 - This project includes [stb_sprintf](https://github.com/nothings/stb) released under a [Public Domain License](https://github.com/nothings/stb/blob/master/LICENSE)
 
-- This project (optionally) uses [libsndfile](https://github.com/libsndfile/libsndfile) relased under an [LGPL-2.1 License](https://github.com/libsndfile/libsndfile/blob/master/COPYING)
+- This project uses [miniaudio](https://github.com/mackron/miniaudio) relased under a [Public Domain License](https://unlicense.org/)
