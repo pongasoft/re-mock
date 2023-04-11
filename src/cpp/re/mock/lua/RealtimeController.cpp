@@ -197,7 +197,7 @@ int RealtimeController::luaLoadProperty()
 
   RE_MOCK_ASSERT(stl::contains_key(fReverseBindings.at(fCurrentBindingName), propertyPath),
                  "Load property failed while executing binding [/global_rtc/%s]. Can only read property [%s] in rtc_bindings function with this property as source.",
-                 propertyPath, fCurrentBindingName);
+                 fCurrentBindingName, propertyPath);
 
   auto value = getCurrentMotherboard()->getJboxValue(propertyPath);
   pushJBoxValue(value);
