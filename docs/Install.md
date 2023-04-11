@@ -62,10 +62,3 @@ add_re_plugin(
 
 > #### Note
 > This project can be opened directly to work on the project itself! It contains its own set of unit tests.
-
-If the device under test uses samples that get loaded via patch or apis, you must enable support for sample loading by using the `RE_MOCK_SUPPORT_FOR_AUDIO_FILE` option like so:
-
-```cmake
-option(RE_MOCK_SUPPORT_FOR_AUDIO_FILE "" ON) # must be set BEFORE including re-mock
-add_subdirectory("re-mock" EXCLUDE_FROM_ALL)
-```

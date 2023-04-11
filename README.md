@@ -83,6 +83,11 @@ Links
 Release notes
 -------------
 
+#### 1.4.0 - 2023-04-11
+
+- Use miniaudio instead of libsndfile for loading/saving audio files: this makes generating the CMake project and compiling much faster. As a result the CMake option `RE_MOCK_SUPPORT_FOR_AUDIO_FILE` has been removed entirely.
+- Minor bug fix (wrong message)
+
 #### 1.3.2 - 2022-12-21
 
 - Removed warnings
