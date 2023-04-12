@@ -163,4 +163,4 @@ License
 
 - This project includes [stb_sprintf](https://github.com/nothings/stb) released under a [Public Domain License](https://github.com/nothings/stb/blob/master/LICENSE)
 
-- This project uses [miniaudio](https://github.com/mackron/miniaudio) relased under a [Public Domain License](https://unlicense.org/)
+- This project includes [miniaudio](https://github.com/mackron/miniaudio) relased under a [Public Domain License](https://unlicense.org/)
