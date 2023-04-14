@@ -476,11 +476,11 @@ void RealtimeController::invokeBinding(Motherboard *iMotherboard,
 //------------------------------------------------------------------------
 // RealtimeController::getBindings
 //------------------------------------------------------------------------
-std::map<std::string, std::string> const &RealtimeController::getBindings()
+std::map<std::string, std::set<std::string>> const &RealtimeController::getBindings()
 {
   if(!fBindings)
   {
-    std::map<std::string, std::string> bindings{};
+    std::map<std::string, std::set<std::string>> bindings{};
     if(lua_getglobal(L, "rtc_bindings") != LUA_TNIL)
     {
       auto mapIndex = lua_gettop(L);
@@ -495,7 +495,9 @@ std::map<std::string, std::string> const &RealtimeController::getBindings()
         dest = dest.substr(12);  // skip /global_rtc/
         putBindingOnTopOfStack(dest); // this will check that the binding exists
         lua_pop(L, 1);
-        bindings[source] = dest;
+        if(!stl::contains_key(bindings, source))
+          bindings[source] = {};
+        bindings[source].emplace(dest);
 
         // also add it to reverse bindings
         if(!stl::contains_key(fReverseBindings, dest))

@@ -349,7 +349,7 @@ protected:
   std::set<TJBox_PropertyRef, ComparePropertyRef> fRTCNotify{compare};
   std::vector<impl::JboxPropertyDiff> fRTCNotifyDiffs{};
   bool fRTCNotifyEnabled{true};
-  std::map<TJBox_PropertyRef, std::string, ComparePropertyRef> fRTCBindings{compare};
+  std::map<TJBox_PropertyRef, std::set<std::string>, ComparePropertyRef> fRTCBindings{compare};
   std::vector<impl::JboxPropertyDiff> fRTCBindingsDiffs{};
   bool fRTCBindingsEnabled{true};
   std::vector<std::string> fUserSamplePropertyPaths{};

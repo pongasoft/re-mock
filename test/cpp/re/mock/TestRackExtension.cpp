@@ -385,6 +385,70 @@ TEST(RackExtension, Motherboard_NativeObject)
   ASSERT_EQ("abc", o->fStringValue);
 }
 
+// RackExtension.RealtimeController_MultiBindings
+TEST(RackExtension, RealtimeController_MultiBindings)
+{
+  Rack rack{};
+
+  auto c = DeviceConfig<MockDevice>::fromSkeleton()
+    .mdef(Config::document_owner_property("source_1", lua::jbox_string_property{}))
+    .mdef(Config::document_owner_property("source_2", lua::jbox_string_property{}))
+    .mdef(Config::rtc_owner_property("source_1_return", lua::jbox_string_property{}))
+    .mdef(Config::rtc_owner_property("any_source_1_return", lua::jbox_string_property{}))
+    .mdef(Config::rtc_owner_property("any_source_2_return", lua::jbox_string_property{}))
+
+    .rtc(resource::File{fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "lua" /
+                        "RackExtension_RealtimeController_MultiBindings.lua"})
+  ;
+
+  auto re = rack.newDevice(c);
+
+  ASSERT_EQ("", re.getString("/custom_properties/source_1"));
+  ASSERT_EQ("", re.getString("/custom_properties/source_2"));
+  ASSERT_EQ("", re.getString("/custom_properties/source_1_return"));
+  ASSERT_EQ("", re.getString("/custom_properties/any_source_1_return"));
+  ASSERT_EQ("", re.getString("/custom_properties/any_source_2_return"));
+
+  rack.nextBatch();
+
+  ASSERT_EQ("", re.getString("/custom_properties/source_1"));
+  ASSERT_EQ("", re.getString("/custom_properties/source_2"));
+  ASSERT_EQ("", re.getString("/custom_properties/source_1_return"));
+  ASSERT_EQ("", re.getString("/custom_properties/any_source_1_return"));
+  ASSERT_EQ("", re.getString("/custom_properties/any_source_2_return"));
+
+  re.setString("/custom_properties/source_1", "s1");
+
+  rack.nextBatch();
+
+  ASSERT_EQ("s1", re.getString("/custom_properties/source_1"));
+  ASSERT_EQ("", re.getString("/custom_properties/source_2"));
+  ASSERT_EQ("s1", re.getString("/custom_properties/source_1_return"));
+  ASSERT_EQ("s1", re.getString("/custom_properties/any_source_1_return"));
+  ASSERT_EQ("", re.getString("/custom_properties/any_source_2_return"));
+
+  re.setString("/custom_properties/source_2", "s2");
+
+  rack.nextBatch();
+
+  ASSERT_EQ("s1", re.getString("/custom_properties/source_1"));
+  ASSERT_EQ("s2", re.getString("/custom_properties/source_2"));
+  ASSERT_EQ("s1", re.getString("/custom_properties/source_1_return"));
+  ASSERT_EQ("s1", re.getString("/custom_properties/any_source_1_return"));
+  ASSERT_EQ("s2", re.getString("/custom_properties/any_source_2_return"));
+
+  re.setString("/custom_properties/source_1", "s1.2");
+  re.setString("/custom_properties/source_2", "s2.2");
+
+  rack.nextBatch();
+
+  ASSERT_EQ("s1.2", re.getString("/custom_properties/source_1"));
+  ASSERT_EQ("s2.2", re.getString("/custom_properties/source_2"));
+  ASSERT_EQ("s1.2", re.getString("/custom_properties/source_1_return"));
+  ASSERT_EQ("s1.2", re.getString("/custom_properties/any_source_1_return"));
+  ASSERT_EQ("s2.2", re.getString("/custom_properties/any_source_2_return"));
+}
+
 // RackExtension.RealtimeController_NativeObject
 TEST(RackExtension, RealtimeController_NativeObject)
 {

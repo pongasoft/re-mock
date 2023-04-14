@@ -557,10 +557,13 @@ void Motherboard::init()
   }
 
   // rtc_bindings
-  for(auto const &[propertyPath, bindingKey]: fRealtimeController->getBindings())
+  for(auto const &[propertyPath, bindingKeys]: fRealtimeController->getBindings())
   {
-    auto diff = registerRTCBinding(propertyPath, bindingKey);
-    fRealtimeController->invokeBinding(this, bindingKey, getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
+    for(auto const &bindingKey: bindingKeys)
+    {
+      auto diff = registerRTCBinding(propertyPath, bindingKey);
+      fRealtimeController->invokeBinding(this, bindingKey, getPropertyPath(diff.fPropertyRef), diff.fCurrentValue);
+    }
   }
 }
 
@@ -768,7 +771,9 @@ void Motherboard::registerRTCNotify(std::string const &iPropertyPath)
 impl::JboxPropertyDiff Motherboard::registerRTCBinding(std::string const &iPropertyPath, std::string const &iBindingKey)
 {
   auto ref = getPropertyRef(iPropertyPath);
-  fRTCBindings[ref] = iBindingKey;
+  if(!stl::contains_key(fRTCBindings, ref))
+    fRTCBindings[ref] = {};
+  fRTCBindings[ref].emplace(iBindingKey);
   return fJboxObjects.get(ref.fObject)->watchPropertyForChange(ref.fKey);
 }
 
@@ -864,10 +869,14 @@ void Motherboard::nextBatch()
 
   for(auto &diff : diffs)
   {
-    fRealtimeController->invokeBinding(this,
-                                       fRTCBindings.at(diff.fPropertyRef),
-                                       getPropertyPath(diff.fPropertyRef),
-                                       diff.fCurrentValue);
+    auto const &bindingKeys = fRTCBindings.at(diff.fPropertyRef);
+    for(auto binding: bindingKeys)
+    {
+      fRealtimeController->invokeBinding(this,
+                                         binding,
+                                         getPropertyPath(diff.fPropertyRef),
+                                         diff.fCurrentValue);
+    }
   }
 
   // next we call render_realtime

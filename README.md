@@ -83,6 +83,10 @@ Links
 Release notes
 -------------
 
+#### 1.4.1 - 2023-04-14
+
+- Fixed issue when the same `source` was defined multiple times (to different `dest`) in `rtc_bindings` in `realtime_controler.lua`
+
 #### 1.4.0 - 2023-04-11
 
 - Use miniaudio instead of libsndfile for loading/saving audio files: this makes generating the CMake project and compiling much faster. As a result the CMake option `RE_MOCK_SUPPORT_FOR_AUDIO_FILE` has been removed entirely.

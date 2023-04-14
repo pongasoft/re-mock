@@ -57,7 +57,7 @@ public:
   int luaGetSampleInfo();
   int luaGetSampleMetaData();
 
-  std::map<std::string, std::string> const &getBindings();
+  std::map<std::string, std::set<std::string>> const &getBindings();
   std::set<std::string> getRTInputSetupNotify();
 
   void invokeBinding(Motherboard *iMotherboard,
@@ -80,7 +80,7 @@ private:
   Motherboard *fMotherboard{};
   std::string fCurrentBindingName{};
   ObjectManager<std::shared_ptr<const JboxValue>> fJboxValues{};
-  std::optional<std::map<std::string, std::string>> fBindings{};
+  std::optional<std::map<std::string, std::set<std::string>>> fBindings{};
   std::map<std::string, std::set<std::string>> fReverseBindings{};
 };
 
