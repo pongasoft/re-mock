@@ -83,6 +83,10 @@ Links
 Release notes
 -------------
 
+#### 1.4.2 - 2023-04-28
+
+- Updated google test version and use hash to guarantee download
+
 #### 1.4.1 - 2023-04-14
 
 - Fixed issue when the same `source` was defined multiple times (to different `dest`) in `rtc_bindings` in `realtime_controler.lua`

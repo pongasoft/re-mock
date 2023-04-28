@@ -32,17 +32,19 @@ set(googletest_GIT_REPO "https://github.com/google/googletest" CACHE STRING "goo
 
 #------------------------------------------------------------------------
 # The git tag for googletest
-# release-1.12.1 (2022/06/30)
+# v1.13.0 (2023/01/17/30)
 #------------------------------------------------------------------------
-set(googletest_GIT_TAG "release-1.12.1" CACHE STRING "googletest git tag")
+set(googletest_GIT_TAG "v1.13.0" CACHE STRING "googletest git tag")
 
 #------------------------------------------------------------------------
 # The download URL for googletest
 #------------------------------------------------------------------------
 set(googletest_DOWNLOAD_URL "${googletest_GIT_REPO}/archive/refs/tags/${googletest_GIT_TAG}.zip" CACHE STRING "googletest download url" FORCE)
+set(googletest_DOWNLOAD_URL_HASH "SHA256=ffa17fbc5953900994e2deec164bb8949879ea09b411e07f215bfbb1f87f4632" CACHE STRING "googletest download url hash" FORCE)
 
 FetchContent_Declare(googletest
     URL                        "${googletest_DOWNLOAD_URL}"
+    URL_HASH                   "${googletest_DOWNLOAD_URL_HASH}"
     DOWNLOAD_EXTRACT_TIMESTAMP true
     SOURCE_DIR                 "${CMAKE_BINARY_DIR}/googletest-src"
     BINARY_DIR                 "${CMAKE_BINARY_DIR}/googletest-build"
