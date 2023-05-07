@@ -185,7 +185,7 @@ TEST(CVerySimpleSampler, Play)
 }
 ```
 
-* Like in the previous example, we initialize the tester. Note how the class is `CVerySimpleSampler` and we call `disable_trace()` because the device generates a lot of traces otherwise (due to `JBOX_TRACE("NoteOff")` in the `VoicePool`).
+* Like in the previous example, we initialize the tester. Note how the class is `CVerySimpleSampler` and we call `disable_trace()` because the device generates a lot of traces otherwise (due to `JBOX_TRACE("NoteOff")` in the `VoicePool` class).
 
 * The output sockets are wired (called `left` and `right` for this device).
 

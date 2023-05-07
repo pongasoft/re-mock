@@ -33,6 +33,10 @@ else()
   set(re-mock_DEV_BUILD FALSE)
 endif()
 
+# The SDK (api only) is part of this project
+set(RE_MOCK_SDK_ROOT "${CMAKE_CURRENT_LIST_DIR}/external/ReasonStudios/JukeboxSDK_4.3.0/SDK")
+
+# In dev build we enable testing
 if(re-mock_DEV_BUILD)
   enable_testing()
 
@@ -42,13 +46,12 @@ if(re-mock_DEV_BUILD)
   # Location of RE SDK: can be set when invoking cmake => cmake -D "RE_SDK_ROOT:PATH=/path/to/re_sdk"
   # or via -p option in configure.py script or in cmake-gui
   if(APPLE)
-    set(RE_SDK_ROOT "/Users/Shared/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK" CACHE PATH "Location of RE SDK")
+    set(RE_LOCAL_SDK_ROOT "/Users/Shared/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK")
   else()
-    set(RE_SDK_ROOT "C:/Users/Public/Documents/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK" CACHE PATH "Location of RE SDK")
+    set(RE_LOCAL_SDK_ROOT "C:/Users/Public/Documents/ReasonStudios/JukeboxSDK_${RE_SDK_VERSION}/SDK")
   endif()
-else()
-  if(NOT RE_SDK_ROOT)
-    message(ERROR "RE_SDK_ROOT must be defined")
+  if(EXISTS "${RE_LOCAL_SDK_ROOT}")
+    set(RE_SDK_ROOT "${RE_LOCAL_SDK_ROOT}" CACHE PATH "Location of RE SDK")
   endif()
 endif()
 
@@ -125,7 +128,7 @@ add_subdirectory(external/miniaudio)
 
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
 target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
-target_include_directories(${target} PUBLIC "${RE_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
+target_include_directories(${target} PUBLIC "${RE_MOCK_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
 target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2 midifile stb miniaudio)
 
 if(NOT APPLE)
@@ -138,7 +141,12 @@ if(re-mock_DEV_BUILD)
   # Generate the re_mock_build.h file
   set(GENERATED_FILES_DIR "${CMAKE_BINARY_DIR}/generated")
   file(TO_NATIVE_PATH "${CMAKE_CURRENT_LIST_DIR}" PROJECT_DIR_NATIVE_PATH)
-  file(TO_NATIVE_PATH "${RE_SDK_ROOT}" RE_SDK_ROOT_NATIVE_PATH)
+  if(EXISTS "${RE_SDK_ROOT}")
+    file(TO_NATIVE_PATH "${RE_SDK_ROOT}" RE_SDK_ROOT_NATIVE_PATH)
+  else()
+    set(RE_SDK_ROOT_NATIVE_PATH "")
+  endif()
+  file(TO_NATIVE_PATH "${RE_MOCK_SDK_ROOT}" RE_MOCK_SDK_ROOT_NATIVE_PATH)
   configure_file("${CMAKE_CURRENT_LIST_DIR}/re_mock_build.h.in" "${GENERATED_FILES_DIR}/re_mock_build.h")
 
   #######################################################

@@ -20,9 +20,13 @@
 #ifndef __Pongasoft_re_mock_build_h__
 #define __Pongasoft_re_mock_build_h__
 
+// re-mock defines
 #define RE_MOCK_PROJECT_NAME "@CMAKE_PROJECT_NAME@"
 #define RE_MOCK_PROJECT_DIR R"(@PROJECT_DIR_NATIVE_PATH@)"
 #define RE_MOCK_SDK_VERSION "@RE_SDK_VERSION@"
-#define RE_MOCK_SDK_ROOT R"(@RE_SDK_ROOT_NATIVE_PATH@)"
+#define RE_MOCK_SDK_ROOT R"(@RE_MOCK_SDK_ROOT_NATIVE_PATH@)"
+
+// others
+#define RE_SDK_ROOT R"(@RE_SDK_ROOT_NATIVE_PATH@)"
 
 #endif // __Pongasoft_re_mock_build_h__

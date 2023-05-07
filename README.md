@@ -161,7 +161,7 @@ License
 
 - This project is released under the terms of the [Apache 2.0 license](LICENSE.txt)
 
-- This project uses the Rack extension SDK released under the [Rack Extension License agreement](RE_License.txt)
+- This project uses the Rack extension SDK released under the [Rack Extension License agreement](RE_License.txt). Note that the [API](external/ReasonStudios/JukeboxSDK_4.3.0/SDK/API) (2 header files) is included in this project.
 
 - This project includes [lua-cmake](https://github.com/lubgr/lua-cmake) released under an [MIT License](external/lua-cmake/LICENSE)
 
@@ -172,3 +172,5 @@ License
 - This project includes [stb_sprintf](https://github.com/nothings/stb) released under a [Public Domain License](https://github.com/nothings/stb/blob/master/LICENSE)
 
 - This project includes [miniaudio](https://github.com/mackron/miniaudio) relased under a [Public Domain License](https://unlicense.org/)
+
+- This project uses [GoogleTest](https://github.com/google/googletest) released under a [BSD 3-Clause License](https://github.com/google/googletest/blob/main/LICENSE) (only for testing the project itself)

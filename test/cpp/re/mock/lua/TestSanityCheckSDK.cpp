@@ -46,10 +46,16 @@ static auto SDK_EXAMPLES = {
  */
 TEST(SanityCheck, SDKExamples)
 {
+  if(std::string(RE_SDK_ROOT).empty())
+  {
+    RE_MOCK_LOG_WARNING("Cannot run this test when the full SDK is not installed!");
+    return;
+  }
+
   for(auto &p: SDK_EXAMPLES)
   {
     {
-      auto path = fs::path(RE_MOCK_SDK_ROOT) / "Examples" / p / "info.lua";
+      auto path = fs::path(RE_SDK_ROOT) / "Examples" / p / "info.lua";
 
 
       auto def = InfoLua::fromFile(path);
@@ -59,7 +65,7 @@ TEST(SanityCheck, SDKExamples)
       if(def->supports_patches())
       {
         auto defaultPatch = fs::path(def->default_patch(), fs::path::format::generic_format).relative_path();
-        auto patchFile = fs::path(RE_MOCK_SDK_ROOT) / "Examples" / p / "Resources" / defaultPatch;
+        auto patchFile = fs::path(RE_SDK_ROOT) / "Examples" / p / "Resources" / defaultPatch;
         auto patch = PatchParser::from(resource::File{patchFile});
         patchPropertiesCount = patch->fProperties.size();
       }
@@ -73,7 +79,7 @@ TEST(SanityCheck, SDKExamples)
     }
 
     {
-      auto path = fs::path(RE_MOCK_SDK_ROOT) / "Examples" / p / "motherboard_def.lua";
+      auto path = fs::path(RE_SDK_ROOT) / "Examples" / p / "motherboard_def.lua";
 
       auto def = MotherboardDef::fromFile(path);
       auto customProperties = def->getCustomProperties();
@@ -90,7 +96,7 @@ TEST(SanityCheck, SDKExamples)
     }
 
     {
-      auto path = fs::path(RE_MOCK_SDK_ROOT) / "Examples" / p / "realtime_controller.lua";
+      auto path = fs::path(RE_SDK_ROOT) / "Examples" / p / "realtime_controller.lua";
 
       auto def = RealtimeController::fromFile(path);
       std::cout << p << "/realtime_controller.lua: "

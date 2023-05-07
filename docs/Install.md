@@ -9,11 +9,10 @@ Requirements
 Installation
 ------------
 
-This CMake based project compiles into a library called `re-mock` after adding it as a subdirectory to your rack extension project (`add_subdirectory`). The only requirement is that the RE SDK (4.1.0+) be installed on your system and that the `RE_SDK_ROOT` CMake variable be set to the location of the SDK.
+This CMake based project compiles into a library called `re-mock` after adding it as a subdirectory to your rack extension project (`add_subdirectory`). This project has no external dependencies as the SDK API is included.
 
 ```cmake
 # in CMakeLists.txt
-set(RE_SDK_ROOT "<path_to_RE_SDK_4.1.0+>")
 
 # add re-mock as a subdirectory
 add_subdirectory("re-mock" EXCLUDE_FROM_ALL)
@@ -30,7 +29,6 @@ It is highly recommended to use [re-cmake](https://github.com/pongasoft/re-cmake
 
 ```cmake
 # in CMakeLists.txt (using re-cmake)
-# RE_SDK_ROOT is set by re-cmake so no need to set it
 
 # Initializes re-cmake and add re-mock
 re_cmake_init(INCLUDES re-mock)
