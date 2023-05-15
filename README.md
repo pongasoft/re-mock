@@ -3,6 +3,8 @@ Introduction
 
 The goal of this project is to offer mock classes of the Reason SDK APIs in order to be able to unit test (or black box test) rack extensions (for Reason DAW by Reason Studios).
 
+[![Run Tests (macOS)](https://github.com/pongasoft/re-mock/actions/workflows/run-tests-macos-action.yml/badge.svg)](https://github.com/pongasoft/re-mock/actions/workflows/run-tests-macos-action.yml) [![Run Tests (Windows)](https://github.com/pongasoft/re-mock/actions/workflows/run-tests-windows-action.yml/badge.svg)](https://github.com/pongasoft/re-mock/actions/workflows/run-tests-windows-action.yml)
+
 Features
 --------
 
@@ -82,6 +84,13 @@ Links
 
 Release notes
 -------------
+
+#### 1.4.3 - 2023-05-15
+
+- Embed the Jukebox SDK API (2 header files) to make this project totally standalone with 0 external dependencies (unless you run the tests which depend on GoogleTest)
+- Fixed hard coded path in test
+- When no SDK installed, the sanity check tests are skipped
+- Integrate with github-actions to automatically run the tests on a matrix of machines (macOS / Windows)
 
 #### 1.4.2 - 2023-04-28
 
