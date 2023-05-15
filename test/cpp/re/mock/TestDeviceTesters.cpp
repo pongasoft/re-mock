@@ -136,9 +136,11 @@ TEST(DeviceTesters, SaveSample)
   auto sinePath = fs::path(RE_MOCK_PROJECT_DIR) / "test" / "resources" / "re" / "mock" / "audio" / "sine.wav";
   auto sine = tester.loadSample(resource::File{sinePath});
 
-  tester.saveSample(*sine.get(), resource::File{"/tmp/sine2.wav"});
+  auto sine2Path = fs::temp_directory_path() / "sine2.wav";
 
-  auto sine2 = tester.loadSample(resource::File{"/tmp/sine2.wav"});
+  tester.saveSample(*sine.get(), resource::File{sine2Path});
+
+  auto sine2 = tester.loadSample(resource::File{sine2Path});
 
   ASSERT_EQ(sine->getChannels(), sine2->getChannels());
   ASSERT_EQ(sine->getFrameCount(), sine2->getFrameCount());

@@ -131,10 +131,6 @@ target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 D
 target_include_directories(${target} PUBLIC "${RE_MOCK_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
 target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2 midifile stb miniaudio)
 
-if(NOT APPLE)
-#  target_compile_options(${target} PUBLIC "/std:c++latest")
-endif()
-
 if(re-mock_DEV_BUILD)
   target_compile_definitions(${target} PUBLIC ENABLE_RE_MOCK_INTERNAL_ASSERT=1)
 
@@ -186,4 +182,11 @@ if(re-mock_DEV_BUILD)
   target_include_directories("${target_test}" PUBLIC "${PROJECT_SOURCE_DIR}" "${GENERATED_FILES_DIR}")
 
   gtest_discover_tests("${target_test}")
+
+  add_custom_target("run-tests"
+      COMMAND ${CMAKE_COMMAND} -E echo "Running tests using $<TARGET_FILE:${target_test}>"
+      COMMAND "${CMAKE_CTEST_COMMAND}" -C $<CONFIG>
+      DEPENDS "${target_test}"
+      )
+
 endif()
