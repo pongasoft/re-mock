@@ -139,10 +139,8 @@ inline std::string join_to_string(Container const &iContainer, std::string iSepa
   return os.str();
 }
 
-inline bool starts_with(std::string const &s, std::string const &iPrefix)
+constexpr bool starts_with(std::string_view s, std::string_view iPrefix)
 {
-  if(s.size() < iPrefix.size())
-    return false;
   return s.substr(0, iPrefix.size()) == iPrefix;
 }
 
