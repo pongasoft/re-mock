@@ -85,6 +85,11 @@ Links
 Release notes
 -------------
 
+#### 1.5.0 - 2023-07-02
+
+- Upgraded SDK to 4.4.0
+
+
 #### 1.4.3 - 2023-05-15
 
 - Embed the Jukebox SDK API (2 header files) to make this project totally standalone with 0 external dependencies (unless you run the tests which depend on GoogleTest)
