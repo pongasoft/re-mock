@@ -19,8 +19,8 @@ cmake_minimum_required(VERSION 3.17)
 # Setting up project
 project(re-mock LANGUAGES CXX)
 set(re-mock_VERSION_MAJOR 1)
-set(re-mock_VERSION_MINOR 4)
-set(re-mock_VERSION_PATCH 3)
+set(re-mock_VERSION_MINOR 5)
+set(re-mock_VERSION_PATCH 0)
 set(re-mock_VERSION "${re-mock_VERSION_MAJOR}.${re-mock_VERSION_MINOR}.${re-mock_VERSION_PATCH}")
 
 # Using C++17
@@ -34,14 +34,14 @@ else()
 endif()
 
 # The SDK (api only) is part of this project
-set(RE_MOCK_SDK_ROOT "${CMAKE_CURRENT_LIST_DIR}/external/ReasonStudios/JukeboxSDK_4.3.0/SDK")
+set(RE_MOCK_SDK_ROOT "${CMAKE_CURRENT_LIST_DIR}/external/ReasonStudios/JukeboxSDK_4.4.0/SDK")
 
 # In dev build we enable testing
 if(re-mock_DEV_BUILD)
   enable_testing()
 
-  # Using RE SDK version 4.3.0
-  set(RE_SDK_VERSION 4.3.0)
+  # Using RE SDK version 4.4.0
+  set(RE_SDK_VERSION 4.4.0)
 
   # Location of RE SDK: can be set when invoking cmake => cmake -D "RE_SDK_ROOT:PATH=/path/to/re_sdk"
   # or via -p option in configure.py script or in cmake-gui
