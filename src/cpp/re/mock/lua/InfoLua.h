@@ -20,6 +20,7 @@
 #define RE_MOCK_INFO_H
 
 #include "MockJBox.h"
+#include <vector>
 
 namespace re::mock::lua {
 
@@ -37,6 +38,7 @@ product_id = "se.propellerheads.SimpleInstrument"
 manufacturer = "Propellerhead Software"
 version_number = "1.0.0d1"
 device_type = "instrument"
+device_categories = {"Misc"}
 supports_patches = true
 default_patch = "/Public/Plain Sinus.repatch"
 accepts_notes = true
@@ -57,6 +59,7 @@ public:
   std::string manufacturer();
   std::string version_number();
   std::string device_type();
+  std::vector<std::string> device_categories();
   bool supports_patches();
   std::string default_patch();
   bool accepts_notes();

@@ -56,6 +56,7 @@ TEST(InfoLua, Basic)
   ASSERT_EQ(def->manufacturer(), "Propellerhead Software");
   ASSERT_EQ(def->version_number(), "1.0.0d1");
   ASSERT_EQ(def->device_type(), "instrument");
+  ASSERT_EQ(def->device_categories(), std::vector<std::string>{"Misc"});
   ASSERT_TRUE(def->supports_patches());
   ASSERT_EQ(def->default_patch(), "/Public/Plain Sinus.repatch");
   ASSERT_TRUE(def->accepts_notes());

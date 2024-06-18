@@ -50,6 +50,15 @@ enum class DeviceType : int
   kNotePlayer = 1 << 4
 };
 
+constexpr char const* kDeviceCategories[] = {
+  "Amps", "Arpeggio", "Audio Meter", "Audio Mixer", "Bass", "Chords", "CV Meter", "CV Processor", "CV Source",
+  "Delay", "Dist", "Drums", "Dynamics", "EQ", "Filter", "Guitar", "Keys", "Loops", "Misc", "Modulation", "Note FX",
+  "Orchestral", "Pitch", "Reverb", "Samples", "Sequencer", "Stereo", "Synth", "Vocoder"
+};
+
+void checkAllowedCategory(std::string_view iCategory);
+void checkValidCategories(std::vector<std::string> const &iCategories);
+
 enum class JboxObjectType : int
 {
   kUnknown          = 0,
@@ -167,6 +176,7 @@ using ConfigSource = std::variant<resource::File, resource::String>;
 struct Info
 {
   DeviceType fDeviceType{DeviceType::kUnknown};
+  std::vector<std::string> fDeviceCategories{ {"Misc"} };
   bool fSupportPatches{};
   std::string fDefaultPatch{};
   bool fAcceptNotes{};
@@ -182,6 +192,7 @@ struct Info
   bool fSupportsPerformanceAutomation{};
 
   Info &device_type(DeviceType t) { fDeviceType = t; return *this; }
+  Info &device_categories(std::vector<std::string> c) { checkValidCategories(c); fDeviceCategories = std::move(c); return *this; }
   Info &default_patch(std::string s) { fDefaultPatch = std::move(s); fSupportPatches = !fDefaultPatch.empty(); return *this; }
   Info &accept_notes(bool b) { fAcceptNotes = b; return *this; }
   Info &device_height_ru(int i) { fDeviceHeightRU = i; return *this; }

@@ -568,6 +568,28 @@ std::unique_ptr<resource::Sample> Config::findSampleResource(std::string const &
   return nullptr;
 }
 
+//------------------------------------------------------------------------
+// checkAllowedCategory
+//------------------------------------------------------------------------
+void checkAllowedCategory(std::string_view iCategory)
+{
+  static auto kAllowedCategories = std::set<std::string>(std::begin(kDeviceCategories), std::end(kDeviceCategories));
+  if(std::find(kAllowedCategories.begin(), kAllowedCategories.end(), iCategory) == kAllowedCategories.end())
+  {
+    RE_MOCK_ASSERT(false, "[%s] is not a valid device category", iCategory.data());
+  }
+}
+
+//------------------------------------------------------------------------
+// checkValidCategories
+//------------------------------------------------------------------------
+void checkValidCategories(std::vector<std::string> const &iCategories)
+{
+  RE_MOCK_ASSERT(iCategories.size() > 0, "device_categories cannot be empty");
+  for(auto const &category: iCategories)
+    checkAllowedCategory(category);
+}
+
 namespace impl {
 
 //------------------------------------------------------------------------
@@ -600,6 +622,7 @@ Info fromInfoLua(lua::InfoLua &iInfo)
   Info res{};
 
   res.device_type(deviceTypeFromString(iInfo.device_type()));
+  res.device_categories(iInfo.device_categories());
   res.default_patch(iInfo.default_patch());
   res.fSupportPatches = iInfo.supports_patches();
   res.fAcceptNotes = iInfo.accepts_notes();

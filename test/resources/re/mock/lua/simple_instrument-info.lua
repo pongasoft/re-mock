@@ -15,6 +15,7 @@ product_id = "se.propellerheads.SimpleInstrument"
 manufacturer = "Propellerhead Software"
 version_number = "1.0.0d1"
 device_type = "instrument"
+device_categories = { "Misc" }
 supports_patches = true
 default_patch = "/Public/Plain Sinus.repatch"
 accepts_notes = true

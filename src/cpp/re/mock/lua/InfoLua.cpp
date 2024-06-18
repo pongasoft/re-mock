@@ -34,6 +34,7 @@ product_id = "se.propellerheads.SimpleInstrument"
 manufacturer = "Propellerhead Software"
 version_number = "1.0.0d1"
 device_type = "instrument"
+device_categories = { "Misc" }
 supports_patches = true
 default_patch = "/Public/Plain Sinus.repatch"
 accepts_notes = true
@@ -135,6 +136,28 @@ std::string InfoLua::default_patch()
 std::string InfoLua::device_type()
 {
   return L.getGlobalAsString("device_type");
+}
+
+//------------------------------------------------------------------------
+// InfoLua::device_categories
+//------------------------------------------------------------------------
+std::vector<std::string> InfoLua::device_categories()
+{
+  std::vector<std::string> res{};
+  if(lua_getglobal(L, "device_categories") != LUA_TNIL)
+  {
+    auto count = L.getTableSize();
+    for(auto i = 1; i <= count; i++)
+    {
+      lua_geti(L, -1, i);
+      auto s = lua_tostring(L, -1);
+      if(s != nullptr)
+        res.emplace_back(s);
+      lua_pop(L, 1);
+    }
+  }
+  lua_pop(L, 1);
+  return res;
 }
 
 //------------------------------------------------------------------------
