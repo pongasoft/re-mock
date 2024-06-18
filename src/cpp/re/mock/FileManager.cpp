@@ -47,7 +47,7 @@ long loadFile(resource::File const &iFile, Container &oBuffer)
 
     if(ifs.bad())
     {
-      RE_MOCK_LOG_ERROR("Error while reading file %s", iFile.fFilePath);
+      RE_MOCK_LOG_ERROR("Error while reading file %s", iFile.fFilePath.u8string());
       return -1;
     }
 
@@ -108,7 +108,7 @@ std::unique_ptr<smf::MidiFile> FileManager::loadMidi(resource::File const &iFile
   midiFile->read(iFile.fFilePath.string().c_str());
   if(!midiFile->status())
   {
-    RE_MOCK_LOG_ERROR("Error opening midi file [%s]", iFile.fFilePath);
+    RE_MOCK_LOG_ERROR("Error opening midi file [%s]", iFile.fFilePath.u8string());
     return nullptr;
   }
 

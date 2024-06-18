@@ -226,7 +226,7 @@ void DeviceTester::play(Duration iDuration, std::optional<tester::Timeline> iTim
 std::unique_ptr<MockAudioDevice::Sample> DeviceTester::loadSample(resource::File const &iSampleFile) const
 {
   auto sample = FileManager::loadSample(iSampleFile);
-  RE_MOCK_ASSERT(sample != nullptr, "Could not load sample [%s]", iSampleFile.fFilePath);
+  RE_MOCK_ASSERT(sample != nullptr, "Could not load sample [%s]", iSampleFile.fFilePath.u8string());
   return MockAudioDevice::Sample::from(std::move(sample));
 }
 

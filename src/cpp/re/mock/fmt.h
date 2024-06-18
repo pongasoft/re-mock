@@ -25,17 +25,15 @@
 #include <stdexcept>
 #include "fs.h"
 #include "stl.h"
+#if RE_MOCK_USE_STB_SPRINTF
 #include <stb_sprintf.h>
+#else
+#include <stdio.h>
+#endif
 
 namespace re::mock::fmt {
 
 namespace impl {
-
-#ifdef _WIN32
-constexpr char pathSeparator = '\\';
-#else
-constexpr char pathSeparator = '/';
-#endif
 
 template<typename T>
 constexpr auto printf_arg(T const &t) { return t; }
@@ -46,6 +44,7 @@ inline auto printf_arg<std::string>(std::string const &s) { return s.c_str(); }
 
 // Handles std::string without having to call c_str all the time
 template<>
+[[deprecated("Since 1.6.0: Due to utf8, the right thing to do is s.u8string().str(), but cannot have a function return a pointer to a temporary string. It's ok to use s.u8string() as an argument.")]]
 inline auto printf_arg<fs::path>(fs::path const &s) { return s.c_str(); }
 
 #ifdef __clang__
@@ -57,11 +56,19 @@ inline auto printf_arg<fs::path>(fs::path const &s) { return s.c_str(); }
 template<typename ... Args>
 std::string printf(const std::string& format, Args ... args )
 {
+#if RE_MOCK_USE_STB_SPRINTF
   int size_s = stbsp_snprintf(nullptr, 0, format.c_str(), args ...) + 1; // Extra space for '\0'
+#else
+  int size_s = snprintf(nullptr, 0, format.c_str(), args ...) + 1; // Extra space for '\0'
+#endif
   if(size_s <= 0) { throw std::runtime_error("Error during formatting."); }
   auto size = static_cast<size_t>( size_s );
   auto buf = std::make_unique<char[]>(size);
+#if RE_MOCK_USE_STB_SPRINTF
   stbsp_snprintf(buf.get(), size_s, format.c_str(), args ...);
+#else
+  snprintf(buf.get(), size_s, format.c_str(), args ...);
+#endif
   return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
 }
 #ifdef __clang__
@@ -221,51 +228,6 @@ template<typename ... Args>
 inline std::string printf(const std::string& format, Args ... args)
 {
   return impl::printf(format, impl::printf_arg(args)...);
-}
-
-//------------------------------------------------------------------------
-// path
-//------------------------------------------------------------------------
-[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
-inline std::string path(std::string const &path)
-{
-  return path;
-}
-
-//------------------------------------------------------------------------
-// path
-//------------------------------------------------------------------------
-[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
-inline std::string path(std::vector<std::string> const &children)
-{
-  return stl::join_to_string(children, std::string(1, impl::pathSeparator));
-}
-
-//------------------------------------------------------------------------
-// path
-//------------------------------------------------------------------------
-template<typename ... Args>
-[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
-std::string path(std::string const &dir, std::vector<std::string> const &children, Args ... more);
-
-//------------------------------------------------------------------------
-// path
-//------------------------------------------------------------------------
-template<typename ... Args>
-[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
-inline std::string path(std::string const &dir, std::string const &child, Args ... children)
-{
-  return path(dir + impl::pathSeparator + child, std::forward<Args>(children)...);
-}
-
-//------------------------------------------------------------------------
-// path
-//------------------------------------------------------------------------
-template<typename ... Args>
-[[deprecated("Since 1.2.0, re-mock uses std::filesystem::path. Replace with dir / p1 / p2 / file")]]
-inline std::string path(std::string const &dir, std::vector<std::string> const &children, Args ... more)
-{
-  return path(dir, path(children), std::forward<Args>(more)...);
 }
 
 //------------------------------------------------------------------------

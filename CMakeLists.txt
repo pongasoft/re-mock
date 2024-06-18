@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.17)
 # Setting up project
 project(re-mock LANGUAGES CXX)
 set(re-mock_VERSION_MAJOR 1)
-set(re-mock_VERSION_MINOR 5)
+set(re-mock_VERSION_MINOR 6)
 set(re-mock_VERSION_PATCH 0)
 set(re-mock_VERSION "${re-mock_VERSION_MAJOR}.${re-mock_VERSION_MINOR}.${re-mock_VERSION_PATCH}")
 
@@ -54,6 +54,9 @@ if(re-mock_DEV_BUILD)
     set(RE_SDK_ROOT "${RE_LOCAL_SDK_ROOT}" CACHE PATH "Location of RE SDK")
   endif()
 endif()
+
+# In some environments, stb_sprintf does not work at this time (ex: wasm)
+option(RE_MOCK_USE_STB_SPRINTF "Enable/Disable using stb_sprintf" ON)
 
 set(target "re-mock")
 
@@ -127,7 +130,12 @@ add_subdirectory(external/craigsapp-midifile)
 add_subdirectory(external/miniaudio)
 
 add_library(${target} STATIC "${re-mock_BUILD_HEADERS}" "${re-mock_BUILD_SOURCES}")
-target_compile_definitions(${target} PUBLIC LOCAL_NATIVE_BUILD=1 JUKEBOX_SDK=0 DEBUG=1)
+target_compile_definitions(${target} PUBLIC
+    LOCAL_NATIVE_BUILD=1
+    JUKEBOX_SDK=0
+    DEBUG=1
+    RE_MOCK_USE_STB_SPRINTF=$<BOOL:${RE_MOCK_USE_STB_SPRINTF}>
+)
 target_include_directories(${target} PUBLIC "${RE_MOCK_SDK_ROOT}/API" "${re-mock_INCLUDE_DIRECTORIES}") # exporting SDK API to plugin
 target_link_libraries(${target} PUBLIC lua::lib lua::header tinyxml2::tinyxml2 midifile stb miniaudio)
 

@@ -1555,7 +1555,7 @@ void Motherboard::loadPatch(std::string const &iPatchPath)
 void Motherboard::loadPatch(resource::File const &iPatchFile)
 {
   auto patchResource = PatchParser::from(iPatchFile);
-  RE_MOCK_ASSERT(patchResource != nullptr, "loadPatch: Cannot find / Error with patch [%s]", iPatchFile.fFilePath);
+  RE_MOCK_ASSERT(patchResource != nullptr, "loadPatch: Cannot find / Error with patch [%s]", iPatchFile.fFilePath.u8string());
   loadPatch(*patchResource);
 }
 
