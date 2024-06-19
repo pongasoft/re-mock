@@ -85,6 +85,11 @@ Links
 Release notes
 -------------
 
+#### 1.6.0 - 2024-06-19
+
+- Added support for `device_categories` in `info.lua` which was added as a new requirement with Reason 13
+- Deprecated automatic support for `std::filesystem::path` in `fmt` due to UTF8: use `path.u8string()` instead
+
 #### 1.5.0 - 2023-07-02
 
 - Upgraded SDK to 4.4.0
