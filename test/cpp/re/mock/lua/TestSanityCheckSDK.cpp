@@ -74,6 +74,7 @@ TEST(SanityCheck, SDKExamples)
                 << "device_type=" << def->device_type()
                 << ";supports_patches=" << def->supports_patches()
                 << ";default_patch=" << def->default_patch()
+                << ";device_categories=" << stl::join_to_string(def->device_categories())
                 << ";patch_properties_count=" << patchPropertiesCount
                 << std::endl;
     }

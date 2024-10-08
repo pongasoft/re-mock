@@ -85,6 +85,10 @@ Links
 Release notes
 -------------
 
+#### 1.7.0 - 2024-10-08
+
+- Upgraded SDK to 4.5.0 (although there is **no** API change)
+
 #### 1.6.0 - 2024-06-19
 
 - Added support for `device_categories` in `info.lua` which was added as a new requirement with Reason 13
