@@ -43,6 +43,7 @@ set(googletest_DOWNLOAD_URL "${googletest_GIT_REPO}/archive/refs/tags/${googlete
 set(googletest_DOWNLOAD_URL_HASH "SHA256=ffa17fbc5953900994e2deec164bb8949879ea09b411e07f215bfbb1f87f4632" CACHE STRING "googletest download url hash" FORCE)
 
 FetchContent_Declare(googletest
+    EXCLUDE_FROM_ALL
     URL                        "${googletest_DOWNLOAD_URL}"
     URL_HASH                   "${googletest_DOWNLOAD_URL_HASH}"
     DOWNLOAD_EXTRACT_TIMESTAMP true
@@ -56,23 +57,17 @@ FetchContent_Declare(googletest
 
 FetchContent_GetProperties(googletest)
 
-if(NOT googletest_POPULATED)
-
-  if(FETCHCONTENT_SOURCE_DIR_GOOGLETEST)
-    message(STATUS "Using googletest from local ${FETCHCONTENT_SOURCE_DIR_GOOGLETEST}")
-  else()
-    message(STATUS "Fetching googletest from ${googletest_DOWNLOAD_URL}")
-  endif()
-
-  FetchContent_Populate(googletest)
-
-endif()
-
 # Prevent overriding the parent project's compiler/linker settings on Windows
 set(gtest_force_shared_crt ON CACHE BOOL "Set by re-cmake" FORCE)
 
 # Do not install GoogleTest!
 option(INSTALL_GTEST "Enable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" OFF)
 
+if(FETCHCONTENT_SOURCE_DIR_GOOGLETEST)
+  message(STATUS "Using googletest from local ${FETCHCONTENT_SOURCE_DIR_GOOGLETEST}")
+else()
+  message(STATUS "Fetching googletest from ${googletest_DOWNLOAD_URL}")
+endif()
+
 # Add googletest directly to our build. This defines the gtest and gtest_main targets.
-add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR} EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(googletest)
