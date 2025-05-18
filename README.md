@@ -85,6 +85,10 @@ Links
 Release notes
 -------------
 
+#### 1.8.0 - 2025-05-18
+
+- Upgraded SDK to 4.6.0 (although there is **no** API change)
+
 #### 1.7.0 - 2024-10-08
 
 - Upgraded SDK to 4.5.0 (although there is **no** API change)
