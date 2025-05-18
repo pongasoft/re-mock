@@ -1,0 +1,22 @@
+name: Compute SHA-256 on Release
+
+env:
+  FILENAME: "pongasoft_re-mock_${{ github.event.release.tag_name }}.zip_sha256.txt"
+
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  compute-checksum:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Compute SHA-256 checksum
+        run: |
+          curl -sfL https://github.com/${{ github.repository }}/archive/refs/tags/${{ github.event.release.tag_name }}.zip | sha256sum > ${{ env.FILENAME }}
+
+      - name: Upload checksum to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.FILENAME }}
