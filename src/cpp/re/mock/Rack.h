@@ -80,7 +80,7 @@ public:
   friend class rack::Extension;
 
 private:
-  ExtensionImpl(int id, Rack *iRack, std::unique_ptr<Motherboard> iMotherboard);;
+  ExtensionImpl(int id, Rack *iRack, std::unique_ptr<Motherboard> iMotherboard);
 
   void wire(rack::Extension::AudioOutSocket const &iOutSocket, rack::Extension::AudioInSocket const &iInSocket);
   void wire(rack::Extension::CVOutSocket const &iOutSocket, rack::Extension::CVInSocket const &iInSocket);
@@ -120,6 +120,7 @@ public:
   constexpr static auto kNumSamplesPerBatch = 64;
 
   Rack(int iSampleRate = 44100);
+  ~Rack();
 
   rack::Extension newExtension(Config const &iConfig);
 

@@ -568,6 +568,14 @@ void Motherboard::init()
 }
 
 //------------------------------------------------------------------------
+// Motherboard::shutdown
+//------------------------------------------------------------------------
+void Motherboard::shutdown()
+{
+  fJboxObjects.clear();
+}
+
+//------------------------------------------------------------------------
 // Motherboard::addProperty
 //------------------------------------------------------------------------
 void Motherboard::addProperty(TJBox_ObjectRef iParentObject,

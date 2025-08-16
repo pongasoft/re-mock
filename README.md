@@ -85,6 +85,10 @@ Links
 Release notes
 -------------
 
+#### 1.8.1 - 2025-08-16
+
+- Fixes issue when `JBOX_TRACE` is called from the destructor of a rack extension
+
 #### 1.8.0 - 2025-05-18
 
 - Upgraded SDK to 4.6.0 (although there is **no** API change)

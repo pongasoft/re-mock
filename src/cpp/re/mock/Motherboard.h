@@ -256,6 +256,7 @@ protected:
   Motherboard(int iInstanceId, int iSampleRate, Config const &iConfig);
 
   void init();
+  void shutdown();
   void addDeviceHostProperties(int iUserSampleCount);
 
   std::shared_ptr<const JboxValue> getJboxValue(std::string const &iPropertyPath) const;

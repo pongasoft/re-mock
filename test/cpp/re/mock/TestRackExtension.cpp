@@ -1294,5 +1294,28 @@ TEST(RackExtension, RealtimeController_UserSample)
             re->fSample1->fJboxToString);
 }
 
+// RackExtension.Destructor
+TEST(RackExtension, Destructor)
+{
+  Rack rack{};
+
+  struct Device : public MockDevice
+  {
+    Device(int iSampleRate) : MockDevice(iSampleRate) {}
+    // Using JBOX_TRACE in the destructor was causing an issue because the motherboard is required by JBOX_TRACE but
+    // the destructor was called without a "current" motherboard
+    ~Device() { JBOX_TRACE("~Device"); }
+
+    void renderBatch(const TJBox_PropertyDiff iPropertyDiffs[], TJBox_UInt32 iDiffCount) override
+    {
+    }
+  };
+
+  auto c = DeviceConfig<Device>::fromSkeleton();
+
+  auto re = rack.newDevice(c);
+
+  rack.nextBatch();
+}
 
 }

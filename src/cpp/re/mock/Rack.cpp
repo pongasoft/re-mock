@@ -41,6 +41,22 @@ Rack::Rack(int iSampleRate) : fSampleRate{iSampleRate}, fTransport{iSampleRate}
 }
 
 //------------------------------------------------------------------------
+// Rack::~Rack
+//------------------------------------------------------------------------
+Rack::~Rack()
+{
+  for(auto &extension: fExtensions)
+  {
+    (*extension.second).use([](Motherboard &m) {
+      // This ensures that the motherboard is shutdown while the motherboard is the "current" motherboard since
+      // shutting down the motherboard involves destroying native objects which might call into the motherboard (like
+      // using JBOX_TRACE)
+      m.shutdown();
+    });
+  }
+}
+
+//------------------------------------------------------------------------
 // Rack::newExtension
 //------------------------------------------------------------------------
 rack::Extension Rack::newExtension(Config const &iConfig)
